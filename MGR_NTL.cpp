@@ -25,6 +25,9 @@ NTL_CLIENT
 // block matrix default size
 #define QSIZE 4
 
+// debugging outputs
+//#define DEBUGOUT 1
+
 // prototypes / forward declarations
 long generateInvertiblePM(mat_GF2& M, int p);
 void AddToCol(mat_GF2& x, long j, const vec_GF2& a);
@@ -69,18 +72,19 @@ int main(void) {
 	  {1, 0, 1, 0},
 	  {1, 1, 0, 0},
 	  {0, 0, 1, 1},
-	  {0, 0, 1, 0}
+	  {0, 0, 1, 1}
 	};
 
 	initMatrix(B, (long *)Bdata);
 	cout << "My custom init matrix: " << endl << B << endl << endl;
 	cout << "Now trying to find inverse: " << endl;
+
 	GF2 d;
 	ref_GF2 dd(d);
 	mat_GF2 P;
 	mat_GF2 Q;
-	invP(dd,P,Q,B);
-	cout << "Determinant returned: " << d;
+	i = invP(dd,P,Q,B);
+	cout << "Determinant returned: " << d << "; Rank = " << i;
 	cout << "; P matrix: " << endl << P << endl << endl;
 	cout << "; Q matrix: " << endl << Q << endl << endl;
 	cout << "; R matrix: " << endl << (P*B*Q) << endl << endl;
@@ -136,7 +140,7 @@ long generateInvertiblePM(mat_GF2& M, int p){
 }
 
 /**
- * Extended Inversion version - should return also P matrix in
+ * Extended Inversion version - should return also invertible P,Q matrices in
  * matrix A decomposition PAQ = R where R is in canonical form.
  *
  * Returns rank of matrix
@@ -166,7 +170,7 @@ long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
    vec_GF2 aa;
    aa.SetLength(2*n);
 
-   // initializing Q matrix as unit matrix, will corespond to
+   // Initializing Q matrix as unit matrix, will correspond to
    // column operations performed to obtain canonical form.
    // Since matrix is represented as array of vectors (rows),
    // we will work with transpose version of matrix.
@@ -181,14 +185,14 @@ long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
    }
 
    long wn = ((2*n) + NTL_BITS_PER_LONG - 1)/NTL_BITS_PER_LONG;
-
    for (k = 0; k < n; k++) {
       long wk = k/NTL_BITS_PER_LONG;
       long bk = k - wk*NTL_BITS_PER_LONG;
       _ntl_ulong k_mask = 1UL << bk;
 
+#ifdef DEBUGOUT
       cout << "Intermediate result in step=" << k <<  "; Matrix" << endl << M << endl;
-
+#endif
       // Find leading one in rows on k-th position in row.
       // Search in interval [k,n] (thus from current row down).
       pos = -1;
@@ -198,21 +202,19 @@ long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
             break;
          }
       }
-
+#ifdef DEBUGOUT
       cout << "Line pos: [" << pos << "] has leading 1 on [" << k << "]. position" << endl;
+#endif
       if (pos == -1) {
-		  // If here it means we have zero vector obtained,
-		  // thus it is linearly dependent to others.
-		  // Now we have to swap some columns to be able to continue
-		  // in elimination.
-		  //
-		  // In this situation there is no row such that would have
-		  // leading 1 on k-th place.
+		  // If here it means there is no row in matrix that has leading
+    	  // 1 on k-th position.
     	  //
     	  // Thus now look in rows [k,n] and find some row that has
-    	  // 1 element on position > k.
+    	  // 1 element on position > k. Then we will perform column swap
+    	  // to obtain 1 element on desired position = k. This change has to be
+    	  // reflected to Q matrix.
     	  //
-    	  // FInding unit element on position k+1 in all rows [k,n].
+    	  // Finding unit element on position k+1 in all rows [k,n].
     	  // If fails, look for unit element on position k+2 in all rows [k,n]...
     	  int kk, ii, colpos=-1;
 			for (kk = k+1; kk < n; kk++) {
@@ -223,11 +225,12 @@ long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
 
 				// Find leading one in rows on k-th position in row.
 				// Search in interval [k,n] (thus from current row down).
+#ifdef DEBUGOUT
 				cout << "Looking for leading 1 element in column: " << kk << "; mask: " << kk_mask << endl;
+#endif
 				pos = -1;
 				for (ii = k; ii < n; ii++) {
 					if (M[ii].rep.elts()[kwk] & kk_mask) {
-						cout << "Found in row: " << ii << endl;
 						pos = ii;
 						break;
 					}
@@ -237,10 +240,13 @@ long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
 
 
 			if (pos==-1){
-				// No such column exists, thus just simply null rest of columns in Q matrix.
+				// No such column exists, thus just simply null rest of columns in Q matrix
+				// to obtain canonical form of product PAQ.
 				rank = k;
+#ifdef DEBUGOUT
 				cout << "No such column exists, we are already in canonical form;"\
 						"nulling all columns from: " << k << "; Rank: " << rank << endl;
+#endif
 				for(kk=k; kk<n; kk++){
 					for(ii=0; ii<n; ii++){
 						Q.put(kk, ii, 0);
@@ -250,10 +256,10 @@ long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
 				break;
 			}
 
-			// swaping columns kk with k.
+#ifdef DEBUGOUT
 			cout << "Swaping column [" << k << "] with column [" << colpos << "]. Matrix: " <<endl;
-
-			// do column swap
+#endif
+			// Do column swap to obtain 1 on desired k-th position.
 			for(ii=0; ii<n; ii++){
 				GF2 tmp = M.get(ii, k);
 				M.put(ii, k, M.get(ii, colpos));
@@ -262,16 +268,17 @@ long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
 
 			// reflect this swap to Q matrix, swap rows (transpose form)
 			swap(Q[colpos], Q[k]);
+#ifdef DEBUGOUT
 			cout << M << endl << "Qmatrix: " << endl << Q << endl << endl;
-
-		   //clear(d);
-		   //return;
+#endif
 		}
 
       if (pos != -1) {
     	  // row number <pos> has leading one on k-th position
          if (k != pos) {
+#ifdef DEBUGOUT
         	 cout << "Swap line " << pos << " with line " << k << endl;
+#endif
             swap(M[pos], M[k]);
          }
 
@@ -316,7 +323,10 @@ long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
    // transpose Q matrix finally
    Q = transpose(Q);
 
-   set(d);
+   // determinant=0 <=> rank == n
+   if (rank==n) set(d);
+   else clear(d);
+
    return rank;
 }
 
