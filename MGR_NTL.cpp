@@ -33,6 +33,8 @@ long generateInvertiblePM(mat_GF2& M, int p);
 void AddToCol(mat_GF2& x, long j, const vec_GF2& a);
 int initMatrix(mat_GF2& M, long *data);
 long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A);
+void canonical(mat_GF2& M, int rank, int n);
+void generateARankMatrix(mat_GF2& A, int rank, int n);
 
 using namespace std;
 using namespace NTL;
@@ -89,7 +91,23 @@ int main(void) {
 	cout << "; Q matrix: " << endl << Q << endl << endl;
 	cout << "; R matrix: " << endl << (P*B*Q) << endl << endl;
 
+	// A matrix generation
+	mat_GF2 Amat;
 
+	generateARankMatrix(Amat, 1, 8);
+	cout << "Generating A matrix, r=1, p=8" << endl << Amat << endl <<endl;
+
+	generateARankMatrix(Amat, 2, 8);
+	cout << "Generating A matrix, r=2, p=8" << endl << Amat << endl <<endl;
+
+	generateARankMatrix(Amat, 3, 8);
+	cout << "Generating A matrix, r=3, p=8" << endl << Amat << endl <<endl;
+
+	generateARankMatrix(Amat, 4, 8);
+	cout << "Generating A matrix, r=4, p=8" << endl << Amat << endl <<endl;
+
+	generateARankMatrix(Amat, 5, 8);
+	cout << "Generating A matrix, r=5, p=8" << endl << Amat << endl <<endl;
 	return EXIT_SUCCESS;
 }
 
@@ -360,4 +378,66 @@ void AddToCol(mat_GF2& x, long j, const vec_GF2& a)
    }
 }
 
+/**
+ * Generates n x n matrix M in canonical form for given rank.
+ */
+void canonical(mat_GF2& M, int rank, int n){
+	long i=0;
+	ident(M, n);
+	for(i=rank+1; i<n; i++){
+		M.put(i,i,0);
+	}
+}
 
+
+/**
+ * Generates matrix A according to paper [http://eprint.iacr.org/2002/096.pdf]
+ * From lemma 1.
+ *
+ * T = canonical(rank,m) + A is invertible, according to this paper.
+ */
+void generateARankMatrix(mat_GF2& A, int rank, int n){
+	long i=0, offset=0;
+
+	A.SetDims(n,n);
+	clear(A);
+	if (rank==1){
+		// On rank = 1 matrix has special form [1 1; 1 0] and then I
+		A.put(0,0,1);
+		A.put(0,1,1);
+		A.put(1,0,1);
+		for(i=2; i<n; i++){
+			A.put(i,i,1);
+		}
+		return;
+	}
+
+	if ((rank % 2) == 1){
+		// First block of matrix is 3x3 in special form [1 1 1; 1 1 0; 1 0 0]
+		A.put(0,0,1);
+		A.put(0,1,1);
+		A.put(0,2,1);
+		A.put(1,0,1);
+		A.put(1,1,1);
+		A.put(2,0,1);
+		offset=3;
+	}
+
+	//
+	// Merged case - r is odd or even and >= 3
+	//
+
+	// For even rank it is easy to construct
+	// On diagonals is <rank> copies of matrix [0 1; 1 1]
+	// filled with I_2 on rest of blocks
+	for(i=0; i<rank/2; i++){
+		A.put(2*i   + offset, 2*i+1 + offset, 1);
+		A.put(2*i+1 + offset, 2*i   + offset, 1);
+		A.put(2*i+1 + offset, 2*i+1 + offset, 1);
+	}
+	// the rest fill with 1 on diagonals (I_{n-r} matrix)
+	for(i=rank+offset-1; i<n; i++){
+		A.put(i,i,1);
+	}
+	return;
+}
