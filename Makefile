@@ -1,4 +1,4 @@
-CXXFLAGS =	-O2 -g -Wall -fmessage-length=0 -L -lntl
+CXXFLAGS =	-O0 -g -Wall -fmessage-length=0 -L -lntl
 
 OBJS =		MGR_NTL.o
 
