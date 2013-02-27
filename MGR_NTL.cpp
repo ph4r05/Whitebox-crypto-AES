@@ -29,7 +29,7 @@ NTL_CLIENT
 long generateInvertiblePM(mat_GF2& M, int p);
 void AddToCol(mat_GF2& x, long j, const vec_GF2& a);
 int initMatrix(mat_GF2& M, long *data);
-void invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A);
+long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A);
 
 using namespace std;
 using namespace NTL;
@@ -67,10 +67,11 @@ int main(void) {
 	B.SetDims(QSIZE, QSIZE);
 	long const Bdata[][4] = {
 	  {1, 0, 1, 0},
-	  {1, 0, 1, 1},
-	  {0, 0, 0, 1},
-	  {1, 0, 1, 1}
+	  {1, 1, 0, 0},
+	  {0, 0, 1, 1},
+	  {0, 0, 1, 0}
 	};
+
 	initMatrix(B, (long *)Bdata);
 	cout << "My custom init matrix: " << endl << B << endl << endl;
 	cout << "Now trying to find inverse: " << endl;
@@ -137,8 +138,10 @@ long generateInvertiblePM(mat_GF2& M, int p){
 /**
  * Extended Inversion version - should return also P matrix in
  * matrix A decomposition PAQ = R where R is in canonical form.
+ *
+ * Returns rank of matrix
  */
-void invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
+long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
 {
    long n = A.NumRows();
    if (A.NumCols() != n)
@@ -150,6 +153,7 @@ void invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
    }
 
    long i, j, k, pos;
+   long rank=n;
 
    //
    // Gauss Jordan Elimination. Matrix M is extended version
@@ -210,11 +214,13 @@ void invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
     	  //
     	  // FInding unit element on position k+1 in all rows [k,n].
     	  // If fails, look for unit element on position k+2 in all rows [k,n]...
-    	  int kk, ii;
+    	  int kk, ii, colpos=-1;
 			for (kk = k+1; kk < n; kk++) {
 				long kwk = kk / NTL_BITS_PER_LONG;
 				long kbk = kk - kwk * NTL_BITS_PER_LONG;
 				_ntl_ulong kk_mask = 1UL << kbk;
+				colpos=kk;
+
 				// Find leading one in rows on k-th position in row.
 				// Search in interval [k,n] (thus from current row down).
 				cout << "Looking for leading 1 element in column: " << kk << "; mask: " << kk_mask << endl;
@@ -222,7 +228,7 @@ void invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
 				for (ii = k; ii < n; ii++) {
 					if (M[ii].rep.elts()[kwk] & kk_mask) {
 						cout << "Found in row: " << ii << endl;
-						pos = kk;
+						pos = ii;
 						break;
 					}
 				}
@@ -232,7 +238,9 @@ void invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
 
 			if (pos==-1){
 				// No such column exists, thus just simply null rest of columns in Q matrix.
-				cout << "No such column exists, we are already in canonical form; nulling all columns from: " << k << endl;
+				rank = k;
+				cout << "No such column exists, we are already in canonical form;"\
+						"nulling all columns from: " << k << "; Rank: " << rank << endl;
 				for(kk=k; kk<n; kk++){
 					for(ii=0; ii<n; ii++){
 						Q.put(kk, ii, 0);
@@ -243,18 +251,17 @@ void invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
 			}
 
 			// swaping columns kk with k.
-			cout << "Swaping column [" << k << "] with column [" << pos << "]. Matrix: " <<endl;
+			cout << "Swaping column [" << k << "] with column [" << colpos << "]. Matrix: " <<endl;
 
 			// do column swap
 			for(ii=0; ii<n; ii++){
 				GF2 tmp = M.get(ii, k);
-				M.put(ii, k, M.get(ii, pos));
-				M.put(ii, pos, tmp);
+				M.put(ii, k, M.get(ii, colpos));
+				M.put(ii, colpos, tmp);
 			}
 
 			// reflect this swap to Q matrix, swap rows (transpose form)
-			swap(Q[pos], Q[k]);
-
+			swap(Q[colpos], Q[k]);
 			cout << M << endl << "Qmatrix: " << endl << Q << endl << endl;
 
 		   //clear(d);
@@ -310,7 +317,7 @@ void invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A)
    Q = transpose(Q);
 
    set(d);
-   return;
+   return rank;
 }
 
 void AddToCol(mat_GF2& x, long j, const vec_GF2& a)
