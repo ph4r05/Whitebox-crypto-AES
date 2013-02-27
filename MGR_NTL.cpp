@@ -35,11 +35,12 @@ int initMatrix(mat_GF2& M, long *data);
 long invP(ref_GF2 d, mat_GF2& X, mat_GF2& Q, const mat_GF2& A);
 void canonical(mat_GF2& M, int rank, int n);
 void generateARankMatrix(mat_GF2& A, int rank, int n);
+int generateMixingBijection(mat_GF2& RES, int t, int p);
 
 using namespace std;
 using namespace NTL;
 int main(void) {
-	long i;
+	long i,j;
 	puts("Hello World!!!");
 	cout << "Wazzup?" <<endl;
 
@@ -108,6 +109,18 @@ int main(void) {
 
 	generateARankMatrix(Amat, 5, 8);
 	cout << "Generating A matrix, r=5, p=8" << endl << Amat << endl <<endl;
+
+	mat_GF2 MB;
+
+	// simple mixing bijection invertibility test, 100 iterations
+	for(j=0; j<1000; j++){
+		generateMixingBijection(MB, 32, 4);
+
+		mat_GF2 MBinv;
+		inv(MBinv, MB);
+		cout << "## Test passed: " << j << endl;
+		cout << "MB: " << MB << endl << endl;
+	}
 	return EXIT_SUCCESS;
 }
 
@@ -437,7 +450,126 @@ void generateARankMatrix(mat_GF2& A, int rank, int n){
 	}
 	// the rest fill with 1 on diagonals (I_{n-r} matrix)
 	for(i=rank+offset-1; i<n; i++){
+		if (i<0) continue;
 		A.put(i,i,1);
 	}
 	return;
+}
+
+/**
+ * Generates mixing bijection matrix according to paper [http://eprint.iacr.org/2002/096.pdf].
+ * p | t. Will compute matrix A s.t. dimension = t x t and is composed from block of size p x p
+ * submatrices.
+ */
+int generateMixingBijection(mat_GF2& RES, int t, int p){
+	// validate parameters
+	if (t<p || (t%p) != 0){
+		return -1;
+	}
+	RES.SetDims(t,t);
+
+	// 0. generate M matrix pxp that is invertible
+	mat_GF2 M;
+	long res = generateInvertiblePM(M, p);
+	if (res < 0) {
+		// matrix was not found in 100 steps, weeeeird. HIGHLY UNPROBABLE.
+		return -1;
+	}
+#ifdef DEBUGOUT
+	cout << "generated M0 invertible matrix: " << endl << M << endl << endl;
+#endif
+	// some matrices that we will need, naming according to the paper
+	mat_GF2 X; 	mat_GF2 Y;
+	mat_GF2 P;	mat_GF2 Pinv;
+	mat_GF2 Q;	mat_GF2 Qinv;
+	mat_GF2 A;
+	mat_GF2 TMP;
+	mat_GF2 Minv;
+	mat_GF2 N;
+	GF2 d;
+	ref_GF2 dd(d);
+
+	int i,j,k;
+	int curT = p;			// current size of matrix M
+	int tmp;				// current column/row
+	for(; curT <= t; curT+=p){
+		int pBlocksInM=curT/p;	// number of pxp sub-matrices in M
+
+		// 1. X matrix - p x t matrix, generated from M matrix using some row
+		X.SetDims(p, curT);
+		tmp = rand() % pBlocksInM;		// current row
+		for(i=p*tmp,k=0; k<p; i++, k++){
+			for(j=0; j<curT; j++){
+				X.put(k,j, M.get(i,j));
+			}
+		}
+
+		// 2. Y matrix - t x p matrix, generated from M matrix using some column
+		Y.SetDims(curT, p);
+		tmp = rand() % pBlocksInM;
+		for(i=0; i<curT; i++){
+			for(j=p*tmp,k=0; k<p; j++, k++){
+				Y.put(i,k, M.get(i,j));
+			}
+		}
+
+		// 3. computing invertible P,Q matrices
+		inv(Minv, M);
+		TMP = X * Minv * Y;
+#ifdef DEBUGOUT
+		cout << "X matrix:" << endl << X << endl << endl;
+		cout << "Y matrix:" << endl << Y << endl << endl;
+		cout << "Generated M inverse: " << endl << Minv << endl << endl;
+		cout << "TMP: " << endl << TMP << endl << endl;
+#endif
+		int rank = invP(dd, P, Q, TMP);
+#ifdef DEBUGOUT
+		cout << "Rank of TMP: " << rank;
+		cout << "; P=" << endl << P << endl << endl;
+		cout << "; Q=" << endl << Q << endl << endl;
+#endif
+		// 4. A matrix
+		generateARankMatrix(A, rank, p);
+#ifdef DEBUGOUT
+		cout << "; A=" << endl << A << endl << endl;
+#endif
+		// 5. resulting matrix
+		mat_GF2 TMP2;
+		N.SetDims(curT + p, curT + p);
+		inv(Pinv, P);
+		inv(Qinv, Q);
+		TMP2 = TMP + Pinv*A*Qinv;
+
+		// copy M matrix, M is curT x curT matrix
+		for(i=0;i<curT;i++){
+			for(j=0;j<curT;j++){
+				N.put(i,j,M.get(i,j));
+			}
+		}
+		// copy X matrix, p x curT
+		for(i=0;i<p;i++){
+			for(j=0;j<curT;j++){
+				N.put(curT+i,j,X.get(i,j));
+			}
+		}
+		// copy Y matrix, curT x p
+		for(i=0;i<curT;i++){
+			for(j=0;j<p;j++){
+				N.put(i,curT+j,Y.get(i,j));
+			}
+		}
+		// copy TMP2 matrix, p x p
+		for(i=0;i<p;i++){
+			for(j=0;j<p;j++){
+				N.put(curT+i,curT+j,TMP2.get(i,j));
+			}
+		}
+#ifdef DEBUGOUT
+		cout << "Intermediate result for curT=" << curT << "; Matrix = " << endl << N << endl << endl;
+#endif
+		M = N;
+	}
+
+	RES = M;
+	return 0;
 }
