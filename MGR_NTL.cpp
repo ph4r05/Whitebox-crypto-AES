@@ -14,10 +14,16 @@
 
 // NTL dependencies
 #include <NTL/GF2.h>
+#include <NTL/GF2X.h>
+#include <NTL/vec_GF2.h>
+#include <NTL/GF2E.h>
+#include <NTL/GF2EX.h>
 #include <NTL/mat_GF2.h>
 #include <NTL/vec_long.h>
-#include <NTL/new.h>
 #include <math.h>
+#include <vector>
+#include "GenericAES.h"
+#include "NTLUtils.h"
 NTL_CLIENT
 
 // field size
@@ -37,6 +43,11 @@ void canonical(mat_GF2& M, int rank, int n);
 void generateARankMatrix(mat_GF2& A, int rank, int n);
 int generateMixingBijection(mat_GF2& RES, int t, int p);
 
+
+
+// hardcoded elements
+// http://stackoverflow.com/questions/2236197/c-easiest-way-to-initialize-an-stl-vector-with-hardcoded-elements
+
 using namespace std;
 using namespace NTL;
 int main(void) {
@@ -46,6 +57,30 @@ int main(void) {
 
 	// very poor PRNG seeding, but just for now
 	srand((unsigned)time(0));
+
+	// define standard AES
+	GF2X defModulus;
+	GF2XFromLong(defModulus, 0x11BL, 9);
+	cout << "Default modulus: " << defModulus <<  endl;
+
+
+	GF2E::init(defModulus);
+	GF2E defGen;
+	conv(defGen, GF2XFromLong(0x03, 8));
+	//defGen = 0x03;
+	cout << "Default generator: " << defGen << endl;
+
+
+	GenericAES defAES;
+	defAES.setModulus(defModulus);
+	defAES.setGenerator(defGen);
+	defAES.build();
+	defAES.printAll();
+
+}
+
+int MBgen(void){
+	long i,j;
 
 	// sample matrix stuff
 	mat_GF2 A;

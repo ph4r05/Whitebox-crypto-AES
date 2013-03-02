@@ -1,6 +1,6 @@
-CXXFLAGS =	-O0 -g -Wall -fmessage-length=0 -L -lntl
+CXXFLAGS =	-O0 -g -Wall -fmessage-length=0 -L -lntl -std=c++0x
 
-OBJS =		MGR_NTL.o
+OBJS =		MGR_NTL.o GenericAES.o NTLUtils.o
 
 LIBS = -lntl
 
