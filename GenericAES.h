@@ -21,11 +21,15 @@
 #include <NTL/GF2EX.h>
 
 #include <NTL/mat_GF2.h>
+#include <NTL/mat_GF2E.h>
+#include <NTL/vec_GF2.h>
+#include <NTL/vec_GF2E.h>
 #include <NTL/vec_long.h>
 #include <NTL/new.h>
 #include <math.h>
 #include "NTLUtils.h"
 #define AES_FIELD_SIZE 256
+#define AES_FIELD_DIM 8
 
 NTL_CLIENT
 class GenericAES {
@@ -40,6 +44,11 @@ public:
 	void setGenerator(GF2E aGen){ generator = aGen; }
 	void build();
 	void printAll();
+
+	static mat_GF2 getDefaultAffineMatrix (void);
+	static vec_GF2 getDefaultAffineConst (void);
+	static mat_GF2 getDefaultAffineMatrixDec (void);
+	static vec_GF2 getDefaultAffineConstDec (void);
 private:
     /**
      * Basic definition parameters
@@ -48,36 +57,56 @@ private:
     GF2E generator;
     
     /**
+     * Modulus context
+     */
+    GF2EContext modulusContext;
+
+    /**
+     * Previous context
+     */
+    GF2EContext prevModulusContext;
+
+    /**
+     * Base change address
+     */
+    mat_GF2 T;
+    mat_GF2 Tinv;
+
+    /**
      * Mix column modulus polynomial & multiply polynomial
      */
     GF2EX mixColModulus;
-    GF2EX mixColMultiply;    
+    GF2EX mixColMultiply;
+    GF2EX mixColMultiplyInv;
   
     /**
+     * AES field.
+     *
      * Build lookup tables here from generator.
-     * AES fiels has 256 elements, so we use simple static arrays
+     * AES field has 256 elements, so we use simple static arrays
      * 
      * 1. lookup table: generator exponents. g[0]=1, g[1]=g, g[2]=g^2, ... 
      */
-    GF2E g[AES_FIELD_SIZE];
+    GF2E g[AES_FIELD_SIZE+1];
     
     /**
      * 2. lookup table: given element from field (represented as long) to 
      * generator exponent mapping
      */
-     long gInv[AES_FIELD_SIZE];
+     long gInv[AES_FIELD_SIZE+1];
      
      /**
-      * 3. table: Sbox (simple inversion)
+      * 3. table: Sbox (simple field element inversion)
       * generator exponent to generator exponent
       */
      long sbox[AES_FIELD_SIZE];
      
      /**
       * 4. table: Sbox + affine transformation
-      * exponent -> exponent
+      * long representation -> long representation
       */
-      long sboxAffine[AES_FIELD_SIZE];  
+     long sboxAffine[AES_FIELD_SIZE];
+     long sboxAffineInv[AES_FIELD_SIZE];
 };
 
 #endif /* GENERICAES_H_ */
