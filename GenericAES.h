@@ -85,13 +85,16 @@ private:
      * Build lookup tables here from generator.
      * AES field has 256 elements, so we use simple static arrays
      * 
-     * 1. lookup table: generator exponents. g[0]=1, g[1]=g, g[2]=g^2, ... 
+     * 1. lookup table: generator exponents. g[0]=1, g[1]=g, g[2]=g^2, ...
+     * generator exponent -> field element in GF2E
      */
     GF2E g[AES_FIELD_SIZE+1];
     
     /**
      * 2. lookup table: given element from field (represented as long) to 
      * generator exponent mapping
+     *
+     * long representation -> generator exponent
      */
      long gInv[AES_FIELD_SIZE+1];
      
