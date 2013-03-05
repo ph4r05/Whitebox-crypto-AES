@@ -47,7 +47,6 @@ mat_GF2 GenericAES::getDefaultAffineMatrix (void){
 vec_GF2 GenericAES::getDefaultAffineConst (void){
 	vec_GF2 ret(INIT_SIZE, AES_FIELD_DIM);
 	VectorCopy(ret, GF2XFromLong(0x63, AES_FIELD_DIM), AES_FIELD_DIM);
-	//reverse(ret, ret);
 	return ret;
 }
 
@@ -78,8 +77,85 @@ mat_GF2 GenericAES::getDefaultAffineMatrixDec (void){
 vec_GF2 GenericAES::getDefaultAffineConstDec (void){
 	vec_GF2 ret(INIT_SIZE, AES_FIELD_DIM);
 	VectorCopy(ret, GF2XFromLong(0x05, AES_FIELD_DIM), AES_FIELD_DIM);
-	//reverse(ret, ret);
 	return ret;
+}
+
+/**
+ * Key expansion helper function
+ */
+void GenericAES::keycore(unsigned char *word, int iteration){
+
+}
+
+/**
+ * Expand key to round keys
+ */
+void GenericAES::expandKey(vec_GF2E& expandedKey, vec_GF2E& key, enum keySize size){
+	/* current expanded keySize, in bytes */
+	unsigned int currentSize = 0;
+	unsigned int rconIteration = 0;
+	unsigned int i,j;
+	unsigned int Nr = GenericAES::getNumberOfRounds(size);
+	unsigned int expandedKeySize = (4 * AES_NB * (Nr + 1));
+
+	GF2E tmp;
+	vec_GF2E t(INIT_SIZE, 4);
+	t[0] = GF2E::zero(); t[1] = GF2E::zero();
+	t[2] = GF2E::zero(); t[3] = GF2E::zero();
+
+	// result expanded key size = NB * (NK + 1)
+	cout << "Expanded key size will be: " << expandedKeySize << endl;
+	expandedKey.SetLength(expandedKeySize);
+
+	/* set the 16,24,32 bytes of the expanded key to the input key */
+	for (i = 0; i < size; i++)
+		expandedKey[i] = key[i];
+
+	currentSize += size;
+	while (currentSize < expandedKeySize){
+		cout << "CurrentSize: " << currentSize <<  "; expandedKeySize: " << expandedKeySize <<  endl;
+		/* assign the previous 4 bytes to the temporary value t */
+		for (i = 0; i < 4; i++) {
+			t[i] = expandedKey[(currentSize - 4) + i];
+		}
+
+		/**
+		 * every 16,24,32 bytes we apply the core schedule to t
+		 * and increment rconIteration afterwards
+		 */
+		if(currentSize % size == 0) {
+			//core(t, rconIteration++);
+			/* rotate the 32-bit word 8 bits to the left */
+			tmp=t[0]; 	t[0]=t[1];
+			t[1]=t[2];	t[2]=t[3];
+			t[3]=tmp;
+			/* apply S-Box substitution on all 4 parts of the 32-bit word */
+			for (j = 0; j < 4; ++j){
+				cout << "Sboxing key t[" << j << "]=" << t[j] << "=" << GF2EHEX(t[j]) << "; sboxval: " << CHEX(sboxAffine[getLong(t[j])]) ;
+				t[j] = GF2EFromLong(sboxAffine[getLong(t[j])], AES_FIELD_DIM);
+				cout << " after Sbox = " << t[j] << "="  << GF2EHEX(t[j]) << endl;
+			}
+			/* XOR the output of the rcon operation with i to the first part (leftmost) only */
+			t[0] = t[0] + RC[rconIteration++];
+			cout << "; after XOR with RC[" << GF2EHEX(RC[rconIteration-1]) << "] = " << t[0] << " = " << GF2EHEX(t[0]) << endl;
+		}
+
+		/* For 256-bit keys, we add an extra sbox to the calculation */
+		if(size == KEY_SIZE_32 && ((currentSize % size) == 16)) {
+			for(i = 0; i < 4; i++)
+			t[i] = GF2EFromLong(sboxAffine[getLong(t[i])], AES_FIELD_DIM);
+		}
+		/* We XOR t with the four-byte block 16,24,32 bytes before the new expanded key.
+		* This becomes the next four bytes in the expanded key.
+		*/
+		for(i = 0; i < 4; i++) {
+			expandedKey[currentSize] = expandedKey[currentSize - size] + t[i];
+			cout << "t[" << i << "] = " << GF2EHEX(t[i]) << endl;
+
+			currentSize++;
+		}
+	}
+	cout << "DONE everything " << endl;
 }
 
 /**
@@ -140,7 +216,6 @@ void GenericAES::build() {
 	tmpSboxAffMatrixDec = T * getDefaultAffineMatrixDec() * Tinv;
 	tmpSboxAffConstDec = T * colVector(getDefaultAffineConstDec());
 
-
 	cout << "Encryption const: " << tmpSboxAffConst << "; encMat: " << endl << tmpSboxAffMatrix << endl;
 	cout << "Decryption const: " << tmpSboxAffConstDec << "; decMat: " << endl << tmpSboxAffMatrixDec << endl;
 	cout << "Enc * Dec : " << endl << (tmpSboxAffMatrix * tmpSboxAffMatrixDec) << endl;
@@ -150,32 +225,56 @@ void GenericAES::build() {
 
 	// default cases for zero;
 	for(i=0; i<AES_FIELD_SIZE; i++){
-		GF2E transValue = i==0 ? GF2E::zero() : g[255-i];
-		int target = getLong(transValue);
+		GF2E transValue = i==0 ? GF2E::zero() : g[255-gInv[i]];
+		cout << "Inversion check["<<i<<"]"<<rep(transValue)<<": [" << g[gInv[i]] << " x " << transValue << "] = " << (transValue * g[gInv[i]]) << endl;
+
 		mat_GF2 resMatrix = tmpSboxAffMatrix * colVector(rep(transValue), AES_FIELD_DIM) + tmpSboxAffConst;
 		colVector(transValue, resMatrix, 0);
-		this->sboxAffine[target] = getLong(transValue);
+		this->sboxAffine[i] = getLong(transValue);
 
-		GF2E transValue2 = i==0 ? GF2E::zero() : g[255-i];
+		GF2E transValue2 = i==0 ? GF2E::zero() : g[255-gInv[i]];
 		resMatrix = tmpSboxAffMatrixDec * colVector(rep(transValue2), AES_FIELD_DIM) + tmpSboxAffConstDec;
 		colVector(transValue2, resMatrix, 0);
-		this->sboxAffineInv[target] = getLong(transValue2);
+		this->sboxAffineInv[i] = getLong(transValue2);
 	}
 
 	// 6. MixColumn operations
+	// modulus x^4 + 1
 	mixColModulus.SetLength(5);
 	mixColModulus[0] = g[0];
 	mixColModulus[4] = g[0];
 
+	// 03 x^3 + 01 x^2 + 01 x + 02
 	mixColMultiply.SetLength(4);
-	mixColMultiply[0] = g[1];
-	mixColMultiply[3] = g[25];
+	mixColMultiply[0] = g[25];
+	mixColMultiply[1] = g[0];
+	mixColMultiply[2] = g[0];
+	mixColMultiply[3] = g[1];
 
+	// inverse polynomial
+	// TODO:::: !check!!!!
 	mixColMultiplyInv.SetLength(4);
 	mixColMultiplyInv[0] = g[104];
 	mixColMultiplyInv[1] = g[228];
 	mixColMultiplyInv[2] = g[199];
 	mixColMultiplyInv[3] = g[223];
+
+	// MixCols multiplication matrix based on mult polynomial
+	mixColMat.SetDims(4,4);
+	mixColInvMat.SetDims(4,4);
+	for(i=0; i<4; i++){
+		for(c=0; c<4; c++){
+			mixColMat.put(i, c, mixColMultiply[(i+4-c) % 4]);
+			mixColInvMat.put(i, c, mixColMultiplyInv[(i+4-c) % 4]);
+		}
+	}
+
+	// round key constant
+	RC[0] = g[0];
+	for(i=1; i<20; i++){
+		RC[i] =  g[25] * RC[i-1];
+	}
+
 	return;
 }
 
@@ -213,6 +312,27 @@ void GenericAES::printAll() {
 	cout << "MixCol mult " << mixColMultiply << endl;
 	cout << "MixCol multInv " << mixColMultiplyInv << endl;
 	cout << "MixCol mod " << mixColModulus << endl;
+
+	cout << "Mix col:   " << endl << mixColMat << endl;
+	cout << "MixInccol: " << endl << mixColInvMat << endl;
+
+	cout << "Round constants: " << endl;
+	for(i=0; i<20; i++){
+		cout << " [" << RC[i] << "] ";
+	}
+	cout << endl;
+
+	// try round key expansion
+	vec_GF2E roundKey;
+	vec_GF2E key(INIT_SIZE, 128);
+
+	expandKey(roundKey, key, KEY_SIZE_16);
+	cout << "ROUND key: " << endl;
+	for(i=0; i<176; i++){
+		cout << " [" << getLong(roundKey[i]) << "] ";
+	}
+	cout << endl;
+
 
 	return;
 }

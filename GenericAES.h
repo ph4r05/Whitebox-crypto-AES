@@ -31,6 +31,22 @@
 #define AES_FIELD_SIZE 256
 #define AES_FIELD_DIM 8
 
+// number of columns of state array ; = BLOCKS / 32, static for AES
+#define AES_NB 4
+// number of columns of key array
+#define AES_NK_128 4
+#define AES_NK_256 8
+
+// AES KEY size
+enum keySize {
+	KEY_SIZE_16 = 16,
+	KEY_SIZE_24 = 24,
+	KEY_SIZE_32 = 32
+};
+
+#define CHEX(x) "0x" << setw(2) << setfill('0') << hex << (x)
+#define GF2EHEX(x) "0x" << setw(2) << setfill('0') << hex << (getLong(x))
+
 NTL_CLIENT
 class GenericAES {
 public:
@@ -49,6 +65,10 @@ public:
 	static vec_GF2 getDefaultAffineConst (void);
 	static mat_GF2 getDefaultAffineMatrixDec (void);
 	static vec_GF2 getDefaultAffineConstDec (void);
+
+	inline static int getNumberOfRounds(enum keySize keySize){ return keySize/4+6; };
+	void expandKey(vec_GF2E& expandedKey, vec_GF2E& key, enum keySize size);
+	void keycore(unsigned char *word, int iteration);
 private:
     /**
      * Basic definition parameters
@@ -78,7 +98,18 @@ private:
     GF2EX mixColModulus;
     GF2EX mixColMultiply;
     GF2EX mixColMultiplyInv;
-  
+
+    /**
+     * Mix column GF2E matrix computed
+     */
+    mat_GF2E mixColMat;
+    mat_GF2E mixColInvMat;
+
+    /**
+     * Round key constant
+     */
+    GF2E RC[20];
+
     /**
      * AES field.
      *
