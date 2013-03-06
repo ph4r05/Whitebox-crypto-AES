@@ -65,7 +65,114 @@ public:
 
 	inline static int getNumberOfRounds(enum keySize keySize){ return keySize/4+6; };
 	void expandKey(vec_GF2E& expandedKey, vec_GF2E& key, enum keySize size);
-	void keycore(unsigned char *word, int iteration);
+
+	void encryptInternal(mat_GF2E& result, vec_GF2E& expandedKey);
+	void decryptInternal(mat_GF2E& result, vec_GF2E& expandedKey);
+
+	inline int mod4(int a){
+		int c = a % 4; return c<0 ? c+4 : c;
+	}
+
+ 	inline void ByteSub(mat_GF2E& state){
+		int i,j;
+		for(i=0;i<4;i++){
+			for(j=0;j<4;j++){
+				state[i][j] = this->sboxAffineGF2E[getLong(state[i][j])];
+			}
+		}
+	}
+
+	inline void ByteSubInv(mat_GF2E& state){
+		int i,j;
+		for(i=0;i<4;i++){
+			for(j=0;j<4;j++){
+				state[i][j] = this->sboxAffineInvGF2E[getLong(state[i][j])];
+			}
+		}
+	}
+
+	inline void AddRoundKey(mat_GF2E& state, vec_GF2E& expandedKey, unsigned int offset){
+		int i,j;
+		for(i=0; i<4; i++){
+			for(j=0; j<4; j++){
+				state[i][j] += expandedKey[offset + i*4+j];
+			}
+		}
+	}
+
+	inline void ShiftRows(mat_GF2E& state){
+		// 1. row = no shift. 2. row = cyclic shift to the left by 1
+		// for AES with Nb=4, left shift for rows are: 1=1, 2=2, 3=3.
+		GF2E tmp;
+		int i,j=0;
+		for(i=1; i<4;i++){
+			for(j=1; j<=i; j++){
+				tmp = state[i][0];
+				state[i][0] = state[i][1];
+				state[i][1] = state[i][2];
+				state[i][2] = state[i][3];
+				state[i][3] = tmp;
+			}
+		}
+	}
+
+	inline void ShiftRowsInv(mat_GF2E& state){
+		// 1. row = no shift. 2. row = cyclic shift to the left by 1
+		// for AES with Nb=4, left shift for rows are: 1=1, 2=2, 3=3.
+		GF2E tmp;
+		signed int i=0,j=0;
+		for(i=1; i<4;i++){
+			for(j=1; j<=i; j++){
+				tmp = state[i][3];
+				state[i][3] = state[i][2];
+				state[i][2] = state[i][1];
+				state[i][1] = state[i][0];
+				state[i][0] = tmp;
+			}
+		}
+	}
+
+	inline void MixColumn(mat_GF2E& state){
+		int i,j;
+		mat_GF2E tmpMat(INIT_SIZE, 4,1);
+		mat_GF2E resMat(INIT_SIZE, 4,1);
+
+		for(i=0; i<4; i++){
+			// copy i-th column to 4*1 matrix - for multiplication
+			for(j=0; j<4; j++){
+				tmpMat.put(j,0, state.get(j,i));
+			}
+
+			resMat = this->mixColMat * tmpMat;
+			// copy result back to i-th column
+			for(j=0; j<4; j++){
+				state.put(j,i, resMat.get(j,0));
+			}
+		}
+	}
+
+	inline void MixColumnInv(mat_GF2E& state){
+		int i,j;
+		mat_GF2E tmpMat(INIT_SIZE, 4,1);
+		mat_GF2E resMat(INIT_SIZE, 4,1);
+
+		for(i=0; i<4; i++){
+			// copy i-th column to 4*1 matrix - for multiplication
+			for(j=0; j<4; j++){
+				tmpMat.put(j,0, state.get(j,i));
+			}
+
+			resMat = this->mixColInvMat * tmpMat;
+			// copy result back to i-th column
+			for(j=0; j<4; j++){
+				state.put(j,i, resMat.get(j,0));
+			}
+		}
+	}
+
+	int testByteSub();
+	int testMixColumn();
+
 private:
     /**
      * Basic definition parameters
@@ -105,7 +212,7 @@ private:
     /**
      * Round key constant
      */
-    GF2E RC[20];
+    GF2E RC[16];
 
     /**
      * AES field.
@@ -138,6 +245,8 @@ private:
       */
      long sboxAffine[AES_FIELD_SIZE];
      long sboxAffineInv[AES_FIELD_SIZE];
+     GF2E sboxAffineGF2E[AES_FIELD_SIZE];		// cached object version for easy manipulation
+     GF2E sboxAffineInvGF2E[AES_FIELD_SIZE];	// cached object version for easy manipulation
 };
 
 #endif /* GENERICAES_H_ */
