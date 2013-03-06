@@ -44,9 +44,6 @@ enum keySize {
 	KEY_SIZE_32 = 32
 };
 
-#define CHEX(x) "0x" << setw(2) << setfill('0') << hex << (x)
-#define GF2EHEX(x) "0x" << setw(2) << setfill('0') << hex << (getLong(x))
-
 NTL_CLIENT
 class GenericAES {
 public:

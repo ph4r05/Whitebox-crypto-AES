@@ -43,7 +43,7 @@ void canonical(mat_GF2& M, int rank, int n);
 void generateARankMatrix(mat_GF2& A, int rank, int n);
 int generateMixingBijection(mat_GF2& RES, int t, int p);
 
-
+#define GENERIC_AES_DEBUG 1
 
 // hardcoded elements
 // http://stackoverflow.com/questions/2236197/c-easiest-way-to-initialize-an-stl-vector-with-hardcoded-elements
@@ -52,8 +52,6 @@ using namespace std;
 using namespace NTL;
 int main(void) {
 	long i,j;
-	puts("Hello World!!!");
-	cout << "Wazzup?" <<endl;
 
 	// very poor PRNG seeding, but just for now
 	srand((unsigned)time(0));

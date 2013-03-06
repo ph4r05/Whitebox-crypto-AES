@@ -15,10 +15,15 @@
 #include <NTL/GF2E.h>
 #include <NTL/GF2EX.h>
 #include <NTL/vec_GF2.h>
+#include <NTL/vec_GF2E.h>
 #include <NTL/mat_GF2.h>
+#include <NTL/mat_GF2E.h>
 #include <math.h>
 NTL_CLIENT
 
+
+#define CHEX(x) "0x" << setw(2) << setfill('0') << hex << (x)
+#define GF2EHEX(x) "0x" << setw(2) << setfill('0') << hex << (getLong(x))
 
 /**
  * Init GF2 polynomial from long.
@@ -91,6 +96,13 @@ inline NTL::GF2E colVector_GF2E(const NTL::mat_GF2& m, int which){
     colVector(ret, m, which);
     return ret;
 }
+
+void dumpVector(NTL::vec_GF2E& a);
+void dumpVector(NTL::vec_GF2& a);
+void dumpVector(NTL::GF2E * a, size_t len);
+void dumpVector(long * a, size_t len);
+void dumpMatrix(NTL::mat_GF2E& a);
+void dumpMatrix(NTL::mat_GF2& a);
 
 template <class T> class vector_inserter{
 public:
