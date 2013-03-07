@@ -22,6 +22,27 @@ GenericAES::~GenericAES() {
 	// TODO Auto-generated destructor stub
 }
 
+/**
+ * Initializes AES with given modulus and generator in long representation
+ */
+void GenericAES::init(long modulus, long generator){
+	// get previous context and save it - will be later restored
+	//GF2EContext oldContext;
+	//oldContext.save();
+
+	// set modulus to internal attribute
+	this->modulus = GF2XFromLong(modulus, AES_FIELD_DIM+1);
+	// initialize modulus to GF2E class
+	GF2E::init(this->modulus);
+	// store
+	this->modulusContext.save();
+	this->generator = GF2EFromLong(generator, AES_FIELD_DIM);
+	this->build();
+
+	// restore old context
+	//oldContext.restore();
+}
+
 
 mat_GF2 GenericAES::getDefaultAffineMatrix (void){
 	mat_GF2 ret(INIT_SIZE, AES_FIELD_DIM, AES_FIELD_DIM);
@@ -93,6 +114,7 @@ void GenericAES::expandKey(vec_GF2E& expandedKey, vec_GF2E& key, enum keySize si
 	unsigned int i,j;
 	unsigned int Nr = GenericAES::getNumberOfRounds(size);
 	unsigned int expandedKeySize = (4 * AES_NB * (Nr + 1));
+	restoreModulus();
 
 	GF2E tmp;
 	vec_GF2E t(INIT_SIZE, 4);
@@ -165,6 +187,49 @@ void GenericAES::expandKey(vec_GF2E& expandedKey, vec_GF2E& key, enum keySize si
 	}
 }
 
+void GenericAES::applyT(mat_GF2E& state){
+	int i,j,m=state.NumRows(),n=state.NumCols();
+	for(i=0; i<m; i++){
+		for(j=0;j<n;j++){
+			applyT(state[i][j]);
+		}
+	}
+}
+
+void GenericAES::applyT(vec_GF2E& state){
+	int i, ln=state.length();
+	for(i=0; i<ln; i++){
+		applyT(state[i]);
+	}
+}
+
+void GenericAES::applyT(GF2E& state){
+	mat_GF2 tmpMat = colVector(state, AES_FIELD_DIM);
+	mat_GF2 resMat = T * tmpMat;
+	colVector(state, resMat, 0);
+}
+
+void GenericAES::applyTinv(mat_GF2E& state){
+	int i,j,m=state.NumRows(),n=state.NumCols();
+	for(i=0; i<m; i++){
+		for(j=0;j<n;j++){
+			applyTinv(state[i][j]);
+		}
+	}
+}
+void GenericAES::applyTinv(vec_GF2E& state){
+	int i, ln=state.length();
+	for(i=0; i<ln; i++){
+		applyTinv(state[i]);
+	}
+}
+
+void GenericAES::applyTinv(GF2E& state){
+	mat_GF2 tmpMat = colVector(state, AES_FIELD_DIM);
+	mat_GF2 resMat = Tinv * tmpMat;
+	colVector(state, resMat, 0);
+}
+
 /**
  * Generates whole AES table with generator
  */
@@ -188,9 +253,6 @@ void GenericAES::build() {
 		this->g[i] = cur;
 		this->gInv[getLong(cur)] = i;
 		cur = cur * this->generator;
-
-		this->g[i].LoopHole().SetLength(AES_FIELD_DIM);
-		this->g[i].LoopHole().SetMaxLength(AES_FIELD_DIM);
 	}
 
 	// 2. compute GF(256) element inverses in terms of generator exponent
@@ -333,6 +395,8 @@ void GenericAES::encryptInternal(mat_GF2E& state, vec_GF2E& expandedKey){
 	//		for(i=1; i<Nr; i++) Round(State, ExpandedKey + Nb*i)
 	//		finalRound(State, ExpandedKey + Nb*Nr)
 	int r;
+	restoreModulus();
+
 	// Add Round key:
 	this->AddRoundKey(state, expandedKey, 0);
 	// rounds
@@ -358,6 +422,8 @@ void GenericAES::decryptInternal(mat_GF2E& state, vec_GF2E& expandedKey){
 	//		for(i=Nr-1; i>0; i++) Round(State, ExpandedKey + Nb*i)
 	//		finalRound(State, ExpandedKey + 0)
 	int r;
+	restoreModulus();
+
 	// Add Round key:
 	this->AddRoundKey(state, expandedKey, 16*10);
 	// rounds
@@ -385,6 +451,8 @@ int GenericAES::testMixColumn(){
 
 void GenericAES::printAll() {
 	int i=0,c=0;
+	restoreModulus();
+
 	cout << "Generic AES; " \
 			<< "modulus[" << this->modulus << "] "
 			<< "generator[" << this->generator << "]"<<endl;
@@ -460,11 +528,6 @@ void GenericAES::printAll() {
 	//dumpVector(roundKey);
 
 	mat_GF2E state(INIT_SIZE, 4, 4);
-	state[0][0] = random_GF2E();
-	state[1][4] = random_GF2E();
-	state[2][3] = random_GF2E();
-	state[3][1] = random_GF2E();
-
 	cout << "Plaintext: " << endl;
 	dumpMatrix(state);
 

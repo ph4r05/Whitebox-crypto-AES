@@ -53,8 +53,12 @@ public:
 	const GF2X& getModulus() { return modulus; }
 	const GF2E& getGenerator() { return generator; }
     
+	void init(long modulus, long generator);
 	void setModulus(GF2X aMod){ modulus = aMod; }
 	void setGenerator(GF2E aGen){ generator = aGen; }
+	inline void restoreModulus(){ modulusContext.restore(); }
+
+
 	void build();
 	void printAll();
 
@@ -69,9 +73,14 @@ public:
 	void encryptInternal(mat_GF2E& result, vec_GF2E& expandedKey);
 	void decryptInternal(mat_GF2E& result, vec_GF2E& expandedKey);
 
-	inline int mod4(int a){
-		int c = a % 4; return c<0 ? c+4 : c;
-	}
+	void applyT(mat_GF2E& state);
+	void applyT(vec_GF2E& state);
+	void applyT(GF2E& state);
+	void applyTinv(mat_GF2E& state);
+	void applyTinv(vec_GF2E& state);
+	void applyTinv(GF2E& state);
+
+	inline int mod4(int a){ int c = a % 4; return c<0 ? c+4 : c; }
 
  	inline void ByteSub(mat_GF2E& state){
 		int i,j;

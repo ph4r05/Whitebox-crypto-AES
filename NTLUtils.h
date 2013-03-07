@@ -67,6 +67,14 @@ inline NTL::mat_GF2 colVector(const NTL::GF2X& v, int ln){
     return ret;
 }
 
+inline NTL::mat_GF2 colVector(const NTL::GF2E& v, int ln){
+    int i=0, realLn;
+    NTL::mat_GF2 ret(INIT_SIZE, ln, 1);
+    NTL::GF2X tV; conv(tV, v); realLn = deg(tV);
+    for(i=0; i <= realLn; i++) ret.put(i, 0, tV[i]); 
+    return ret;
+}
+
 inline void colVector(NTL::vec_GF2& x, const NTL::mat_GF2& m, int which){
 	int i=0, ln=m.NumRows();
 	for(i=0; i<ln; i++) x.put(i, m.get(i, which));

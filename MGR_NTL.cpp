@@ -55,26 +55,40 @@ int main(void) {
 
 	// very poor PRNG seeding, but just for now
 	srand((unsigned)time(0));
-
-	// define standard AES
-	GF2X defModulus;
-	GF2XFromLong(defModulus, 0x11BL, 9);
-	cout << "Default modulus: " << defModulus <<  endl;
-
-
-	GF2E::init(defModulus);
-	GF2E defGen;
-	conv(defGen, GF2XFromLong(0x03, 8));
-	//defGen = 0x03;
-	cout << "Default generator: " << defGen << endl;
-
+	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
+	GF2E::init(defaultModulus);
 
 	GenericAES defAES;
-	defAES.setModulus(defModulus);
-	defAES.setGenerator(defGen);
-	defAES.build();
+	defAES.init(0x11B, 0x03);
 	defAES.printAll();
 
+	GenericAES dualAES;
+	dualAES.init(0x11D, 0x9d);
+	dualAES.printAll();
+
+	// try round key expansion
+	vec_GF2E roundKey;
+	vec_GF2E key;
+	key.SetLength(128);
+	dualAES.expandKey(roundKey, key, KEY_SIZE_16);
+	cout << "Round key for ZERO key for 16B: " << endl;
+	dumpVector(roundKey);
+
+	mat_GF2E state(INIT_SIZE, 4, 4);
+	cout << "Plaintext: " << endl;
+	dumpMatrix(state);
+
+	cout << "Testing encryption: " << endl;
+	dualAES.encryptInternal(state, roundKey);
+	dumpMatrix(state);
+
+	dualAES.applyTinv(state);
+	cout << "Testing encryption AFTER Tinv: " << endl;
+	dumpMatrix(state);
+
+	cout << "Testing backward decryption: " << endl;
+	dualAES.decryptInternal(state, roundKey);
+	dumpMatrix(state);
 }
 
 int MBgen(void){
