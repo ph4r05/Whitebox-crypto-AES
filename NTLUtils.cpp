@@ -78,4 +78,18 @@ void dumpMatrix(NTL::mat_GF2& a){
 	cout << endl;
 }
 
+/**
+ * Initializes matrix from specified array.
+ * Data must be at least dimension of given matrix.
+ */
+int initMatrix(mat_GF2& M, long *data){
+	long i,j,n,m;
+	for(i=0, n=M.NumRows(); i<n; i++){
+		for(j=0, m=M.NumCols(); j<m; j++){
+			M.put(i,j,data[n*i+j]);
+		}
+	}
+
+	return 0;
+}
 

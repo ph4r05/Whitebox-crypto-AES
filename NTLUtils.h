@@ -112,6 +112,12 @@ void dumpVector(long * a, size_t len);
 void dumpMatrix(NTL::mat_GF2E& a);
 void dumpMatrix(NTL::mat_GF2& a);
 
+/**
+ * Initializes matrix from specified array.
+ * Data must be at least dimension of given matrix.
+ */
+int initMatrix(mat_GF2& M, long *data);
+
 template <class T> class vector_inserter{
 public:
     NTL::Vec<T>& v;
