@@ -31,6 +31,10 @@
 #define AES_FIELD_SIZE 256
 #define AES_FIELD_DIM 8
 
+// there is 30 irreducible polynomials of degree 8 in GF2[x] ring
+#define AES_IRRED_POLYNOMIALS 30
+#define AES_GENERATORS 8
+
 // number of columns of state array ; = BLOCKS / 32, static for AES
 #define AES_NB 4
 // number of columns of key array
@@ -47,13 +51,26 @@ enum keySize {
 NTL_CLIENT
 class GenericAES {
 public:
+	static long irreduciblePolynomials[AES_IRRED_POLYNOMIALS];
+	static long generators[AES_IRRED_POLYNOMIALS][AES_GENERATORS];
+
 	GenericAES();
 	virtual ~GenericAES();
 	
 	const GF2X& getModulus() { return modulus; }
 	const GF2E& getGenerator() { return generator; }
     
+	/**
+	 * Initializes AES with given indices to modulus and generator array
+	 */
+	void initFromIndex(int modulus, int generator);
+
+	/**
+	 * Initializes AES with given modulus and generator in long representation
+	 */
 	void init(long modulus, long generator);
+
+
 	void setModulus(GF2X aMod){ modulus = aMod; }
 	void setGenerator(GF2E aGen){ generator = aGen; }
 	inline void restoreModulus(){ modulusContext.restore(); }

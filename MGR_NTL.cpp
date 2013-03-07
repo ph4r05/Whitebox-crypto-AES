@@ -63,7 +63,8 @@ int main(void) {
 	defAES.printAll();
 
 	GenericAES dualAES;
-	dualAES.init(0x11D, 0x9d);
+	//dualAES.init(0x11D, 0x9d);
+	dualAES.initFromIndex(15,5);
 	dualAES.printAll();
 
 	// try round key expansion
