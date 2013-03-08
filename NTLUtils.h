@@ -46,7 +46,7 @@ inline NTL::GF2E GF2EFromLong(const long a, const long len){
 }
 
 inline long getLong(const NTL::GF2X& x) {
-    return x.xrep[0];
+    return deg(x) < 0 ? 0L : x.xrep[0];
 }
 
 inline long getLong(NTL::GF2E& x) {
@@ -111,6 +111,7 @@ inline NTL::GF2E colVector_GF2E(const NTL::mat_GF2& m, int which){
 }
 
 void dumpVector(NTL::vec_GF2E& a);
+void dumpVector(NTL::vec_GF2X& a);
 void dumpVector(NTL::vec_GF2& a);
 void dumpVector(NTL::GF2E * a, size_t len);
 void dumpVector(long * a, size_t len);

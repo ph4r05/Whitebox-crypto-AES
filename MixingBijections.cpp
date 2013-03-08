@@ -446,3 +446,20 @@ int generateMixingBijection(mat_GF2& RES, int t, int p){
 	return 0;
 }
 
+int generateRandomBijection(vec_GF2X& bijection, vec_GF2X& inverse, int size, int dim){
+	int i;
+	bijection.SetLength(size);
+	inverse.SetLength(size);
+	for(i=0; i<size; i++){
+		bijection.put(i, GF2XFromLong(i, dim));
+		inverse.put(i, GF2XFromLong(i, dim));
+	}
+
+	for(i=0; i<size; i++){
+		int rnd = rand() % size;
+		swap(inverse[getLong(bijection[i])], inverse[getLong(bijection[rnd])]);
+		swap(bijection[i], bijection[rnd]);
+	}
+
+	return 0;
+}

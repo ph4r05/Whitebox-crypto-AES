@@ -59,5 +59,10 @@ void generateARankMatrix(mat_GF2& A, int rank, int n);
  */
 int generateMixingBijection(mat_GF2& RES, int t, int p);
 
+/**
+ * Generates random bijection in set of given size.
+ * Generated bijections are in form of lookup tables. size = 2^dim
+ */
+int generateRandomBijection(vec_GF2X& bijection, vec_GF2X& inverse, int size, int dim);
 
 #endif /* MIXINGBIJECTIONS_H_ */

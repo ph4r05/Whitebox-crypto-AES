@@ -94,6 +94,16 @@ int main(void) {
 	cout << "A2: " << endl;
 	dumpVector(A2);
 	dualAES.testA1A2Relations(A1, A2);
+
+	cout << "Generating random bijections: " << endl;
+	vec_GF2X rndB;
+	vec_GF2X rndBinv;
+	generateRandomBijection(rndB, rndBinv, AES_FIELD_SIZE, AES_FIELD_DIM);
+	dumpVector(rndB);
+	dumpVector(rndBinv);
+
+	cout << "Done" << endl;
+
 }
 
 int MBgen(void){

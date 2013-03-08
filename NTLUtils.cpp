@@ -29,6 +29,15 @@ void dumpVector(NTL::vec_GF2E& a){
 	cout << endl;
 }
 
+void dumpVector(NTL::vec_GF2X& a){
+	unsigned int i, len = a.length();
+	for (i=0; i<len; i++){
+		cout << " " << GF2EHEX(a[i]) << " ";
+		if (((i+1) % 16) == 0) cout << endl;
+	}
+	cout << endl;
+}
+
 void dumpVector(NTL::vec_GF2& a){
 	unsigned int i, len = a.length();
 	for (i=0; i<len; i++){
