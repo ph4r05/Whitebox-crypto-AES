@@ -495,8 +495,121 @@ int GenericAES::testMixColumn(){
 	return 1;
 }
 
+void GenericAES::generateA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, int a, int q){
+	restoreModulus();
+	if (a==0){
+		cout << "a cannot be zero!";
+		return;
+	}
+
+	mat_GF2 aM = makeMultAMatrix(a);
+	mat_GF2 Q  = makeSquareMatrix(q);
+	mat_GF2 Q2 = makeSquareMatrix(8-q);
+	mat_GF2 Amat = aM * Q;
+	mat_GF2 QiaM = Q2 * aM;
+	int i;
+
+	A1.SetLength(AES_FIELD_SIZE);
+	A2.SetLength(AES_FIELD_SIZE);
+
+	//
+	// At first, generate A1
+	//
+	A1.put(0,GF2E::zero());
+	for(i=0;i<AES_FIELD_SIZE;i++){
+		GF2E tmpElem = g[i];
+		mat_GF2 resMatrix = Amat * colVector(tmpElem, AES_FIELD_DIM);
+		colVector(tmpElem, resMatrix, 0);
+		A1.put(getLong(g[i]), tmpElem);
+	}
+
+	//
+	// A2 now, iterate over all long representations
+	//
+	// 5. S-BOX with affine mappings. At first obtain default form of affine transformation for normal AES
+	mat_GF2 tmpSboxAffMatrix(INIT_SIZE, AES_FIELD_DIM, AES_FIELD_DIM);		// T * Affine * Tinv
+	mat_GF2 tmpSboxAffConst(INIT_SIZE, AES_FIELD_DIM, 1);					// column vector
+	mat_GF2 tmpSboxAffMatrixDec(INIT_SIZE, AES_FIELD_DIM, AES_FIELD_DIM);	// T * AffineDec * Tinv
+	mat_GF2 tmpSboxAffConstDec(INIT_SIZE, AES_FIELD_DIM, 1);				// column dec vector
+	// Now transform affine transformation with T, Tinv matrices to work in generic AES
+	tmpSboxAffMatrix = T * getDefaultAffineMatrix() * Tinv;
+	tmpSboxAffConst = T * colVector(getDefaultAffineConst());
+	tmpSboxAffMatrixDec = T * getDefaultAffineMatrixDec() * Tinv;
+	tmpSboxAffConstDec = T * colVector(getDefaultAffineConstDec());
+	// Now generate transformation
+	for(i=0; i<AES_FIELD_SIZE; i++){
+		GF2E tmpElem = GF2EFromLong(i, AES_FIELD_DIM);
+
+		// A( Q^{8-i}*[a]*A^{-1}(tmpElem) )
+		mat_GF2 resMatrix = tmpSboxAffMatrix*(QiaM * ((tmpSboxAffMatrixDec * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConstDec)) + tmpSboxAffConst;
+		colVector(tmpElem, resMatrix, 0);
+		A2.put(i, tmpElem);
+	}
+}
+
+mat_GF2 GenericAES::makeMultAMatrix(int a){
+	restoreModulus();
+	mat_GF2 nbase(INIT_SIZE, AES_FIELD_DIM, AES_FIELD_DIM);
+	GF2E aRepr = GF2EFromLong(a, AES_FIELD_DIM);
+
+	int i,j,base=1;
+	for(j=0; j<AES_FIELD_DIM; j++){
+		// for i-th column polynomial base vector
+		GF2E tmp = GF2EFromLong(base, AES_FIELD_DIM) * aRepr;
+		base = 2*base;
+		for(i=0; i<AES_FIELD_DIM; i++){
+			nbase.put(i, j, tmp.LoopHole()[i]);
+		}
+	}
+
+	return nbase;
+}
+
+mat_GF2 GenericAES::makeSquareMatrix(int q){
+	restoreModulus();
+	mat_GF2 nbase(INIT_SIZE, AES_FIELD_DIM, AES_FIELD_DIM);
+
+	int i,j,base=1;
+	for(j=0; j<AES_FIELD_DIM; j++){
+		// for i-th column polynomial base vector
+		GF2E tmp = GF2EFromLong(base, AES_FIELD_DIM);
+		if (q>0)
+			tmp = tmp*tmp;
+		base = 2*base;
+		for(i=0; i<AES_FIELD_DIM; i++){
+			nbase.put(i, j, tmp.LoopHole()[i]);
+		}
+	}
+
+	if (q==1)
+		return nbase;
+
+	mat_GF2 ret=nbase;
+	for(i=2; i<=q; i++){
+		 ret = ret * nbase;
+	}
+
+	return ret;
+}
+
+int GenericAES::testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2){
+	int i,f=0;
+	for(i=0; i<AES_FIELD_SIZE; i++){
+		long desiredResult = sboxAffine[i];
+		long afterA1 = getLong(A1.get(i));
+		long afterSb = sboxAffine[afterA1];
+		long afterA2 = getLong(A2.get(afterSb));
+		if (desiredResult != afterA2){
+			cout << "Failed A1A2: field elem; S("<<CHEX(i)<<") = " << CHEX(desiredResult) << "; (A2 * S * A1)("<<CHEX(i)<<")=" << CHEX(afterA2) << "; ";
+			cout << "a1: " << CHEX(afterA1) << "; Sb: " << CHEX(afterSb) << "; a2: " << CHEX(afterA2) << endl;
+			f++;
+		}
+	}
+	return (-1)*f;
+}
+
 void GenericAES::printAll() {
-	int i=0,c=0;
+	int i=0;
 	restoreModulus();
 
 	cout << "Generic AES; " \

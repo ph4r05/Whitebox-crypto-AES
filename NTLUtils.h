@@ -45,12 +45,17 @@ inline NTL::GF2E GF2EFromLong(const long a, const long len){
     NTL::GF2X x; x.SetLength(len); x.xrep[0] = a;  x.SetLength(len); return to_GF2E(x);
 }
 
-inline long getLong(NTL::GF2X& x) {
+inline long getLong(const NTL::GF2X& x) {
     return x.xrep[0];
 }
 
 inline long getLong(NTL::GF2E& x) {
     return x.LoopHole().xrep.length() == 0 ? 0L : x.LoopHole().xrep[0];
+}
+
+inline long getLong(const NTL::GF2E& x) {
+	NTL::GF2X tmp; conv(tmp, x);
+    return tmp.xrep.length() == 0 ? 0L : tmp.xrep[0];
 }
 
 inline NTL::mat_GF2 colVector(const NTL::vec_GF2& v){

@@ -71,9 +71,29 @@ int main(void) {
 	cout << "Testing encryption AFTER Tinv: " << endl;
 	dumpMatrix(state);
 
+	dualAES.applyT(state);
 	cout << "Testing backward decryption: " << endl;
 	dualAES.decryptInternal(state, roundKey);
 	dumpMatrix(state);
+
+	cout << "Multiplication matrix: " << endl;
+	mat_GF2 multA= dualAES.makeMultAMatrix(2);
+	dumpMatrix(multA);
+
+	cout << "Squaring matrix: " << endl;
+	mat_GF2 sqr = dualAES.makeSquareMatrix(1);
+	dumpMatrix(sqr);
+
+	cout << "A1 and A2 relations " << endl;
+	vec_GF2E A1;
+	vec_GF2E A2;
+	dualAES.generateA1A2Relations(A1, A2, 0xd5, 5);
+	cout << "A1: " << endl;
+	dumpVector(A1);
+
+	cout << "A2: " << endl;
+	dumpVector(A2);
+	dualAES.testA1A2Relations(A1, A2);
 }
 
 int MBgen(void){
