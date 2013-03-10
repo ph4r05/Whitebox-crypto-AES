@@ -27,13 +27,6 @@ int WBAES::shiftRows[N_BYTES] = {
 		12,  1,  6, 11
 };
 
-int WBAES::shiftRowsLBijection[N_BYTES] = {
-		0, 13, 10, 7,
-		4,  1, 14, 11,
-		8,  5,  2, 15,
-		12, 9,  6,  3
-};
-
 WBAES::WBAES() {
 	// TODO Auto-generated constructor stub
 
