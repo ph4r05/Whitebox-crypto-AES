@@ -50,10 +50,10 @@ void WBAES::encrypt(W128b& state){
 		// Perform rest of the operations on 4 tuples.
 		for(i=0; i<N_BYTES; i+=4){
 			// Apply type 2 tables to all bytes, counting also shift rows selector.
-			ires[i+0] = this->eTab2[r][i+0][state.B[shiftRows[i+0]]];
-			ires[i+1] = this->eTab2[r][i+1][state.B[shiftRows[i+1]]];
-			ires[i+2] = this->eTab2[r][i+2][state.B[shiftRows[i+2]]];
-			ires[i+3] = this->eTab2[r][i+3][state.B[shiftRows[i+3]]];
+			ires[i+0].l = this->eTab2[r][i+0][state.B[shiftRows[i+0]]].l;
+			ires[i+1].l = this->eTab2[r][i+1][state.B[shiftRows[i+1]]].l;
+			ires[i+2].l = this->eTab2[r][i+2][state.B[shiftRows[i+2]]].l;
+			ires[i+3].l = this->eTab2[r][i+3][state.B[shiftRows[i+3]]].l;
 
 			// XOR results of T2 boxes
 			op8xor(ires[i+0], ires[i+1], this->eXTab[r][i/4][0], ires[i+0]);  // 1 xor 2
@@ -68,10 +68,10 @@ void WBAES::encrypt(W128b& state){
 			//                      |   |      ______________ (1 xor 2) xor (3 xor 4)
 			//                      |   |     |         _____ 8bit parts of 32 bit result
 			//                      |   |     |        |
-			ires[i+3] = this->eTab3[r][i+3][ires[i].B[i+3]];
-			ires[i+2] = this->eTab3[r][i+2][ires[i].B[i+2]];
-			ires[i+1] = this->eTab3[r][i+1][ires[i].B[i+1]];
-			ires[i+0] = this->eTab3[r][i+0][ires[i].B[i+0]];
+			ires[i+3].l = this->eTab3[r][i+3][ires[i].B[i+3]].l;
+			ires[i+2].l = this->eTab3[r][i+2][ires[i].B[i+2]].l;
+			ires[i+1].l = this->eTab3[r][i+1][ires[i].B[i+1]].l;
+			ires[i+0].l = this->eTab3[r][i+0][ires[i].B[i+0]].l;
 
 
 			// Apply XORs again, now on T3 results
@@ -82,10 +82,7 @@ void WBAES::encrypt(W128b& state){
 
 			// Copy results back to state
 			// ires[i] now contains 32bit XOR result
-			state.B[i+0] = ires[i].B[0];
-			state.B[i+1] = ires[i].B[1];
-			state.B[i+2] = ires[i].B[2];
-			state.B[i+3] = ires[i].B[3];
+			state.l[i/4] = ires[i].l;
 		}
 	}
 }
