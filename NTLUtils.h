@@ -134,4 +134,7 @@ template <class T> vector_inserter<T>& operator+=(NTL::Vec<T>& v,const T& x){
     return vector_inserter<T>(v),x;
 }
 
+
+
+
 #endif /* NTLUTILS_H_ */

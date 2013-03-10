@@ -25,6 +25,7 @@
 #include "GenericAES.h"
 #include "NTLUtils.h"
 #include "MixingBijections.h"
+#include "WBAES.h"
 NTL_CLIENT
 
 #define GENERIC_AES_DEBUG 1
