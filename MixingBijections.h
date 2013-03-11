@@ -72,5 +72,6 @@ int generateMixingBijection(mat_GF2& RES, int t, int p);
  * 	http://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
  */
 int generateRandomBijection(vec_GF2X& bijection, vec_GF2X& inverse, int size, int dim);
+int generateRandomBijection(unsigned char *bijection, unsigned char *inverse, int size, int init);
 
 #endif /* MIXINGBIJECTIONS_H_ */
