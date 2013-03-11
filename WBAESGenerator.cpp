@@ -148,3 +148,4 @@ void WBAESGenerator::generateMixingBijections(){
 void WBAESGenerator::generateIOCoding(){
 
 }
+

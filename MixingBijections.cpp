@@ -455,8 +455,10 @@ int generateRandomBijection(vec_GF2X& bijection, vec_GF2X& inverse, int size, in
 		inverse.put(i, GF2XFromLong(i, dim));
 	}
 
-	for(i=0; i<size; i++){
-		int rnd = rand() % size;
+	// yes, we start from second element on purpose, to produce uniform distribution
+	for(i=1; i<size; i++){
+		// rnd is index from interval [0, i]
+		int rnd = rand() % (i+1);
 		swap(inverse[getLong(bijection[i])], inverse[getLong(bijection[rnd])]);
 		swap(bijection[i], bijection[rnd]);
 	}

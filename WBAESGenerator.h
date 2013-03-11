@@ -355,6 +355,10 @@ public:
  	//
  	// Generate random coding (bijections).
  	void generateIOCoding();
+ 	
+ 	//
+ 	// Raw method for generating random bijections by Petr Svenda.
+ 	int generate8X8Bijection(BIJECT8X8 biject, BIJECT8X8 invBiject);
 };
 
 #endif /* WBAESGENERATOR_H_ */

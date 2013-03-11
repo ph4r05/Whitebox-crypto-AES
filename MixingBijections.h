@@ -62,6 +62,14 @@ int generateMixingBijection(mat_GF2& RES, int t, int p);
 /**
  * Generates random bijection in set of given size.
  * Generated bijections are in form of lookup tables. size = 2^dim
+ *
+ * Random bijection is generated with "Knuth Shuffles" algorithm providing uniform
+ * distribution of random permutations.
+ *
+ * See also:
+ * 	Efficient Sampling of Random Permutations, http://hal.inria.fr/docs/00/11/00/56/PDF/perm.pdf
+ * 	http://www.cs.tufts.edu/comp/250P/classpages/randperm.html
+ * 	http://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
  */
 int generateRandomBijection(vec_GF2X& bijection, vec_GF2X& inverse, int size, int dim);
 
