@@ -14,11 +14,11 @@
 #include <ctime>
 #include <iomanip>
 
-// NTL dependencies
-#include "WBAES.h"
-#include "NTLUtils.h"
+// Enable NTL library here
+NTL_CLIENT
 
-//NTL_CLIENT
+using namespace std;
+using namespace NTL;
 
 int WBAESGenerator::shiftRowsLBijection[N_BYTES] = {
 		0, 13, 10, 7,
@@ -59,15 +59,18 @@ void WBAESGenerator::encGenerateCodingMap(WBACR_AES_CODING_MAP& map, int *coding
 			ALLOCW08x32Coding(map.eT2[r][i][1], cIdx);
 			ALLOCW08x32Coding(map.eT2[r][i][2], cIdx);
 			ALLOCW08x32Coding(map.eT2[r][i][3], cIdx);
+
 			// Allocate new coding for T3, boxes, output direction (input is always set by others)
 			ALLOCW08x32Coding(map.eT3[r][i][0], cIdx);
 			ALLOCW08x32Coding(map.eT3[r][i][1], cIdx);
 			ALLOCW08x32Coding(map.eT3[r][i][2], cIdx);
 			ALLOCW08x32Coding(map.eT3[r][i][3], cIdx);
+
 			// Allocate new coding for XOR boxes, layer 1,2
 			ALLOCXORCoding(map.eXOR1[r][i], 0, cIdx);
 			ALLOCXORCoding(map.eXOR1[r][i], 8, cIdx);
 			ALLOCXORCoding(map.eXOR1[r][i], 16, cIdx);
+
 			// Allocate new coding for XOR boxes, layer 3,4
 			ALLOCXORCoding(map.eXOR2[r][i], 0, cIdx);
 			ALLOCXORCoding(map.eXOR2[r][i], 8, cIdx);
@@ -76,24 +79,29 @@ void WBAESGenerator::encGenerateCodingMap(WBACR_AES_CODING_MAP& map, int *coding
 			//
 			// Connecting part - connecting allocated codings together
 			//
+
 			// Connect T2 boxes to XOR input boxes
 			CONNECT_W08x32_TO_XOR_H(map.eT2[r][i][0], map.eXOR1[r][i], 0);	// HIGH part of XOR1_0 table IN connect to OUT of T2_0 table
 			CONNECT_W08x32_TO_XOR_L(map.eT2[r][i][1], map.eXOR1[r][i], 0);  // LOW  part of XOR1_0 table IN connect to OUT of T2_1 table
 			CONNECT_W08x32_TO_XOR_H(map.eT2[r][i][2], map.eXOR1[r][i], 8);  // HIGH part of XOR1_1 table IN connect to OUT of T2_2 table
 			CONNECT_W08x32_TO_XOR_L(map.eT2[r][i][3], map.eXOR1[r][i], 8);  // LOW  part of XOR1_1 table IN connect to OUT of T2_3 table
+
 			// Connect XOR layer 1 to XOR layer 2
 			CONNECT_XOR_TO_XOR_H(map.eXOR1[r][i], 0, map.eXOR1[r][i], 16);  // HIGH part of XOR1_2 table IN connect to OUT of XOR1_0
 			CONNECT_XOR_TO_XOR_L(map.eXOR1[r][i], 8, map.eXOR1[r][i], 16);  // LOW  part of XOR1_2 table IN connect to OUT of XOR1_1
+
 			// Connect result XOR layer 2 to B boxes (T3)
 			CONNECT_XOR_TO_W08x32(map.eXOR1[r][i], 16, map.eT3[r][i][0]);
 			CONNECT_XOR_TO_W08x32(map.eXOR1[r][i], 18, map.eT3[r][i][1]);
 			CONNECT_XOR_TO_W08x32(map.eXOR1[r][i], 20, map.eT3[r][i][2]);
 			CONNECT_XOR_TO_W08x32(map.eXOR1[r][i], 22, map.eT3[r][i][3]);
+
 			// Connect B boxes to XOR
 			CONNECT_W08x32_TO_XOR_H(map.eT3[r][i][0], map.eXOR2[r][i], 0);	// HIGH part of XOR2_0 table IN connect to OUT of T3_0 table
 			CONNECT_W08x32_TO_XOR_L(map.eT3[r][i][1], map.eXOR2[r][i], 0);  // LOW  part of XOR2_0 table IN connect to OUT of T3_1 table
 			CONNECT_W08x32_TO_XOR_H(map.eT3[r][i][2], map.eXOR2[r][i], 8);  // HIGH part of XOR2_1 table IN connect to OUT of T3_2 table
 			CONNECT_W08x32_TO_XOR_L(map.eT3[r][i][3], map.eXOR2[r][i], 8);  // LOW  part of XOR2_1 table IN connect to OUT of T3_3 table
+
 			// Connect XOR layer 3 to XOR layer 4
 			CONNECT_XOR_TO_XOR_H(map.eXOR2[r][i], 0, map.eXOR2[r][i], 16);  // HIGH part of XOR1_2 table IN connect to OUT of XOR1_0
 			CONNECT_XOR_TO_XOR_L(map.eXOR2[r][i], 8, map.eXOR2[r][i], 16);  // LOW  part of XOR1_2 table IN connect to OUT of XOR1_1
@@ -113,5 +121,30 @@ void WBAESGenerator::encGenerateCodingMap(WBACR_AES_CODING_MAP& map, int *coding
 			CONNECT_XOR_TO_W08x32(map.eXOR2[r][i], 22, map.eT2[r+1][ newIdx % 4 ][ newIdx / 4]);
 		}
 	}
+
+	*codingCount = cIdx+1;
 }
 
+void WBAESGenerator::generateMixingBijections(){
+	int r,i;
+
+	// Generate all required 8x8 mixing bijections.
+	for(r=0; r<MB_CNT_08x08_ROUNDS; r++){
+		for(i=0; i<MB_CNT_08x08_PER_ROUND; i++){
+			generateMixingBijection(this->MB_L08x08[r][i].mb, 8, 4);
+			this->MB_L08x08[r][i].inv = inv(this->MB_L08x08[r][i].mb);
+		}
+	}
+
+	// Generate all required 32x32 mixing bijections.
+	for(r=0; r<MB_CNT_32x32_ROUNDS; r++){
+		for(i=0; i<MB_CNT_32x32_PER_ROUND; i++){
+			generateMixingBijection(this->MB_MB32x32[r][i].mb, 32, 4);
+			this->MB_MB32x32[r][i].inv = inv(this->MB_MB32x32[r][i].mb);
+		}
+	}
+}
+
+void WBAESGenerator::generateIOCoding(){
+
+}

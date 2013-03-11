@@ -8,7 +8,6 @@
 #ifndef WBAESGENERATOR_H_
 #define WBAESGENERATOR_H_
 
-#include "WBAES.h"
 #include <assert.h>
 #include <string.h>
 
@@ -23,6 +22,8 @@
 #include <vector>
 #include "NTLUtils.h"
 #include "GenericAES.h"
+#include "WBAES.h"
+#include "MixingBijections.h"
 
 //  DEFINITIONS OF STRINGS USED AS INSERTION BEGIN OF GENERATED TABLES INTO HEADER FILES  
 //  INSERTION BEHAVIOUR:
@@ -50,6 +51,13 @@
 #define MB_IDENTITY 0x00
 #define MB_8x8      0x01
 #define MB_32x32    0x02
+
+// MIXING BIJECTION COUNTS
+#define MB_CNT_08x08_ROUNDS 9
+#define MB_CNT_08x08_PER_ROUND 16
+#define MB_CNT_32x32_ROUNDS 9
+#define MB_CNT_32x32_PER_ROUND 4
+
 
 #define IOBLOCK_BASEID      10000   //FIRST CODING ID ASSIGNED TO 8-BITS IO BLOCK CONDING. INTRODUCED TO STOP MISMASH BETWEN 4-BITS AND 8-BITS CODING IDs
 
@@ -141,13 +149,6 @@ typedef struct _MB_TABLE {
 
 typedef MB_TABLE MB08x08_TABLE;
 typedef MB_TABLE MB32x32_TABLE;
-
-#define TYPE_T 1
-#define TYPE_X 2
-#define TYPE_B 3
-
-
-
 
 //
 // Coding for T2 and T3 boxes, 8bit -> 32bit
@@ -316,8 +317,8 @@ public:
 	// Round 2..10, 16x 08x08 MB (L)
 	// Round 1..9,   4x 32x32 MB (MB for each MixColumn stripe)  
     //
- 	MB08x08_TABLE MB_L08x08[9*16];
- 	MB32x32_TABLE MB_MB32x32[9*4];
+ 	MB08x08_TABLE MB_L08x08 [MB_CNT_08x08_ROUNDS][MB_CNT_08x08_PER_ROUND];
+ 	MB32x32_TABLE MB_MB32x32[MB_CNT_32x32_ROUNDS][MB_CNT_32x32_PER_ROUND];
  	
  	// 
  	// Input/output bijection encoding
@@ -344,6 +345,16 @@ public:
  	//  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13
  	void encGenerateCodingMap(WBACR_AES_CODING_MAP& pCodingMap, int *codingCount);
  	
+ 	//
+ 	// Generate random mixing bijections and their inverses
+ 	// Initializes:
+ 	//      MB_L32x32 - 8x8 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
+ 	//      MB_MB08x08 - 32x32 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
+ 	void generateMixingBijections();
+ 	
+ 	//
+ 	// Generate random coding (bijections).
+ 	void generateIOCoding();
 };
 
 #endif /* WBAESGENERATOR_H_ */
