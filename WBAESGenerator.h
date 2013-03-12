@@ -173,9 +173,9 @@ typedef struct _WBACR_AES_CODING_MAP {
     CODING              eFINALROUND[N_SECTIONS][4];
     
     // DECRYPT TABLES
-    CODING32W           INVROUND[N_ROUNDS][N_SECTIONS][4]; // DECRYPT ROUND    
+    /*CODING32W           INVROUND[N_ROUNDS][N_SECTIONS][4]; // DECRYPT ROUND    
     CODING              INVXOR[N_ROUNDS][N_SECTIONS][24];           // 24 == 8 4-BITS PARTS OF 32-BITS DWORD
-    CODING              INVFIRSTROUND[N_SECTIONS][4];
+    CODING              INVFIRSTROUND[N_SECTIONS][4];*/
 } WBACR_AES_CODING_MAP, *PWBACR_AES_CODING_MAP;
 
 
@@ -260,6 +260,14 @@ typedef struct _WBACR_AES_CODING_MAP {
     cod.IC.L = xtb[(offset)+1].OC.L;                                          }
 
 
+// 
+// Assembles 8bit number from bit representation in column vector
+// TODO: finish this
+#define ASSM8bitFromBits(col, offset) ;
+
+
+
+
 class WBAESGenerator {
 public:
 	WBAESGenerator();
@@ -311,6 +319,7 @@ public:
 	// If all initialized to default AES, you will get default WBAES, otherwise
 	// you will get cipher using dual AES - should raise known attack to high complexities.
 	GenericAES AESCipher[N_ROUNDS * N_SECTIONS];
+	inline GenericAES& getAESCipher(int idx){ return this->AESCipher[idx]; };
 	
 	//
 	// Mixing bijections
@@ -350,15 +359,21 @@ public:
  	// Initializes:
  	//      MB_L32x32 - 8x8 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
  	//      MB_MB08x08 - 32x32 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
- 	void generateMixingBijections();
+ 	int generateMixingBijections(MB08x08_TABLE ** L08x08[MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE ** MB32x32[MB_CNT_32x32_PER_ROUND], int MB32x32rounds);
+ 	int generateMixingBijections();
  	
  	//
  	// Generate random coding (bijections).
- 	void generateIOCoding();
+ 	void encGenerateTables(BYTE *key, enum keySize ksize);
  	
  	//
  	// Raw method for generating random bijections
- 	int generate8X8Bijection(BIJECT8X8 biject, BIJECT8X8 invBiject);
+ 	int generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size);
+ 	int generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size);
+ 	int generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject);
+ 	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject);
+ 	
+ 	
 };
 
 #endif /* WBAESGENERATOR_H_ */

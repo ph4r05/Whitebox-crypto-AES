@@ -110,6 +110,25 @@ inline NTL::GF2E colVector_GF2E(const NTL::mat_GF2& m, int which){
     return ret;
 }
 
+/**
+ * Converts matrix consisting of GF2E elements to binary matrix from
+ * element representation, coding binary elements to columns. LSB is first in the row,
+ * what is consistent with GenericAES.
+ */
+inline void mat_GF2E_to_mat_GF2_col(NTL::mat_GF2& dst, const NTL::mat_GF2E& src, int elemLen){
+	int i,j,k,n = src.NumRows(),m = src.NumCols();
+	dst.SetDims(elemLen * n, m);
+	for(i=0; i<n; i++){
+		for(j=0; j<m; j++){
+			GF2E curElem = src.get(i,j);
+			GF2X curX = curElem.LoopHole();
+			for(k=0; k<elemLen; k++){
+				dst.put(i*elemLen + k, j, curX[k]);
+			}
+		}
+	}
+}
+
 void dumpVector(NTL::vec_GF2E& a);
 void dumpVector(NTL::vec_GF2X& a);
 void dumpVector(NTL::vec_GF2& a);

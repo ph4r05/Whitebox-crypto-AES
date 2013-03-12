@@ -125,27 +125,165 @@ void WBAESGenerator::encGenerateCodingMap(WBACR_AES_CODING_MAP& map, int *coding
 	*codingCount = cIdx+1;
 }
 
-void WBAESGenerator::generateMixingBijections(){
+int WBAESGenerator::generateMixingBijections(MB08x08_TABLE ** L08x08[MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE ** MB32x32[MB_CNT_32x32_PER_ROUND], int MB32x32rounds){
 	int r,i;
 
 	// Generate all required 8x8 mixing bijections.
-	for(r=0; r<MB_CNT_08x08_ROUNDS; r++){
+	for(r=0; r<L08x08rounds; r++){
 		for(i=0; i<MB_CNT_08x08_PER_ROUND; i++){
-			generateMixingBijection(this->MB_L08x08[r][i].mb, 8, 4);
-			this->MB_L08x08[r][i].inv = inv(this->MB_L08x08[r][i].mb);
+			generateMixingBijection(L08x08[r][i]->mb, 8, 4);
+			L08x08[r][i]->inv = inv(L08x08[r][i]->mb);
 		}
 	}
 
 	// Generate all required 32x32 mixing bijections.
-	for(r=0; r<MB_CNT_32x32_ROUNDS; r++){
+	for(r=0; r<MB32x32rounds; r++){
 		for(i=0; i<MB_CNT_32x32_PER_ROUND; i++){
-			generateMixingBijection(this->MB_MB32x32[r][i].mb, 32, 4);
-			this->MB_MB32x32[r][i].inv = inv(this->MB_MB32x32[r][i].mb);
+			generateMixingBijection(MB32x32[r][i]->mb, 32, 4);
+			MB32x32[r][i]->inv = inv(MB32x32[r][i]->mb);
 		}
 	}
+	return 0;
 }
 
-void WBAESGenerator::generateIOCoding(){
-
+int WBAESGenerator::generateMixingBijections(){
+	return generateMixingBijections((MB08x08_TABLE***) &this->MB_L08x08, MB_CNT_08x08_ROUNDS, (MB32x32_TABLE***) &this->MB_MB32x32, MB_CNT_32x32_ROUNDS);
 }
 
+void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize){
+	WBACR_AES_CODING_MAP 		codingMap;
+	int 						codingCount;
+	int							i,j,r,b,k,l;
+
+	// Initialize IO coding map (networked fashion of mappings)
+	encGenerateCodingMap(codingMap, &codingCount);
+
+	// Preparing all 4Bits internal encoding/decoding bijections
+	CODING4X4_TABLE* pCoding04x04 = new CODING4X4_TABLE[codingCount+1];
+	this->generate4X4Bijections(pCoding04x04, codingCount+1);
+
+	// Input/Output coding
+	CODING8X8_TABLE* pCoding08x08 = new CODING8X8_TABLE[16];
+	this->generate8X8Bijections(pCoding08x08, 16);
+
+	// Generate mixing bijections
+	MB08x08_TABLE eMB_L08x08 [MB_CNT_08x08_ROUNDS][MB_CNT_08x08_PER_ROUND];
+	MB32x32_TABLE eMB_MB32x32[MB_CNT_32x32_ROUNDS][MB_CNT_32x32_PER_ROUND];
+	this->generateMixingBijections((MB08x08_TABLE***) &eMB_L08x08, MB_CNT_08x08_ROUNDS, (MB32x32_TABLE***) &eMB_MB32x32, MB_CNT_32x32_ROUNDS);
+
+	// Generate random dual AES instances, key schedule
+	vec_GF2E vecRoundKey[N_ROUNDS * N_SECTIONS];
+	vec_GF2E vecKey[N_ROUNDS * N_SECTIONS];
+	for(i=0; i<N_ROUNDS * N_SECTIONS; i++){
+		int rndPolynomial = 0;//rand() % AES_IRRED_POLYNOMIALS;
+		int rndGenerator = 0;//rand() % AES_GENERATORS;
+		this->AESCipher[i].init(rndPolynomial, rndGenerator);
+
+		// convert BYTE[] to key
+		vecKey[i].SetLength(ksize);
+		for(j=0; j<ksize; j++){
+			vecKey[i].put(j, GF2EFromLong(key[j], 8));
+		}
+
+		// Prepare key schedule from vector representation of encryption key
+		this->AESCipher[i].expandKey(vecRoundKey[i], vecKey[i], ksize);
+	}
+
+	// Connect 8x8 mapping to input/output
+	// TODO: finish this...
+
+	// 0..9 rounds, include MixColumns
+	for(r=0; r<N_ROUNDS-1; r++){
+		// Iterate by mix cols/sections/dual AES-es
+		for(i=0; i<=N_SECTIONS; i++){
+			//
+			// Prepare stuff needed for tables
+			//
+
+			// Restore modulus for current AES for computation in GF2E.
+			this->AESCipher[i].restoreModulus();
+
+			//
+			// T table construction (Type2)
+			//
+			for(j=0; j<N_SECTIONS; j++){
+				// Build tables - for each byte
+				for(b=0; b<256; b++){
+
+
+					// current lookup table key
+					// TODO: tmpE should be output from T_i box (sbox transformation), FINISH L and T_i transformation above...
+					GF2E tmpE = GF2EFromLong(b, 8);
+					// build [0 tmpE 0 0]^T stripe where tmpE is in j-th position
+					mat_GF2E zj(INIT_SIZE, 4, 1);
+					zj.put(j,0, tmpE);
+					// Build MC multiplication result
+					mat_GF2E mcres = this->AESCipher[i].mixColMat * zj;
+					// Apply 32x32 Mixing bijection
+					mat_GF2 mPreMB;
+					mat_GF2E_to_mat_GF2_col(mPreMB, mcres, AES_FIELD_DIM);
+					eMB_MB32x32[r][i].mb * mPreMB;
+					// Convert transformed vector back to values
+
+
+					// TODO: finish
+				}
+			}
+
+
+			//
+			// B table construction (Type3) - just mixing bijections and L strip
+			//
+
+			// Build L from L_k stripes using shiftRowsLBijection - just simplification for indexes
+			// Now we are determining Lbox that will be used in next round
+			mat_GF2 * Lr_k[4];
+			for(j=0; j<N_SECTIONS; j++){
+				Lr_k[j] = &(eMB_L08x08[r+1][this->shiftRowsLBijection[i*N_SECTIONS + j]].mb);
+			}
+
+			for(j=0; j<N_SECTIONS; j++){
+				// Build tables - for each byte
+				for(b=0; b<256; b++){
+					// current lookup table key
+					GF2E tmpE = GF2EFromLong(b, 8);
+					// build [0 tmpE 0 0]^T stripe where tmpE is in j-th position
+					mat_GF2E zj(INIT_SIZE, 4, 1);
+					zj.put(j,0, tmpE);
+
+					// Build MC multiplication result
+					// TODO: finish
+				}
+			}
+		}
+	}
+
+
+	delete[] pCoding04x04;
+}
+
+int WBAESGenerator::generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size){
+	unsigned int i,c;
+	for(i=0; i<size; i++){
+		c |= generate4X4Bijection(&tbl[i].coding, &tbl[i].invCoding);
+	}
+
+	return c;
+}
+
+int WBAESGenerator::generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size){
+	unsigned int i,c;
+	for(i=0; i<size; i++){
+		c |= generate8X8Bijection(&tbl[i].coding, &tbl[i].invCoding);
+	}
+
+	return c;
+}
+
+int WBAESGenerator::generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject){
+	return generateRandomBijection((unsigned char*)biject, (unsigned char*)invBiject, 16, 1);
+}
+
+int WBAESGenerator::generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject){
+	return generateRandomBijection((unsigned char*)biject, (unsigned char*)invBiject, 256, 1);
+}

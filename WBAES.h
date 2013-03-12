@@ -29,6 +29,13 @@
             (((g) & 0xF) << 4*1) | \
             (  h  & 0xF)     ) 
 
+// constructs 32bit unsigned long from 4x bytes.
+#define HILO4(a,b,c,d) ( \
+            (((a) & 0xFF) << 8*3) | \
+            (((b) & 0xFF) << 8*2) | \
+            (((c) & 0xFF) << 8*1) | \
+            (  d  & 0xFF)     )
+
 //
 // Some AES constants
 //

@@ -279,6 +279,12 @@ public:
 	 * @returns 0 on success, -num in case of num of failed mappings
 	 */
 	int testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2);
+
+    /**
+     * Mix column GF2E matrix computed
+     */
+    mat_GF2E mixColMat;
+    mat_GF2E mixColInvMat;
 private:
 
     /**
@@ -309,12 +315,6 @@ private:
     GF2EX mixColModulus;
     GF2EX mixColMultiply;
     GF2EX mixColMultiplyInv;
-
-    /**
-     * Mix column GF2E matrix computed
-     */
-    mat_GF2E mixColMat;
-    mat_GF2E mixColInvMat;
 
     /**
      * Round key constant
