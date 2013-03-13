@@ -261,12 +261,26 @@ typedef struct _WBACR_AES_CODING_MAP {
 
 
 // 
-// Assembles 8bit number from bit representation in column vector
-// TODO: finish this
-#define ASSM8bitFromBits(col, offset) ;
+// Assembles 8bit number (BYTE / unsigned char) from bit representation in column vector. LSB first
+//
+#define ColBinaryVectorToByte(src,i,j) (                \
+                  ((src[(i)+0][(j)] == 1) ? 1<<0 : 0)       \
+                | ((src[(i)+1][(j)] == 1) ? 1<<1 : 0)       \
+                | ((src[(i)+2][(j)] == 1) ? 1<<2 : 0)       \
+                | ((src[(i)+3][(j)] == 1) ? 1<<3 : 0)       \
+                | ((src[(i)+4][(j)] == 1) ? 1<<4 : 0)       \
+                | ((src[(i)+5][(j)] == 1) ? 1<<5 : 0)       \
+                | ((src[(i)+6][(j)] == 1) ? 1<<6 : 0)       \
+                | ((src[(i)+7][(j)] == 1) ? 1<<7 : 0))       
 
-
-
+//
+// Takes 8bit number (BYTE / unsigned char) and stores its bit representation to col vector
+// starting at given coordinates to array (may be mat_GF2). LSB first
+#define ByteToColBinaryVector(c,dst,i,j) {                                  \
+                dst[(i)+0][(j)] = (c) & 1<<0; dst[(i)+1][(j)] = (c) & 1<<1; \
+                dst[(i)+2][(j)] = (c) & 1<<2; dst[(i)+3][(j)] = (c) & 1<<3; \
+                dst[(i)+4][(j)] = (c) & 1<<4; dst[(i)+5][(j)] = (c) & 1<<5; \
+                dst[(i)+6][(j)] = (c) & 1<<6; dst[(i)+7][(j)] = (c) & 1<<7;} 
 
 class WBAESGenerator {
 public:
@@ -373,7 +387,68 @@ public:
  	int generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject);
  	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject);
  	
+ 	// Converts column of 8 binary values to BYTE value
+    inline BYTE matGF2_to_BYTE(NTL::mat_GF2& src, int row, int col){
+    	return ColBinaryVectorToByte(src, row, col);
+    }
+    
+    // Converts BYTE value to matGF
+    inline void BYTE_to_matGF2(BYTE c, NTL::mat_GF2& ret, int row, int col){
+    	ByteToColBinaryVector(c, ret, row, col);
+    }
  	
+ 	// Converts column of 32 binary values to W32b value
+ 	inline void matGF2_to_W32b(NTL::mat_GF2& src, int row, int col, W32b& dst){
+ 		assert(src.NumRows() < row*8);
+ 		assert(src.NumCols() < col);
+ 		dst.l = 0;
+ 		dst.B[0] = ColBinaryVectorToByte(src, row+8*0, col);
+ 		dst.B[1] = ColBinaryVectorToByte(src, row+8*1, col);
+ 		dst.B[2] = ColBinaryVectorToByte(src, row+8*2, col);
+ 		dst.B[3] = ColBinaryVectorToByte(src, row+8*3, col);
+ 	}
+ 	
+ 	// Converts W32b file to matGF2
+ 	inline void W32b_to_matGF2(W32b& src, NTL::mat_GF2& dst){
+        ByteToColBinaryVector(src.B[0], dst, 8*0, 0);
+        ByteToColBinaryVector(src.B[0], dst, 8*1, 0);
+        ByteToColBinaryVector(src.B[0], dst, 8*2, 0);
+        ByteToColBinaryVector(src.B[0], dst, 8*3, 0); 
+    }
+    
+    inline BYTE iocoding_encode08x08(BYTE src, HIGHLOW& hl, bool inverse, CODING4X4_TABLE* tbl4, CODING8X8_TABLE* tbl8){
+        if (hl.type == COD_BITS_4){
+            return inverse ?
+                  HILO(tbl4[hl.H].invCoding[HI(src)], tbl4[hl.L].invCoding[LO(src)])
+                : HILO(tbl4[hl.H].coding[HI(src)], tbl4[hl.L].coding[LO(src)]);
+        } else if (hl.type == COD_BITS_8){
+            return inverse ?
+                  tbl8[hl.L].invCoding[src]
+                : tbl8[hl.L].coding[src];
+        }
+        
+        return src; 
+    }
+    
+    inline BYTE iocoding_encode08x08(BYTE src, CODING& coding, bool encodeInput, CODING4X4_TABLE* tbl4, CODING8X8_TABLE* tbl8){
+	    HIGHLOW * hl = encodeInput ? &(coding.IC) : &(coding.OC);
+	    return iocoding_encode08x08(src, *hl, encodeInput, tbl4, tbl8);
+    }
+    
+    inline void iocoding_encode32x32(W32b& dst, W32b& src, W08x32Coding& coding, bool encodeInput, CODING4X4_TABLE* tbl4, CODING8X8_TABLE* tbl8){
+    	// encoding input - special case, input is just 8bit wide
+		if (encodeInput){
+			dst.B[0] = iocoding_encode08x08(src.B[0], coding.IC, encodeInput, tbl4, tbl8);
+			dst.B[1] = iocoding_encode08x08(src.B[1], coding.IC, encodeInput, tbl4, tbl8);
+			dst.B[2] = iocoding_encode08x08(src.B[2], coding.IC, encodeInput, tbl4, tbl8);
+			dst.B[3] = iocoding_encode08x08(src.B[3], coding.IC, encodeInput, tbl4, tbl8);
+		} else {
+			dst.B[0] = iocoding_encode08x08(src.B[0], coding.OC[0], encodeInput, tbl4, tbl8);
+			dst.B[1] = iocoding_encode08x08(src.B[1], coding.OC[1], encodeInput, tbl4, tbl8);
+			dst.B[2] = iocoding_encode08x08(src.B[2], coding.OC[2], encodeInput, tbl4, tbl8);
+			dst.B[3] = iocoding_encode08x08(src.B[3], coding.OC[3], encodeInput, tbl4, tbl8);
+		}
+    }
 };
 
 #endif /* WBAESGENERATOR_H_ */

@@ -19,6 +19,7 @@
 #include <NTL/mat_GF2.h>
 #include <NTL/mat_GF2E.h>
 #include <math.h>
+#include <assert.h>
 NTL_CLIENT
 
 
@@ -56,6 +57,15 @@ inline long getLong(NTL::GF2E& x) {
 inline long getLong(const NTL::GF2E& x) {
 	NTL::GF2X tmp; conv(tmp, x);
     return tmp.xrep.length() == 0 ? 0L : tmp.xrep[0];
+}
+
+inline NTL::mat_GF2 colVector(const unsigned char c){
+	NTL::mat_GF2 ret(INIT_SIZE, 8, 1);
+	ret[0][0] = c & (1<<0); 	ret[1][0] = c & (1<<1);
+	ret[2][0] = c & (1<<2); 	ret[3][0] = c & (1<<3);
+	ret[4][0] = c & (1<<4); 	ret[5][0] = c & (1<<5);
+	ret[6][0] = c & (1<<6); 	ret[7][0] = c & (1<<7);
+	return ret;
 }
 
 inline NTL::mat_GF2 colVector(const NTL::vec_GF2& v){
@@ -125,6 +135,29 @@ inline void mat_GF2E_to_mat_GF2_col(NTL::mat_GF2& dst, const NTL::mat_GF2E& src,
 			for(k=0; k<elemLen; k++){
 				dst.put(i*elemLen + k, j, curX[k]);
 			}
+		}
+	}
+}
+
+/**
+ * Converts 8bit column representation to array of characters
+ */
+inline void mat_GF2_to_char(NTL::mat_GF2& src, unsigned char * dst){
+	int i,j,n=src.NumRows(),m=src.NumCols();
+	assert((n%8)!=0);
+
+	for(i=0; i<n/8; i++){
+		for(j=0; j<m; j++){
+			dst[i*m + j] = 0;
+			dst[i*m + j] |=
+					  ((src[i*8+0][j] == 1) ? 1    : 0)
+					| ((src[i*8+1][j] == 1) ? 1<<1 : 0)
+					| ((src[i*8+2][j] == 1) ? 1<<2 : 0)
+					| ((src[i*8+3][j] == 1) ? 1<<3 : 0)
+					| ((src[i*8+4][j] == 1) ? 1<<4 : 0)
+					| ((src[i*8+5][j] == 1) ? 1<<5 : 0)
+					| ((src[i*8+6][j] == 1) ? 1<<6 : 0)
+					| ((src[i*8+7][j] == 1) ? 1<<7 : 0);
 		}
 	}
 }

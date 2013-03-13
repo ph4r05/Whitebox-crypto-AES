@@ -125,6 +125,14 @@ public:
 
 	inline int mod4(int a){ int c = a % 4; return c<0 ? c+4 : c; }
 
+	inline GF2E& ByteSub(GF2E& e){
+		return this->sboxAffineGF2E[getLong(e)];
+	}
+
+	inline long ByteSub(long e){
+		return this->sboxAffine[e];
+	}
+
  	inline void ByteSub(mat_GF2E& state){
 		int i,j;
 		for(i=0;i<4;i++){
@@ -132,6 +140,14 @@ public:
 				state[i][j] = this->sboxAffineGF2E[getLong(state[i][j])];
 			}
 		}
+	}
+
+	inline GF2E& ByteSubInv(GF2E& e){
+		return this->sboxAffineInvGF2E[getLong(e)];
+	}
+
+	inline long ByteSubInv(long e){
+		return this->sboxAffineInv[e];
 	}
 
 	inline void ByteSubInv(mat_GF2E& state){
