@@ -2,7 +2,9 @@
  * WBAES.h
  *
  *  Created on: Mar 10, 2013
- *      Author: ph4r05
+ *  Author: Dusan Klinec (ph4r05)
+ *
+ *  License: GPLv3 [http://www.gnu.org/licenses/gpl-3.0.html]
  */
 
 #ifndef WBAES_H_

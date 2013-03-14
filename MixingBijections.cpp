@@ -2,7 +2,9 @@
  * MixingBijections.cpp
  *
  *  Created on: Mar 7, 2013
- *      Author: ph4r05
+ *  Author: Dusan Klinec (ph4r05)
+ *
+ *  License: GPLv3 [http://www.gnu.org/licenses/gpl-3.0.html]
  */
 
 #include "MixingBijections.h"

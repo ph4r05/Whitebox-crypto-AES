@@ -2,7 +2,9 @@
  * GenericAES.h
  *
  *  Created on: Mar 1, 2013
- *      Author: ph4r05
+ *  Author: Dusan Klinec (ph4r05)
+ *
+ *  License: GPLv3 [http://www.gnu.org/licenses/gpl-3.0.html]
  */
 
 #ifndef GENERICAES_H_

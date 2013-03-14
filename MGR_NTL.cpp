@@ -4,6 +4,9 @@
 // Version     :
 // Copyright   : Your copyright notice
 // Description : Hello World in C, Ansi-style
+// *  Author: Dusan Klinec (ph4r05)
+// *
+// *  License: GPLv3 [http://www.gnu.org/licenses/gpl-3.0.html]
 //============================================================================
 
 #include <stdio.h>
