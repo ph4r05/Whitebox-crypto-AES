@@ -343,6 +343,12 @@ public:
  	MB08x08_TABLE MB_L08x08 [MB_CNT_08x08_ROUNDS][MB_CNT_08x08_PER_ROUND];
  	MB32x32_TABLE MB_MB32x32[MB_CNT_32x32_ROUNDS][MB_CNT_32x32_PER_ROUND];
  	
+ 	//
+ 	// Input output coding - for each byte of state array.
+ 	// It is necessary to know this mappings to use ciphers, since cipher assumes plaintext/ciphertext is encoded
+ 	// using this bijections.
+ 	CODING8X8_TABLE coding08x08[16];
+
  	// 
  	// Input/output bijection encoding
  	// There are 4 layers of XOR tables.
@@ -387,6 +393,25 @@ public:
  	int generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject);
  	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject);
  	
+ 	inline void BYTEArr_to_vec_GF2E(const BYTE * arr, size_t len, NTL::vec_GF2E& dst){
+ 		unsigned int j;
+ 		dst.SetLength(len);
+		for(j=0; j<len; j++){
+			dst.put(j, GF2EFromLong(arr[j], AES_FIELD_DIM));
+		}
+ 	}
+
+ 	// Compares two GF2E vectors - long values has to be equal => return true otherwise fase
+ 	inline bool compare_vec_GF2E(const NTL::vec_GF2E& a, const NTL::vec_GF2E& b){
+ 		int i,n = a.length();
+ 		if (n!=b.length()) return false;
+ 		for(i=0; i<n; i++){
+ 			if (getLong(a[i]) != getLong(b[i])) return false;
+ 		}
+
+ 		return true;
+ 	}
+
  	// Converts column of 8 binary values to BYTE value
     inline BYTE matGF2_to_BYTE(NTL::mat_GF2& src, int row, int col){
     	return ColBinaryVectorToByte(src, row, col);

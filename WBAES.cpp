@@ -48,6 +48,15 @@ void WBAES::encrypt(W128b& state){
 			ires[i+2].l = this->eTab2[r][i+2][state.B[shiftRows[i+2]]].l;
 			ires[i+3].l = this->eTab2[r][i+3][state.B[shiftRows[i+3]]].l;
 
+			// In the last round, result is directly in T2 boxes
+			if (r==(N_ROUNDS-1)){
+				state.B[i+0] = ires[i+0].B[0];
+				state.B[i+1] = ires[i+1].B[0];
+				state.B[i+2] = ires[i+2].B[0];
+				state.B[i+3] = ires[i+3].B[0];
+				continue;
+			}
+
 			// XOR results of T2 boxes
 			op8xor(ires[i+0], ires[i+1], this->eXTab[r][i/4][0], ires[i+0]);  // 1 xor 2
 			op8xor(ires[i+2], ires[i+3], this->eXTab[r][i/4][1], ires[i+2]);  // 3 xor 4
