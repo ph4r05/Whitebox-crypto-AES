@@ -155,6 +155,7 @@ void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize){
 	int 						codingCount;
 	int							i,j,r,b,k;
 	WBAES						genAES;
+	GenericAES					defaultAES;
 
 	// Initialize IO coding map (networked fashion of mappings)
 	encGenerateCodingMap(codingMap, &codingCount);
@@ -175,6 +176,8 @@ void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize){
 	// Generate random dual AES instances, key schedule
 	vec_GF2E vecRoundKey[N_ROUNDS][N_SECTIONS];
 	vec_GF2E vecKey[N_ROUNDS][N_SECTIONS];
+	vec_GF2E expandedKey;
+	defaultAES.initFromIndex(0,0);			// index 0,0 represents 0x11D and 0x03, so default AES
 	for(i=0; i<N_ROUNDS * N_SECTIONS; i++){
 		int rndPolynomial = 0;//rand() % AES_IRRED_POLYNOMIALS;
 		int rndGenerator = 0;//rand() % AES_GENERATORS;
@@ -194,11 +197,11 @@ void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize){
 	// TODO: finish this...
 
 	// 0..9 rounds, include MixColumns
-	for(r=0; r<N_ROUNDS-1; r++){
+	for(r=0; r<N_ROUNDS; r++){
 		// Iterate by mix cols/sections/dual AES-es
 		for(i=0; i<=N_SECTIONS; i++){
 			// Restore modulus for current AES for computation in GF2E.
-			this->AESCipher[i].restoreModulus();
+			this->AESCipher[r*4 + i].restoreModulus();
 
 			//
 			// Build L lookup table from L_k stripes using shiftRowsLBijection (Lr_k is just simplification for indexes)
@@ -227,6 +230,7 @@ void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize){
 			for(j=0; j<N_SECTIONS; j++){
 				// Build tables - for each byte
 				for(b=0; b<256; b++){
+					GF2E		tmpGF2E;
 					W32b 		mapResult;
 					mat_GF2 	mPreMB;
 					mat_GF2E 	mcres;
@@ -234,31 +238,91 @@ void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize){
 
 					// Decode input with IO coding
 					bb = iocoding_encode08x08(b, codingMap.eT2[r][i][j].IC, true, pCoding04x04, pCoding08x08);
+
+					// Dual AES mapping.
+					// Tapply(curAES, TapplyInv(prevAES, state)) for rounds > 0
+					// Tapply(curAES, state) for round == 0 	(no inversion could be done, first round)
+					// TODO: TapplyInv is encoded in last output 128bit coding
+					tmpGF2E = GF2EFromLong(bb, AES_FIELD_DIM);
+
+					// Applying inverse transformation is a little bit tricky here, illustration follows.
+					// We know that indexes to T0 T1 T2 T3 from state array will take ShiftRows() into account:
+					//
+					// Each quartet corresponds to "section" (i idx) encoded with separate Dual AES. For exampe 0,5,10,15 are
+					// encoded with particular AES (different from quartet 04,09,14,03), feed to T0,1,2,3 boxes and
+					// stored to 0,1,2,3 output bytes.
+					//
+					// In next round we again take 0,5,10,15 from state array, but it previous round it was: 0,9,2,11
+					// each byte encoded by different dual AES: 0,1,2,3 respectively.
+					//
+					// -----------------------------------------------------   +
+					// 00 00 00 00 | 01 01 01 01 | 02 02 02 02 | 03 03 03 03   |  (section or Dual AES used to encode section in this round)
+					// -----------------------------------------------------   v
+				    // 00 05 10 15 | 04 09 14 03 | 08 13 02 07 | 12 01 06 11   |  (state byte selected to feed Tbox == ShiftRows(prevLine))
+					// -----------------------------------------------------   v
+					// 00 01 02 03 | 04 05 06 07 | 08 09 10 11 | 12 13 14 15   |  (will feed Tboxes in THIS round (and result state bytes)
+					// -----------------------------------------------------   v
+					// 00 09 02 11 | 04 13 06 15 | 08 01 10 03 | 12 05 14 07   |  (new indexes in next round in terms of old indexes from prev. rnd.)
+					// -----------------------------------------------------   v
+					// 00 01 02 03 | 01 02 03 00 | 02 03 00 01 | 03 00 01 02   |  (Dual AES used to encode current byte in previous round)
+					// -----------------------------------------------------   +
+
+					// Thus inverse transformation is ((4*r-1) + ((i+j) % 4)), i=section.
+					if(r>0){
+						this->AESCipher[(4*r-1) + ((i+j) % 4)].applyTinv(tmpGF2E);
+					}
+
+					// Now apply new transformation
+					this->AESCipher[4*r + i].applyTinv(tmpGF2E);
+
 					// Mixing bijection - matrix multiplication in GF2, but only in case we are not in first round.
 					// This uses inversion of transformation used in previous round in T3 box, so in first round
 					// no L multiplication is done.
 					if(r>0){
-						mat_GF2 tmpMat(INIT_SIZE, 8, 1);
-						BYTE_to_matGF2(bb, tmpMat, 0, 0);
-						tmpMat = eMB_L08x08[r-1][i*N_SECTIONS].inv * tmpMat;
-						bb = matGF2_to_BYTE(tmpMat, 0, 0);
+						mat_GF2 tmpMat = colVector(tmpGF2E, AES_FIELD_DIM);
+						tmpMat = eMB_L08x08[r-1][i*N_SECTIONS + j].inv * tmpMat;
+						colVector(tmpGF2E, tmpMat, 0);
 					}
 
-					// TODO: build T_i box by composing with round key
+					// Build T_i box by composing with round key
+					//
+					// White box implementation:
+					// shiftRows(state)
+					// addRoundKey(state, shiftRows(ApplyT(K_{r-1}))) when indexing rounds from 1 and key from 0
+					//   K_{r-1} is AES key for default AES,
+					//   apply = linear transformation (multiplication by matrix T from dual AES) for changing default AES to dual AES.
+					//
+					// Rewritten to form:
+					// shiftRows(state)
+					// addRoundKey(state, ApplyT(shiftRows(K_r)))
+					//
+					// K_{r}  [x][y] = vecRoundKey[r][i] [16*(r)   + x*4 + y]
+					// in this round we want to work with AES from same dual AES, thus we are choosing
+					// vecRoundKey[r][i]. Also we have to take effect of ShiftRows() into account, thus apply
+					// ShiftRows() transformation on key indexes.
+					//
+					// Implementation in one section (i) corresponds to one column (0,5,10,15) are indexes taken
+					// for computation in one section in WBAES. Inside section (column) we are iterating over
+					// rows (j). Key is serialized by rows.
+					tmpGF2E += vecRoundKey[r][i][16*r + this->shiftRows[ j*4 + i ]];
 
 					// SBox transformation with dedicated AES for this round and section
-					bb = this->AESCipher[r*4 + i].ByteSub(bb);
-					GF2E tmpE = GF2EFromLong(bb, 8);
+					GF2E tmpE = this->AESCipher[r*4 + i].ByteSub(tmpGF2E);
+
+					// If we are in last round we also have to add k_10, not affected by ShiftRows()
+					if (r==N_ROUNDS-1){
+						tmpE += vecRoundKey[r][i][16*(r+1) + j*4 + i];
+					}
 
 					//
 					// MixColumn, Mixing bijection part
-					//
+					//	only in case 1..9 round
 
 					// Build [0 tmpE 0 0]^T stripe where tmpE is in j-th position
 					mat_GF2E zj(INIT_SIZE, 4, 1);
 					zj.put(j,0, tmpE);
-					// Multiply with MC matrix from our AES dedicated for this round.
-					mcres = this->AESCipher[r*4 + i].mixColMat * zj;
+					// Multiply with MC matrix from our AES dedicated for this round, only in 1..9 rounds (not in last round)
+					mcres = r<N_ROUNDS-1 ? this->AESCipher[r*4 + i].mixColMat * zj : zj;
 					// Apply 32x32 Mixing bijection, mPreMB is initialized to mat_GF2 with 32x1 dimensions,
 					// GF2E values are encoded to binary column vectors
 					mat_GF2E_to_mat_GF2_col(mPreMB, mcres, AES_FIELD_DIM);
@@ -331,6 +395,7 @@ void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize){
 
 
 	delete[] pCoding04x04;
+	delete[] pCoding08x08;
 }
 
 int WBAESGenerator::generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size){
