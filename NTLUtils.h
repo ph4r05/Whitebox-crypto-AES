@@ -134,8 +134,9 @@ inline void mat_GF2E_to_mat_GF2_col(NTL::mat_GF2& dst, const NTL::mat_GF2E& src,
 		for(j=0; j<m; j++){
 			GF2E curElem = src.get(i,j);
 			GF2X curX = curElem.LoopHole();
+			int xdeg = deg(curX);
 			for(k=0; k<elemLen; k++){
-				dst.put(i*elemLen + k, j, curX[k]);
+				dst.put(i*elemLen + k, j, k<=xdeg ? curX[k] : GF2::zero());
 			}
 		}
 	}

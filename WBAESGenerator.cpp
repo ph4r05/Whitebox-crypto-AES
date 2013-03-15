@@ -189,7 +189,7 @@ void WBAESGenerator::generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES]){
 void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, CODING8X8_TABLE* pCoding08x08, bool encrypt){
 	WBACR_AES_CODING_MAP 		codingMap;
 	int 						codingCount;
-	int							i,j,r,b,k;
+	int							i,ii,j,r,b,k;
 	GenericAES					defaultAES;
 
 	// Initialize IO coding map (networked fashion of mappings)
@@ -246,32 +246,34 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 
 	// 0..9 rounds, include MixColumns
 	for(r=0; r<N_ROUNDS; r++){
-		// Iterate by mix cols/sections/dual AES-es
-		for(i=0; i<=N_SECTIONS; i++){
-			// Restore modulus for current AES for computation in GF2E.
+		//
+		// Build L lookup table from L_k stripes using shiftRowsLBijection (Lr_k is just simplification for indexes)
+		// Now we are determining Lbox that will be used in next round.
+		// Also pre-compute lookup tables by matrix multiplication
+		//
+		mat_GF2 * Lr_k[4];
+		BYTE	  Lr_k_table[4][256];
+		// Encoding L bijections are not in the last round so do not work with them
+		for(i=0; r<(N_ROUNDS-1) && i<N_SECTIONS; i++){
 			this->AESCipher[r*4 + i].restoreModulus();
 
-			//
-			// Build L lookup table from L_k stripes using shiftRowsLBijection (Lr_k is just simplification for indexes)
-			// Now we are determining Lbox that will be used in next round.
-			// Also pre-compute lookup tables by matrix multiplication
-			//
-			mat_GF2 * Lr_k[4];
-			BYTE	  Lr_k_table[4][256];
-			// Encoding L bijections are not in the last round so do not work with them
-			for(i=0; r<(N_ROUNDS-1) && i<=N_SECTIONS; i++){
-				for(j=0; j<N_SECTIONS; j++){
-					Lr_k[j] = &(eMB_L08x08[r][nextTbox[i*N_SECTIONS + j]].mb);
-					for(b=0; b<256; b++){
-						mat_GF2 tmpMat(INIT_SIZE, 8, 1);
-						BYTE_to_matGF2(b, tmpMat, 0, 0);
-						// multiply with 8x8 mixing bijection to obtain transformed value
-						tmpMat = *(Lr_k[j]) * tmpMat;
-						// convert back to byte value
-						Lr_k_table[j][b] = matGF2_to_BYTE(tmpMat,0,0);
-					}
+			for(j=0; j<N_SECTIONS; j++){
+				Lr_k[j] = &(eMB_L08x08[r][nextTbox[i*N_SECTIONS + j]].mb);
+				for(b=0; b<256; b++){
+					mat_GF2 tmpMat(INIT_SIZE, 8, 1);
+					BYTE_to_matGF2(b, tmpMat, 0, 0);
+					// multiply with 8x8 mixing bijection to obtain transformed value
+					tmpMat = *(Lr_k[j]) * tmpMat;
+					// convert back to byte value
+					Lr_k_table[j][b] = matGF2_to_BYTE(tmpMat,0,0);
 				}
 			}
+		}
+
+		// Iterate by mix cols/sections/dual AES-es
+		for(i=0; i<N_SECTIONS; i++){
+			// Restore modulus for current AES for computation in GF2E.
+			this->AESCipher[r*4 + i].restoreModulus();
 
 			//
 			// T table construction (Type2)
@@ -479,9 +481,9 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					for(b=0; b<256; b++){
 						int	 bb = b;
 						CODING & xorCoding = j > 2 ? codingMap_edXOR2[r][i][(j-3)*8+k] : codingMap_edXOR1[r][i][j*8+k];
-						bb = iocoding_encode08x08(b, xorCoding.IC, true, pCoding04x04, pCoding08x08);
+						bb = iocoding_encode08x08(bb, xorCoding.IC, true, pCoding04x04, pCoding08x08);
 						bb = HI(bb) ^ LO(bb);
-						bb = iocoding_encode08x08(b, xorCoding.OC, false, pCoding04x04, pCoding08x08);
+						bb = iocoding_encode08x08(bb, xorCoding.OC, false, pCoding04x04, pCoding08x08);
 						//
 						//             ________________________ ROUND
 						//            |   _____________________ Section with same AES structure/MixCol stripe

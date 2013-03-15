@@ -48,6 +48,7 @@
 #define NO_CODING           0x00000000  // IDENTITY CODING
 #define UNASSIGNED_CODING   0xFFFFFFFF  // INVALID CODING
 #define UNUSED_CODING       0xFFFFFFFE  // This coding is not in use (XOR tables use only lower 4 bits for result)
+#define USE_IDENTITY_CODING(idx) ((idx) == NO_CODING || (idx) == UNASSIGNED_CODING || (idx) == UNUSED_CODING)
 // VALID CODINGS ORDINARY NUMBER IS FROM 0x00000000 TO 0xFFFFFFFE (TOTAL COUNT == 2^32 - 1) 
 
 // CODING SIZE TYPE
@@ -451,8 +452,8 @@ public:
  	
  	// Converts column of 32 binary values to W32b value
  	inline void matGF2_to_W32b(NTL::mat_GF2& src, int row, int col, W32b& dst){
- 		assert(src.NumRows() < row*8);
- 		assert(src.NumCols() < col);
+ 		//assert((src.NumRows()) < (row*8));
+ 		//assert((src.NumCols()) < col);
  		dst.l = 0;
  		dst.B[0] = ColBinaryVectorToByte(src, row+8*0, col);
  		dst.B[1] = ColBinaryVectorToByte(src, row+8*1, col);
@@ -471,12 +472,17 @@ public:
     inline BYTE iocoding_encode08x08(BYTE src, HIGHLOW& hl, bool inverse, CODING4X4_TABLE* tbl4, CODING8X8_TABLE* tbl8){
         if (hl.type == COD_BITS_4){
             return inverse ?
-                  HILO(tbl4[hl.H].invCoding[HI(src)], tbl4[hl.L].invCoding[LO(src)])
-                : HILO(tbl4[hl.H].coding[HI(src)], tbl4[hl.L].coding[LO(src)]);
+                  HILO(
+                		  USE_IDENTITY_CODING(hl.H) ? HI(src) : tbl4[hl.H].invCoding[HI(src)],
+                		  USE_IDENTITY_CODING(hl.L)	? LO(src) : tbl4[hl.L].invCoding[LO(src)])
+
+                : HILO(
+                		USE_IDENTITY_CODING(hl.H) ? HI(src) : tbl4[hl.H].coding[HI(src)],
+                		USE_IDENTITY_CODING(hl.L) ? LO(src) : tbl4[hl.L].coding[LO(src)]);
         } else if (hl.type == COD_BITS_8){
             return inverse ?
-                  tbl8[hl.L].invCoding[src]
-                : tbl8[hl.L].coding[src];
+                  (USE_IDENTITY_CODING(hl.L) ? src : tbl8[hl.L].invCoding[src])
+                : (USE_IDENTITY_CODING(hl.L) ? src : tbl8[hl.L].coding[src]);
         }
         
         return src; 
