@@ -46,21 +46,30 @@ int WBAESGenerator::shiftRowsInv[N_BYTES] = {
 };
 
 WBAESGenerator::WBAESGenerator() {
-	// TODO Auto-generated constructor stub
-
+	;
 }
 
 WBAESGenerator::~WBAESGenerator() {
-	// TODO Auto-generated destructor stub
+	;
 }
 
 
 
-void WBAESGenerator::encGenerateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCount){
+void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCount, bool encrypt){
 	int r,i,cIdx=0;
 
+	// Encryption/Decryption dependent operation and tables
+	// yes, shiftRowsInv is used in case of encryption, this is relation saying to which Tbox
+	// will be mapped output byte 0,1,2,3,4,...
+	int (&shiftOp)[N_BYTES] 							 = encrypt ? (this->shiftRowsInv) : (this->shiftRows);
+	W08x32Coding  (&edT2)[N_ROUNDS][N_SECTIONS][4]		 = encrypt ? (map.eT2)  		  : (map.dT2);
+	W08x32Coding  (&edT3)[N_ROUNDS][N_SECTIONS][4]       = encrypt ? (map.eT3)   		  : (map.dT3);
+	CODING        (&edXOR1)[N_ROUNDS][N_SECTIONS][24]    = encrypt ? (map.eXOR1) 		  : (map.dXOR1);
+	CODING        (&edXOR2)[N_ROUNDS][N_SECTIONS][24]    = encrypt ? (map.eXOR2) 		  : (map.dXOR2);
+
+	//
 	// In the last round there is no 04x04 bijective output mapping.
-	// There is no XOR tables and T3 tables. Output from T2 tables is final and
+	// There are no XOR tables and T3 tables. Output from T2 tables is final and
 	// encoded by output 128bit encoding G (not allocated & connected here).
 	// Thus encode only round 1..9. Last round 9 output coding from XOR2 master table
 	// is connected to T2 input coding in round 10 to revert last bijection.
@@ -71,67 +80,67 @@ void WBAESGenerator::encGenerateCodingMap(WBACR_AES_CODING_MAP& map, int *coding
 			// Allocation part, OUTPUT direction creates/defines new mapping
 			//
 			// Allocate new coding for T2, boxes, output direction (input is always set by others)
-			ALLOCW08x32Coding(map.eT2[r][i][0], cIdx);
-			ALLOCW08x32Coding(map.eT2[r][i][1], cIdx);
-			ALLOCW08x32Coding(map.eT2[r][i][2], cIdx);
-			ALLOCW08x32Coding(map.eT2[r][i][3], cIdx);
+			ALLOCW08x32Coding(edT2[r][i][0], cIdx);
+			ALLOCW08x32Coding(edT2[r][i][1], cIdx);
+			ALLOCW08x32Coding(edT2[r][i][2], cIdx);
+			ALLOCW08x32Coding(edT2[r][i][3], cIdx);
 
 			// Allocate new coding for T3, boxes, output direction (input is always set by others)
-			ALLOCW08x32Coding(map.eT3[r][i][0], cIdx);
-			ALLOCW08x32Coding(map.eT3[r][i][1], cIdx);
-			ALLOCW08x32Coding(map.eT3[r][i][2], cIdx);
-			ALLOCW08x32Coding(map.eT3[r][i][3], cIdx);
+			ALLOCW08x32Coding(edT3[r][i][0], cIdx);
+			ALLOCW08x32Coding(edT3[r][i][1], cIdx);
+			ALLOCW08x32Coding(edT3[r][i][2], cIdx);
+			ALLOCW08x32Coding(edT3[r][i][3], cIdx);
 
 			// Allocate new coding for XOR boxes, layer 1,2
-			ALLOCXORCoding(map.eXOR1[r][i], 0, cIdx);
-			ALLOCXORCoding(map.eXOR1[r][i], 8, cIdx);
-			ALLOCXORCoding(map.eXOR1[r][i], 16, cIdx);
+			ALLOCXORCoding(edXOR1[r][i], 0, cIdx);
+			ALLOCXORCoding(edXOR1[r][i], 8, cIdx);
+			ALLOCXORCoding(edXOR1[r][i], 16, cIdx);
 
 			// Allocate new coding for XOR boxes, layer 3,4
-			ALLOCXORCoding(map.eXOR2[r][i], 0, cIdx);
-			ALLOCXORCoding(map.eXOR2[r][i], 8, cIdx);
-			ALLOCXORCoding(map.eXOR2[r][i], 16, cIdx);
+			ALLOCXORCoding(edXOR2[r][i], 0, cIdx);
+			ALLOCXORCoding(edXOR2[r][i], 8, cIdx);
+			ALLOCXORCoding(edXOR2[r][i], 16, cIdx);
 
 			//
 			// Connecting part - connecting allocated codings together
 			//
 
 			// Connect T2 boxes to XOR input boxes
-			CONNECT_W08x32_TO_XOR_H(map.eT2[r][i][0], map.eXOR1[r][i], 0);	// HIGH part of XOR1_0 table IN connect to OUT of T2_0 table
-			CONNECT_W08x32_TO_XOR_L(map.eT2[r][i][1], map.eXOR1[r][i], 0);  // LOW  part of XOR1_0 table IN connect to OUT of T2_1 table
-			CONNECT_W08x32_TO_XOR_H(map.eT2[r][i][2], map.eXOR1[r][i], 8);  // HIGH part of XOR1_1 table IN connect to OUT of T2_2 table
-			CONNECT_W08x32_TO_XOR_L(map.eT2[r][i][3], map.eXOR1[r][i], 8);  // LOW  part of XOR1_1 table IN connect to OUT of T2_3 table
+			CONNECT_W08x32_TO_XOR_H(edT2[r][i][0], edXOR1[r][i], 0);	// HIGH part of XOR1_0 table IN connect to OUT of T2_0 table
+			CONNECT_W08x32_TO_XOR_L(edT2[r][i][1], edXOR1[r][i], 0);  // LOW  part of XOR1_0 table IN connect to OUT of T2_1 table
+			CONNECT_W08x32_TO_XOR_H(edT2[r][i][2], edXOR1[r][i], 8);  // HIGH part of XOR1_1 table IN connect to OUT of T2_2 table
+			CONNECT_W08x32_TO_XOR_L(edT2[r][i][3], edXOR1[r][i], 8);  // LOW  part of XOR1_1 table IN connect to OUT of T2_3 table
 
 			// Connect XOR layer 1 to XOR layer 2
-			CONNECT_XOR_TO_XOR_H(map.eXOR1[r][i], 0, map.eXOR1[r][i], 16);  // HIGH part of XOR1_2 table IN connect to OUT of XOR1_0
-			CONNECT_XOR_TO_XOR_L(map.eXOR1[r][i], 8, map.eXOR1[r][i], 16);  // LOW  part of XOR1_2 table IN connect to OUT of XOR1_1
+			CONNECT_XOR_TO_XOR_H(edXOR1[r][i], 0, edXOR1[r][i], 16);  // HIGH part of XOR1_2 table IN connect to OUT of XOR1_0
+			CONNECT_XOR_TO_XOR_L(edXOR1[r][i], 8, edXOR1[r][i], 16);  // LOW  part of XOR1_2 table IN connect to OUT of XOR1_1
 
 			// Connect result XOR layer 2 to B boxes (T3)
-			CONNECT_XOR_TO_W08x32(map.eXOR1[r][i], 16, map.eT3[r][i][0]);
-			CONNECT_XOR_TO_W08x32(map.eXOR1[r][i], 18, map.eT3[r][i][1]);
-			CONNECT_XOR_TO_W08x32(map.eXOR1[r][i], 20, map.eT3[r][i][2]);
-			CONNECT_XOR_TO_W08x32(map.eXOR1[r][i], 22, map.eT3[r][i][3]);
+			CONNECT_XOR_TO_W08x32(edXOR1[r][i], 16, edT3[r][i][0]);
+			CONNECT_XOR_TO_W08x32(edXOR1[r][i], 18, edT3[r][i][1]);
+			CONNECT_XOR_TO_W08x32(edXOR1[r][i], 20, edT3[r][i][2]);
+			CONNECT_XOR_TO_W08x32(edXOR1[r][i], 22, edT3[r][i][3]);
 
 			// Connect B boxes to XOR
-			CONNECT_W08x32_TO_XOR_H(map.eT3[r][i][0], map.eXOR2[r][i], 0);	// HIGH part of XOR2_0 table IN connect to OUT of T3_0 table
-			CONNECT_W08x32_TO_XOR_L(map.eT3[r][i][1], map.eXOR2[r][i], 0);  // LOW  part of XOR2_0 table IN connect to OUT of T3_1 table
-			CONNECT_W08x32_TO_XOR_H(map.eT3[r][i][2], map.eXOR2[r][i], 8);  // HIGH part of XOR2_1 table IN connect to OUT of T3_2 table
-			CONNECT_W08x32_TO_XOR_L(map.eT3[r][i][3], map.eXOR2[r][i], 8);  // LOW  part of XOR2_1 table IN connect to OUT of T3_3 table
+			CONNECT_W08x32_TO_XOR_H(edT3[r][i][0], edXOR2[r][i], 0);	// HIGH part of XOR2_0 table IN connect to OUT of T3_0 table
+			CONNECT_W08x32_TO_XOR_L(edT3[r][i][1], edXOR2[r][i], 0);  // LOW  part of XOR2_0 table IN connect to OUT of T3_1 table
+			CONNECT_W08x32_TO_XOR_H(edT3[r][i][2], edXOR2[r][i], 8);  // HIGH part of XOR2_1 table IN connect to OUT of T3_2 table
+			CONNECT_W08x32_TO_XOR_L(edT3[r][i][3], edXOR2[r][i], 8);  // LOW  part of XOR2_1 table IN connect to OUT of T3_3 table
 
 			// Connect XOR layer 3 to XOR layer 4
-			CONNECT_XOR_TO_XOR_H(map.eXOR2[r][i], 0, map.eXOR2[r][i], 16);  // HIGH part of XOR1_2 table IN connect to OUT of XOR1_0
-			CONNECT_XOR_TO_XOR_L(map.eXOR2[r][i], 8, map.eXOR2[r][i], 16);  // LOW  part of XOR1_2 table IN connect to OUT of XOR1_1
+			CONNECT_XOR_TO_XOR_H(edXOR2[r][i], 0, edXOR2[r][i], 16);  // HIGH part of XOR1_2 table IN connect to OUT of XOR1_0
+			CONNECT_XOR_TO_XOR_L(edXOR2[r][i], 8, edXOR2[r][i], 16);  // LOW  part of XOR1_2 table IN connect to OUT of XOR1_1
 
 			int newIdx;
 			// Connect result XOR layer 4 to T2 boxes in next round
-			newIdx = WBAESGenerator::shiftRowsLBijection[4*i+0];
-			CONNECT_XOR_TO_W08x32(map.eXOR2[r][i], 16, map.eT2[r+1][ newIdx % 4 ][ newIdx / 4]);
-			newIdx = WBAESGenerator::shiftRowsLBijection[4*i+1];
-			CONNECT_XOR_TO_W08x32(map.eXOR2[r][i], 18, map.eT2[r+1][ newIdx % 4 ][ newIdx / 4]);
-			newIdx = WBAESGenerator::shiftRowsLBijection[4*i+2];
-			CONNECT_XOR_TO_W08x32(map.eXOR2[r][i], 20, map.eT2[r+1][ newIdx % 4 ][ newIdx / 4]);
-			newIdx = WBAESGenerator::shiftRowsLBijection[4*i+3];
-			CONNECT_XOR_TO_W08x32(map.eXOR2[r][i], 22, map.eT2[r+1][ newIdx % 4 ][ newIdx / 4]);
+			newIdx = shiftOp[4*i+0];
+			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT2[r+1][ newIdx % 4 ][ newIdx / 4]);
+			newIdx = shiftOp[4*i+1];
+			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT2[r+1][ newIdx % 4 ][ newIdx / 4]);
+			newIdx = shiftOp[4*i+2];
+			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT2[r+1][ newIdx % 4 ][ newIdx / 4]);
+			newIdx = shiftOp[4*i+3];
+			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT2[r+1][ newIdx % 4 ][ newIdx / 4]);
 		}
 	}
 
@@ -170,7 +179,7 @@ void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize, WBAES& gen
 	GenericAES					defaultAES;
 
 	// Initialize IO coding map (networked fashion of mappings)
-	encGenerateCodingMap(codingMap, &codingCount);
+	generateCodingMap(codingMap, &codingCount, true);
 
 	// Preparing all 4Bits internal encoding/decoding bijections
 	CODING4X4_TABLE* pCoding04x04 = new CODING4X4_TABLE[codingCount+1];

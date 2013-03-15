@@ -176,10 +176,14 @@ public:
     // Type III tables
     AES_TB_TYPE3 eTab3[N_ROUNDS][N_BYTES];
     
+    // universal encryption/decryption method
     void encdec(W128b& state, bool encrypt);
 
     // pure table implementation of encryption of given state
     void encrypt(W128b& state);
+
+    // pure table implementation of decryption of given state
+    void decrypt(W128b& state);
 
     //
     // Decryption tables
@@ -192,9 +196,6 @@ public:
 
     // Type III tables
     AES_TB_TYPE3 dTab3[N_ROUNDS][N_BYTES];
-
-    // pure table implementation of decryption of given state
-    void decrypt(W128b& state);
 };
 
 

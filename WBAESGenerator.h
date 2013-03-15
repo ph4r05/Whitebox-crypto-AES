@@ -175,6 +175,12 @@ typedef struct _WBACR_AES_CODING_MAP {
     CODING              eFINALROUND[N_SECTIONS][4];
     
     // DECRYPT TABLES
+    W08x32Coding        dT2[N_ROUNDS][N_SECTIONS][4];                 // ENCRYPT ROUND CODING MAP
+	W08x32Coding        dT3[N_ROUNDS][N_SECTIONS][4];                 // ENCRYPT ROUND CODING MAP
+	CODING              dXOR1[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD
+	CODING              dXOR2[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD
+	CODING              dFINALROUND[N_SECTIONS][4];
+
     /*CODING32W           INVROUND[N_ROUNDS][N_SECTIONS][4]; // DECRYPT ROUND    
     CODING              INVXOR[N_ROUNDS][N_SECTIONS][24];           // 24 == 8 4-BITS PARTS OF 32-BITS DWORD
     CODING              INVFIRSTROUND[N_SECTIONS][4];*/
@@ -380,11 +386,11 @@ public:
  	//    7. XOR4 -> T2           8 x 4   (round boundary, to next round)
  	// -----------------------------------------------------------------------------
  	//                       15 x 8 x 4 = 480 IO tables in 1 MC stripe 
- 	//                                  = 1920 in one round, 19200 in whole AES 
- 	// TODO: define types & storage tables, use Petr's way of associating bijections to tabes (networking)
- 	//  1 | T2 | T3 | T4 | X1 | X2 | X3 | B1 | B2 | B3 | B4 | X4 | X5 | X6
- 	//  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13
- 	void encGenerateCodingMap(WBACR_AES_CODING_MAP& pCodingMap, int *codingCount);
+ 	//                                  = 1920 in one round, 19200 in whole AES
+ 	//
+ 	// Encryption and decryption has same set of tables - we can use same procedure.
+ 	//
+ 	void generateCodingMap(WBACR_AES_CODING_MAP& pCodingMap, int *codingCount, bool encrypt);
  	
  	//
  	// Generate random mixing bijections and their inverses
