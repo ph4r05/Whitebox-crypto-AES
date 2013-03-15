@@ -400,7 +400,6 @@ void GenericAES::build() {
 	mixColMultiply[3] = g[1];
 
 	// inverse polynomial
-	// TODO:::: !check!!!!
 	mixColMultiplyInv.SetLength(4);
 	mixColMultiplyInv[0] = g[223];
 	mixColMultiplyInv[1] = g[199];

@@ -328,6 +328,14 @@ public:
     //
     static int shiftRows[N_BYTES];
     
+    // Inverse ShiftRows()
+    // | 00 04 08 12 |                          | 00 04 08 12 |
+	// | 01 05 09 13 | --- Shift Rows Inv --->  | 13 01 05 09 |
+	// | 02 06 10 14 |  (cyclic left right)     | 10 14 02 06 |
+	// | 03 07 11 15 |                          | 07 11 15 03 |
+	//
+    static int shiftRowsInv[N_BYTES];
+
 	//
 	// 40 Generic AES instances to generate resulting cipher.
 	// 10 for each round times 4 in each "section" (meaning mix column stripe)
@@ -386,7 +394,7 @@ public:
  	
  	//
  	// Generate random coding (bijections).
- 	void encGenerateTables(BYTE *key, enum keySize ksize);
+ 	void encGenerateTables(BYTE *key, enum keySize ksize, WBAES& genAES);
  	
  	//
  	// Raw method for generating random bijections
