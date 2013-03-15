@@ -227,7 +227,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	for(i=0; i<N_ROUNDS * N_SECTIONS; i++){
 		int rndPolynomial = 0;//rand() % AES_IRRED_POLYNOMIALS;
 		int rndGenerator = 0;//rand() % AES_GENERATORS;
-		this->AESCipher[i].init(rndPolynomial, rndGenerator);
+		this->AESCipher[i].initFromIndex(rndPolynomial, rndGenerator);
 
 		// convert BYTE[] to key
 		BYTEArr_to_vec_GF2E(key, ksize, vecKey[i/N_SECTIONS][i%N_SECTIONS]);
