@@ -189,7 +189,7 @@ void WBAESGenerator::generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES]){
 void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, CODING8X8_TABLE* pCoding08x08, bool encrypt){
 	WBACR_AES_CODING_MAP 		codingMap;
 	int 						codingCount;
-	int							i,ii,j,r,b,k;
+	int							i,j,r,b,k;
 	GenericAES					defaultAES;
 
 	// Initialize IO coding map (networked fashion of mappings)
@@ -244,13 +244,12 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 		assert(this->compare_vec_GF2E(backupKey, expandedKey));
 	}
 
-	// 0..9 rounds, include MixColumns
+	//
+	// Build L lookup table from L_k stripes using shiftRowsLBijection (Lr_k is just simplification for indexes)
+	// Now we are determining Lbox that will be used in next round.
+	// Also pre-compute lookup tables by matrix multiplication
+	//
 	for(r=0; r<N_ROUNDS; r++){
-		//
-		// Build L lookup table from L_k stripes using shiftRowsLBijection (Lr_k is just simplification for indexes)
-		// Now we are determining Lbox that will be used in next round.
-		// Also pre-compute lookup tables by matrix multiplication
-		//
 		mat_GF2 * Lr_k[4];
 		BYTE	  Lr_k_table[4][256];
 		// Encoding L bijections are not in the last round so do not work with them
@@ -441,6 +440,10 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 				}
 			}
 
+			// In final round there are no more XOR and T3 boxes
+			if (r==N_ROUNDS-1){
+				continue;
+			}
 
 			//
 			// B table construction (Type3) - just mixing bijections and L strip
