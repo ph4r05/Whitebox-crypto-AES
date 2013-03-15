@@ -27,6 +27,12 @@
 #include "WBAES.h"
 #include "MixingBijections.h"
 
+// DEBUG
+#define WBAESGEN_IDENTITY_4x4
+#define WBAESGEN_IDENTITY_8x8
+#define WBAESGEN_IDENTITY_MB_08x08
+#define WBAESGEN_IDENTITY_MB_32x32
+
 //  DEFINITIONS OF STRINGS USED AS INSERTION BEGIN OF GENERATED TABLES INTO HEADER FILES  
 //  INSERTION BEHAVIOUR:
 //  1. SEARCH FOR '#keyword#'
@@ -400,9 +406,12 @@ public:
  	int generateMixingBijections(MB08x08_TABLE ** L08x08[MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE ** MB32x32[MB_CNT_32x32_PER_ROUND], int MB32x32rounds);
  	int generateMixingBijections();
  	
+ 	// generates input output 128b coding
+ 	void generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES]);
+
  	//
  	// Generate random coding (bijections).
- 	void encGenerateTables(BYTE *key, enum keySize ksize, WBAES& genAES);
+ 	void generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, CODING8X8_TABLE* pCoding08x08, bool encrypt);
  	
  	//
  	// Raw method for generating random bijections
