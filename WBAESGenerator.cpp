@@ -315,11 +315,8 @@ void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize, WBAES& gen
 						this->AESCipher[(4*r-1) + ((i+j) % 4)].applyTinv(tmpGF2E);
 					}
 
-					// Now apply new transformation - convert to cur Dual AES representation
-					// Not in the last round. Last round consists only of T2 boxes, no dual AES is required.
-					if (r<(N_ROUNDS-1)){
-						this->AESCipher[4*r + i].applyTinv(tmpGF2E);
-					}
+					// Now apply new transformation - convert to cur Dual AES representation from default AES
+					this->AESCipher[4*r + i].applyT(tmpGF2E);
 
 					//
 					// Build T_i box by composing with round key
@@ -351,9 +348,11 @@ void WBAESGenerator::encGenerateTables(BYTE *key, enum keySize ksize, WBAES& gen
 					if (r==N_ROUNDS-1){
 						tmpE += vecRoundKey[r][i][16*(r+1) + j*4 + i];
 
+						// revert last dual AES transformation here
+						this->AESCipher[4*r + i].applyTinv(tmpGF2E);
+
 						// Now we use output encoding G and quit, no MixColumn or Mixing bijections here.
 						bb = getLong(tmpE);
-
 						bb = pCoding08x08[ N_SECTIONS*i + j ].coding[bb];
 						genAES.eTab2[r][i*4+j][b].B[0] = bb;
 						genAES.eTab2[r][i*4+j][b].B[1] = bb;
