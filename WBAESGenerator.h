@@ -314,10 +314,12 @@ public:
     // 00 01 02 03 | 04 05 06 07 | 08 09 10 11 | 12 13 14 15   |
     // -----------------------------------------------------   v
     // 00 13 10 07 | 04 01 14 11 | 08 05 02 15 | 12 09 06 03
+	//
+	// => same as ShiftRowsInv()
     static int shiftRowsLBijection[N_BYTES];
     
     // How shift rows affects state array - indexes.
-    // Selector to state array in the beggining of encryption round
+    // Selector to state array in the beginning of encryption round
     // 
     // Effect of shiftRows operation:
     //

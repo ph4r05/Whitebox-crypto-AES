@@ -153,11 +153,21 @@ public:
 	// | 03 07 11 15 |                          | 15 03 07 11 |
 	//
 	static int shiftRows[N_BYTES];
+
+    // Inverse ShiftRows()
+    // | 00 04 08 12 |                          | 00 04 08 12 |
+	// | 01 05 09 13 | --- Shift Rows Inv --->  | 13 01 05 09 |
+	// | 02 06 10 14 |  (cyclic left right)     | 10 14 02 06 |
+	// | 03 07 11 15 |                          | 07 11 15 03 |
+	//
+    static int shiftRowsInv[N_BYTES];
+
 		
 	// XOR tables
 	W32XTB eXTab[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS];
 	
 	// Type I - just first round
+	// @deprecated - useless here
 	AES_TB_TYPE1 eFirstRoundTab;
 	
 	// Type II tables
@@ -166,8 +176,25 @@ public:
     // Type III tables
     AES_TB_TYPE3 eTab3[N_ROUNDS][N_BYTES];
     
+    void encdec(W128b& state, bool encrypt);
+
     // pure table implementation of encryption of given state
     void encrypt(W128b& state);
+
+    //
+    // Decryption tables
+    //
+    // XOR tables
+    W32XTB dXTab[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS];
+
+    // Type II tables
+    AES_TB_TYPE2 dTab2[N_ROUNDS][N_BYTES];
+
+    // Type III tables
+    AES_TB_TYPE3 dTab3[N_ROUNDS][N_BYTES];
+
+    // pure table implementation of decryption of given state
+    void decrypt(W128b& state);
 };
 
 
