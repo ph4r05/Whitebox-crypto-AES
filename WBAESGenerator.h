@@ -151,7 +151,7 @@ typedef struct _MB_TABLE {
     NTL::mat_GF2     inv;          // SPEED OPTIMALIZATION, CAN BE ALSO COMPUTED FROM coding MEMBER (DUE TO BIJECTION PROPERTY)
     
     _MB_TABLE(void) {
-        //type=MB_IDENTITY;
+
     }   
 } MB_TABLE;
 
@@ -403,7 +403,7 @@ public:
  	// Initializes:
  	//      MB_L32x32 - 8x8 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
  	//      MB_MB08x08 - 32x32 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
- 	int generateMixingBijections(MB08x08_TABLE ** L08x08[MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE ** MB32x32[MB_CNT_32x32_PER_ROUND], int MB32x32rounds);
+ 	int generateMixingBijections(MB08x08_TABLE L08x08[][MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE MB32x32[][MB_CNT_32x32_PER_ROUND], int MB32x32rounds);
  	int generateMixingBijections();
  	
  	// generates input output 128b coding

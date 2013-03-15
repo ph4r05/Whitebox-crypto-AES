@@ -29,6 +29,7 @@
 #include "NTLUtils.h"
 #include "MixingBijections.h"
 #include "WBAES.h"
+#include "WBAESGenerator.h"
 NTL_CLIENT
 
 #define GENERIC_AES_DEBUG 1
@@ -106,7 +107,13 @@ int main(void) {
 	dumpVector(rndB);
 	dumpVector(rndBinv);
 
-	cout << "Done" << endl;
+	cout << "===Done===" << endl << "Going to generate WBAES..." << endl;
+	WBAESGenerator generator;
+	WBAES genAES;
+	BYTE aesKey[16] = {0};
+	CODING8X8_TABLE coding[16];
+ 	generator.generateIO128Coding(coding);
+ 	generator.generateTables(aesKey, KEY_SIZE_16, genAES, coding, true);
 
 }
 

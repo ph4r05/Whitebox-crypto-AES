@@ -147,7 +147,7 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCou
 	*codingCount = cIdx+1;
 }
 
-int WBAESGenerator::generateMixingBijections(MB08x08_TABLE ** L08x08[MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE ** MB32x32[MB_CNT_32x32_PER_ROUND], int MB32x32rounds){
+int WBAESGenerator::generateMixingBijections(MB08x08_TABLE L08x08[][MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE MB32x32[][MB_CNT_32x32_PER_ROUND], int MB32x32rounds){
 	int r,i;
 
 	// Generate all required 8x8 mixing bijections.
@@ -157,8 +157,8 @@ int WBAESGenerator::generateMixingBijections(MB08x08_TABLE ** L08x08[MB_CNT_08x0
 			generateMixingBijection(L08x08[r][i]->mb, 8, 4);
 			L08x08[r][i]->inv = inv(L08x08[r][i]->mb);
 #else
-			ident(L08x08[r][i]->mb, 8);
-			ident(L08x08[r][i]->inv, 8);
+			ident(L08x08[r][i].mb, 8);
+			ident(L08x08[r][i].inv, 8);
 #endif
 		}
 	}
@@ -170,8 +170,8 @@ int WBAESGenerator::generateMixingBijections(MB08x08_TABLE ** L08x08[MB_CNT_08x0
 			generateMixingBijection(MB32x32[r][i]->mb, 32, 4);
 			MB32x32[r][i]->inv = inv(MB32x32[r][i]->mb);
 #else
-			ident(MB32x32[r][i]->mb, 32);
-			ident(MB32x32[r][i]->inv, 32);
+			ident(MB32x32[r][i].mb, 32);
+			ident(MB32x32[r][i].inv, 32);
 #endif
 		}
 	}
@@ -179,7 +179,7 @@ int WBAESGenerator::generateMixingBijections(MB08x08_TABLE ** L08x08[MB_CNT_08x0
 }
 
 int WBAESGenerator::generateMixingBijections(){
-	return generateMixingBijections((MB08x08_TABLE***) &this->MB_L08x08, MB_CNT_08x08_ROUNDS, (MB32x32_TABLE***) &this->MB_MB32x32, MB_CNT_32x32_ROUNDS);
+	return generateMixingBijections(this->MB_L08x08, MB_CNT_08x08_ROUNDS, this->MB_MB32x32, MB_CNT_32x32_ROUNDS);
 }
 
 void WBAESGenerator::generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES]){
@@ -202,7 +202,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	// Generate mixing bijections
 	MB08x08_TABLE eMB_L08x08 [MB_CNT_08x08_ROUNDS][MB_CNT_08x08_PER_ROUND];
 	MB32x32_TABLE eMB_MB32x32[MB_CNT_32x32_ROUNDS][MB_CNT_32x32_PER_ROUND];
-	this->generateMixingBijections((MB08x08_TABLE***) &eMB_L08x08, MB_CNT_08x08_ROUNDS, (MB32x32_TABLE***) &eMB_MB32x32, MB_CNT_32x32_ROUNDS);
+	this->generateMixingBijections(eMB_L08x08, MB_CNT_08x08_ROUNDS, eMB_MB32x32, MB_CNT_32x32_ROUNDS);
 
 	// Encryption/Decryption dependent functions and tables
 	int (&nextTbox)[N_BYTES]     = encrypt ? (this->shiftRowsInv) : (this->shiftRows);
