@@ -304,48 +304,48 @@ class WBAESGenerator {
 public:
 	WBAESGenerator();
 	virtual ~WBAESGenerator();
-	
-	// Effect of shift rows operation for L bijections in T3 tables.
+
+    // Effect of shift rows operation for L bijections in T3 tables.
     // DEF:  shiftRowsLBijection[i] = to which T2 table in next round
     //       will be i-th byte of state passed as input from this round.
-	//
-	// Recall that T2 boxes are indexed by columns, so in first column there
-	// are boxes T2_0, T2_1, T2_2, T2_3. But state array is indexed by rows.
+    //
+    // Recall that T2 boxes are indexed by columns, so in first column there
+    // are boxes T2_0, T2_1, T2_2, T2_3. But state array is indexed by rows.
     //
     // With this information we can construct L^r OUT bijection in T3 tables
     // to match L^{r+1, -1} IN bijection in T2 tables in next round.
     //
     // Every round operates on state byte in this way 
     // Upper row - which byte is selected from state array to 1,2,3,4-th column
-	//		(separated by "|")
-	//
-	// Lower row - which byte is stored
+    //		(separated by "|")
+    //
+    // Lower row - which byte is stored
     //
     // 00 05 10 15 | 01 06 11 12 | 02 07 08 13 | 03 04 09 14   |
     // -----------------------------------------------------   v
     // 00 04 08 12 | 01 05 09 13 | 02 06 10 14 | 03 07 11 15
-	//
-	// Equals with:
-	//                                   +------------------------- ShiftRows() in next round
-	//               +-------------------|------------------------- L(T2(ShiftRows()))
-	//               |                   |                   +----- Corresponding Tboxes
-	//               |                   |                   |
-	//  00 01 02 03  |  00' 01' 02' 03'  |  00' 01' 02' 03'  |  00 04 08 12
-	//  04 05 06 07  |  05' 06' 07' 04'  |  06' 07' 04' 05'  |  01 05 09 13
-	//  08 09 10 11  |  10' 11' 08' 09'  |  08' 09' 10' 11'  |  02 06 10 14
-	//  12 13 14 15  |  15' 12' 13' 14'  |  14' 15' 12' 13'  |  03 07 11 15
-	//                         |
-	//                         +----------------------------------- Will feed next T2 box
-	//                         |
-	//                  00  04  08  12     |
-	//                  13  01  05  09     |  = ShiftRowsInv(CorrespondingTboxes)
-	//                  10  14  02  07     |
-	//                  07  11  15  03     |
-	//
-	// For example 00',06',08',14' will be feed to T2_0,1,2,3 boxes in new round.
     //
-	// Note: actual table is transposed since Tboxes are indexed by cols.
-	//
+    // Equals with:
+    //                                   +------------------------- ShiftRows() in next round
+    //               +-------------------|------------------------- L(T2(ShiftRows()))
+    //               |                   |                   +----- Corresponding Tboxes
+    //               |                   |                   |
+    //  00 01 02 03  |  00' 01' 02' 03'  |  00' 01' 02' 03'  |  00 04 08 12
+    //  04 05 06 07  |  05' 06' 07' 04'  |  06' 07' 04' 05'  |  01 05 09 13
+    //  08 09 10 11  |  10' 11' 08' 09'  |  08' 09' 10' 11'  |  02 06 10 14
+    //  12 13 14 15  |  15' 12' 13' 14'  |  14' 15' 12' 13'  |  03 07 11 15
+    //                         |
+    //                         +----------------------------------- Will feed next T2 box
+    //                         |
+    //                  00  04  08  12     |
+    //                  13  01  05  09     |  = ShiftRowsInv(CorrespondingTboxes)
+    //                  10  14  02  07     |
+    //                  07  11  15  03     |
+    //
+    // For example 00',06',08',14' will be feed to T2_0,1,2,3 boxes in new round.
+    //
+    // Note: actual table is transposed since Tboxes are indexed by cols.
+    //
     // In next round, shift rows operation will be used again, so 
     // this table gives prescript how input bytes will be
     // mapped to T_boxes in next round (upper row), counting with 
@@ -366,86 +366,86 @@ public:
     // | 03 07 11 15 |                          | 15 03 07 11 |
     //
     static int shiftRows[N_BYTES];
-    
+
     // Inverse ShiftRows()
     // | 00 04 08 12 |                          | 00 04 08 12 |
-	// | 01 05 09 13 | --- Shift Rows Inv --->  | 13 01 05 09 |
-	// | 02 06 10 14 |  (cyclic left right)     | 10 14 02 06 |
-	// | 03 07 11 15 |                          | 07 11 15 03 |
-	//
+    // | 01 05 09 13 | --- Shift Rows Inv --->  | 13 01 05 09 |
+    // | 02 06 10 14 |  (cyclic left right)     | 10 14 02 06 |
+    // | 03 07 11 15 |                          | 07 11 15 03 |
+    //
     static int shiftRowsInv[N_BYTES];
 
-	//
-	// 40 Generic AES instances to generate resulting cipher.
-	// 10 for each round times 4 in each "section" (meaning mix column stripe)
-	//
-	// If all initialized to default AES, you will get default WBAES, otherwise
-	// you will get cipher using dual AES - should raise known attack to high complexities.
-	GenericAES AESCipher[N_ROUNDS * N_SECTIONS];
-	inline GenericAES& getAESCipher(int idx){ return this->AESCipher[idx]; };
-	
-	//
-	// Mixing bijections
-	// Round 2..10, 16x 08x08 MB (L)
-	// Round 1..9,   4x 32x32 MB (MB for each MixColumn stripe)  
     //
- 	MB08x08_TABLE MB_L08x08 [MB_CNT_08x08_ROUNDS][MB_CNT_08x08_PER_ROUND];
- 	MB32x32_TABLE MB_MB32x32[MB_CNT_32x32_ROUNDS][MB_CNT_32x32_PER_ROUND];
- 	
- 	//
- 	// Input output coding - for each byte of state array.
- 	// It is necessary to know this mappings to use ciphers, since cipher assumes plaintext/ciphertext is encoded
- 	// using this bijections.
- 	CODING8X8_TABLE coding08x08[16];
+    // 40 Generic AES instances to generate resulting cipher.
+    // 10 for each round times 4 in each "section" (meaning mix column stripe)
+    //
+    // If all initialized to default AES, you will get default WBAES, otherwise
+    // you will get cipher using dual AES - should raise known attack to high complexities.
+    GenericAES AESCipher[N_ROUNDS * N_SECTIONS];
+    inline GenericAES& getAESCipher(int idx){ return this->AESCipher[idx]; };
 
- 	// 
- 	// Input/output bijection encoding
- 	// There are 4 layers of XOR tables.
- 	//    1 layer - produces XOR result of T2 table output  
- 	//    2 layer - produces resulting XOR result from 4 state bytes
- 	//    3 layer - XOR result from T3 tables
- 	//    4 layer - XOR result from all 4 T3 tables
- 	//    
- 	// Default input/output encoding size = 4bits
- 	// List of all encodings in one generic round, in one section/MC strip.
- 	//    1. XOR4 -> T2           8 x 4    (round boundary, from previous round; in first round - type 1 table instead of XOR4)
- 	//    2. T2   -> XOR1     4 x 8 x 4
- 	//    3. XOR1 -> XOR2     2 x 8 x 4  
- 	//    4. XOR2 -> T3           8 x 4
- 	//    5. T3   -> XOR3     4 x 8 x 4
- 	//    6. XOR3 -> XOR4     2 x 8 x 4
- 	//    7. XOR4 -> T2           8 x 4   (round boundary, to next round)
- 	// -----------------------------------------------------------------------------
- 	//                       15 x 8 x 4 = 480 IO tables in 1 MC stripe 
- 	//                                  = 1920 in one round, 19200 in whole AES
- 	//
- 	// Encryption and decryption has same set of tables - we can use same procedure.
- 	//
- 	void generateCodingMap(WBACR_AES_CODING_MAP& pCodingMap, int *codingCount, bool encrypt);
- 	
- 	//
- 	// Generate random mixing bijections and their inverses
- 	// Initializes:
- 	//      MB_L32x32 - 8x8 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
- 	//      MB_MB08x08 - 32x32 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
- 	int generateMixingBijections(MB08x08_TABLE L08x08[][MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE MB32x32[][MB_CNT_32x32_PER_ROUND], int MB32x32rounds);
- 	int generateMixingBijections();
- 	
+    //
+    // Mixing bijections
+    // Round 2..10, 16x 08x08 MB (L)
+    // Round 1..9,   4x 32x32 MB (MB for each MixColumn stripe)
+    //
+    MB08x08_TABLE MB_L08x08 [MB_CNT_08x08_ROUNDS][MB_CNT_08x08_PER_ROUND];
+    MB32x32_TABLE MB_MB32x32[MB_CNT_32x32_ROUNDS][MB_CNT_32x32_PER_ROUND];
+
+    //
+    // Input output coding - for each byte of state array.
+    // It is necessary to know this mappings to use ciphers, since cipher assumes plaintext/ciphertext is encoded
+    // using this bijections.
+    CODING8X8_TABLE coding08x08[16];
+
+    //
+    // Input/output bijection encoding
+    // There are 4 layers of XOR tables.
+    //    1 layer - produces XOR result of T2 table output
+    //    2 layer - produces resulting XOR result from 4 state bytes
+    //    3 layer - XOR result from T3 tables
+    //    4 layer - XOR result from all 4 T3 tables
+    //
+    // Default input/output encoding size = 4bits
+    // List of all encodings in one generic round, in one section/MC strip.
+    //    1. XOR4 -> T2           8 x 4    (round boundary, from previous round; in first round - type 1 table instead of XOR4)
+    //    2. T2   -> XOR1     4 x 8 x 4
+    //    3. XOR1 -> XOR2     2 x 8 x 4
+    //    4. XOR2 -> T3           8 x 4
+    //    5. T3   -> XOR3     4 x 8 x 4
+    //    6. XOR3 -> XOR4     2 x 8 x 4
+    //    7. XOR4 -> T2           8 x 4   (round boundary, to next round)
+    // -----------------------------------------------------------------------------
+    //                       15 x 8 x 4 = 480 IO tables in 1 MC stripe
+    //                                  = 1920 in one round, 19200 in whole AES
+    //
+    // Encryption and decryption has same set of tables - we can use same procedure.
+    //
+    void generateCodingMap(WBACR_AES_CODING_MAP& pCodingMap, int *codingCount, bool encrypt);
+
+	//
+	// Generate random mixing bijections and their inverses
+	// Initializes:
+	//      MB_L32x32 - 8x8 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
+	//      MB_MB08x08 - 32x32 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
+	int generateMixingBijections(MB08x08_TABLE L08x08[][MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE MB32x32[][MB_CNT_32x32_PER_ROUND], int MB32x32rounds);
+	int generateMixingBijections();
+
  	// generates input output 128b coding
- 	void generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES]);
+	void generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES]);
 
- 	//
- 	// Generate random coding (bijections).
- 	void generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, CODING8X8_TABLE* pCoding08x08, bool encrypt);
+	//
+	// Generate random coding (bijections).
+	void generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, CODING8X8_TABLE* pCoding08x08, bool encrypt);
+
+	//
+	// Raw method for generating random bijections
+	int generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size);
+	int generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size);
+	int generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject);
+	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject);
  	
- 	//
- 	// Raw method for generating random bijections
- 	int generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size);
- 	int generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size);
- 	int generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject);
- 	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject);
- 	
- 	inline void BYTEArr_to_vec_GF2E(const BYTE * arr, size_t len, NTL::vec_GF2E& dst){
+	inline void BYTEArr_to_vec_GF2E(const BYTE * arr, size_t len, NTL::vec_GF2E& dst){
  		unsigned int j;
  		dst.SetLength(len);
 		for(j=0; j<len; j++){
@@ -497,12 +497,12 @@ public:
         if (hl.type == COD_BITS_4){
             return inverse ?
                   HILO(
-                		  USE_IDENTITY_CODING(hl.H) ? HI(src) : tbl4[hl.H].invCoding[HI(src)],
-                		  USE_IDENTITY_CODING(hl.L)	? LO(src) : tbl4[hl.L].invCoding[LO(src)])
+                	USE_IDENTITY_CODING(hl.H) ? HI(src) : tbl4[hl.H].invCoding[HI(src)],
+                	USE_IDENTITY_CODING(hl.L)	? LO(src) : tbl4[hl.L].invCoding[LO(src)])
 
                 : HILO(
-                		USE_IDENTITY_CODING(hl.H) ? HI(src) : tbl4[hl.H].coding[HI(src)],
-                		USE_IDENTITY_CODING(hl.L) ? LO(src) : tbl4[hl.L].coding[LO(src)]);
+                	USE_IDENTITY_CODING(hl.H) ? HI(src) : tbl4[hl.H].coding[HI(src)],
+                	USE_IDENTITY_CODING(hl.L) ? LO(src) : tbl4[hl.L].coding[LO(src)]);
         } else if (hl.type == COD_BITS_8){
             return inverse ?
                   (USE_IDENTITY_CODING(hl.L) ? src : tbl8[hl.L].invCoding[src])

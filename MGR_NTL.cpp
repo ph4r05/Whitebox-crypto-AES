@@ -68,6 +68,14 @@ int main(void) {
  	cout << "Encrypted! " << endl;
  	dumpW128b(newState);
 
+ 	cout << "Going to generate decryption tables" << endl;
+ 	generator.generateTables(aesKey, KEY_SIZE_16, genAES, coding, false);
+ 	cout << "Generated; goind to decrypt back..." << endl;
+ 	genAES.decrypt(newState);
+
+ 	cout << "Encrypted! " << endl;
+ 	dumpW128b(newState);
+
  	cout << endl << "Exiting..." << endl;
 }
 
