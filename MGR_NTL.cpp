@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+#include <iomanip>
 #include <cstdlib>
 #include <ctime>
 
@@ -42,6 +43,35 @@ using namespace NTL;
 int main(void) {
 	long i,j;
 
+	// very poor PRNG seeding, but just for now
+	srand((unsigned)time(0));
+	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
+	GF2E::init(defaultModulus);
+
+	GenericAES defAES;
+	defAES.init(0x11B, 0x03);
+	defAES.printAll();
+
+	cout << "===Done===" << endl << "Going to generate WBAES..." << endl;
+	WBAESGenerator generator;
+	WBAES genAES;
+	BYTE aesKey[16]; memset(aesKey, 0, sizeof(BYTE)*16);
+	CODING8X8_TABLE coding[16];
+ 	generator.generateIO128Coding(coding);
+ 	generator.generateTables(aesKey, KEY_SIZE_16, genAES, coding, true);
+
+ 	cout << "WBAES generated! ; size: " << sizeof(genAES) << endl;
+ 	cout << "Going to encrypt..." << endl;
+ 	W128b newState; memset(&newState, 0, sizeof(W128b));
+ 	genAES.encrypt(newState);
+
+ 	cout << "Encrypted! " << endl;
+ 	dumpW128b(newState);
+
+ 	cout << endl << "Exiting..." << endl;
+}
+
+int dualAESTest(void){
 	// very poor PRNG seeding, but just for now
 	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
@@ -107,14 +137,7 @@ int main(void) {
 	dumpVector(rndB);
 	dumpVector(rndBinv);
 
-	cout << "===Done===" << endl << "Going to generate WBAES..." << endl;
-	WBAESGenerator generator;
-	WBAES genAES;
-	BYTE aesKey[16] = {0};
-	CODING8X8_TABLE coding[16];
- 	generator.generateIO128Coding(coding);
- 	generator.generateTables(aesKey, KEY_SIZE_16, genAES, coding, true);
-
+	return 0;
 }
 
 int MBgen(void){

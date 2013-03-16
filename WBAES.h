@@ -9,6 +9,8 @@
 
 #ifndef WBAES_H_
 #define WBAES_H_
+#include "NTLUtils.h"
+#include <iomanip>
 
 // 4bit operations support on 8bit storage
 #define HI(x)   (((x) >> 4) & 0xF)                      // HI(xxxxyyyy) = 0000xxxx 
@@ -56,12 +58,12 @@ typedef BYTE    MCSTRIP[4];                 // partitional strip obtained by mul
 
 typedef union _W32B{
     BYTE B[4];
-    unsigned long int l;
+    unsigned int l;
 } W32b;
 
 typedef union _W128B{
     BYTE B[16];
-    unsigned long int l[4];
+    unsigned int l[4];
 } W128b;
 
 // XOR table is 8b->4b mapping. Thus simple array of size 2^8=256 with type BYTE.
@@ -122,7 +124,7 @@ typedef XTB    W32XTB[8];
     res.B[1] = HILO(xtb[2][OP2HI(o1.B[1], o2.B[1])] ,                          \
                     xtb[3][OP2LO(o1.B[1], o2.B[1])] );                         \
     res.B[2] = HILO(xtb[4][OP2HI(o1.B[2], o2.B[2])] ,                          \
-                    xtb[5][OP2LO(o1.B[3], o2.B[2])] );                         \
+                    xtb[5][OP2LO(o1.B[2], o2.B[2])] );                         \
     res.B[3] = HILO(xtb[6][OP2HI(o1.B[3], o2.B[3])] ,                          \
                     xtb[7][OP2LO(o1.B[3], o2.B[3])] ); }
 
@@ -134,7 +136,33 @@ typedef XTB    W32XTB[8];
  * Typesafe wrapper for macro OP8XOR.
  */
 inline void op8xor(const W32b& o1, const W32b& o2, const W32XTB& xtb, W32b& res){
+	W32b tmpRes, a1, a2;
+
+	a1.l = o1.l;
+	a2.l = o2.l;
+	tmpRes.l = o1.l ^ o2.l;
+
     OP8XOR(o1, o2, xtb, res);
+
+    if (res.l != tmpRes.l){
+    	cout << "XOR warning!!! expected: " << CHEX(tmpRes.l) << " but got: " << CHEX(res.l) << " = " << CHEX(a1.l) << " ^ " << CHEX(a2.l) << endl;
+    }
+}
+
+inline void dumpW128b(W128b& a){
+	int i;
+	for(i=0; i<16; i++){
+		std::cout << CHEX((int)a.B[i]) << " ";
+		if ((i+1)%4 == 0) std::cout << std::endl;
+	}
+}
+
+inline void dumpW32b(W32b& a){
+	int i;
+	for(i=0; i<4; i++){
+		std::cout << CHEX((int)a.B[i]) << " ";
+	}
+	std::cout << std::endl;
 }
 
 class WBAES {

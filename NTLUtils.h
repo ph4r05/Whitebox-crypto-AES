@@ -25,7 +25,7 @@
 NTL_CLIENT
 
 
-#define CHEX(x) "0x" << setw(2) << setfill('0') << hex << (x)
+#define CHEX(x) "0x" << setw(2) << setfill('0') << hex << ((unsigned long int)x)
 #define GF2EHEX(x) "0x" << setw(2) << setfill('0') << hex << (getLong(x))
 
 /**

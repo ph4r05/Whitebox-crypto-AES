@@ -366,7 +366,7 @@ int generateMixingBijection(mat_GF2& RES, int t, int p){
 	int i,j,k;
 	int curT = p;			// current size of matrix M
 	int tmp;				// current column/row
-	for(; curT <= t; curT+=p){
+	for(; curT < t; curT+=p){
 		int pBlocksInM=curT/p;	// number of pxp sub-matrices in M
 
 		// 1. X matrix - p x t matrix, generated from M matrix using some row

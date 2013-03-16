@@ -31,7 +31,7 @@
 #define WBAESGEN_IDENTITY_4x4
 #define WBAESGEN_IDENTITY_8x8
 #define WBAESGEN_IDENTITY_MB_08x08
-#define WBAESGEN_IDENTITY_MB_32x32
+//#define WBAESGEN_IDENTITY_MB_32x32
 
 //  DEFINITIONS OF STRINGS USED AS INSERTION BEGIN OF GENERATED TABLES INTO HEADER FILES  
 //  INSERTION BEHAVIOUR:
@@ -292,10 +292,10 @@ typedef struct _WBACR_AES_CODING_MAP {
 // Takes 8bit number (BYTE / unsigned char) and stores its bit representation to col vector
 // starting at given coordinates to array (may be mat_GF2). LSB first
 #define ByteToColBinaryVector(c,dst,i,j) {                                  \
-                dst[(i)+0][(j)] = (c) & 1<<0; dst[(i)+1][(j)] = (c) & 1<<1; \
-                dst[(i)+2][(j)] = (c) & 1<<2; dst[(i)+3][(j)] = (c) & 1<<3; \
-                dst[(i)+4][(j)] = (c) & 1<<4; dst[(i)+5][(j)] = (c) & 1<<5; \
-                dst[(i)+6][(j)] = (c) & 1<<6; dst[(i)+7][(j)] = (c) & 1<<7;} 
+                dst[(i)+0][(j)] = ((c) & 1<<0) ? 1:0; dst[(i)+1][(j)] = ((c) & 1<<1) ? 1:0; \
+                dst[(i)+2][(j)] = ((c) & 1<<2) ? 1:0; dst[(i)+3][(j)] = ((c) & 1<<3) ? 1:0; \
+                dst[(i)+4][(j)] = ((c) & 1<<4) ? 1:0; dst[(i)+5][(j)] = ((c) & 1<<5) ? 1:0; \
+                dst[(i)+6][(j)] = ((c) & 1<<6) ? 1:0; dst[(i)+7][(j)] = ((c) & 1<<7) ? 1:0;}
 
 class WBAESGenerator {
 public:

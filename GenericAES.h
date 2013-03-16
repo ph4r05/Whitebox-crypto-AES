@@ -214,6 +214,7 @@ public:
 			}
 
 			resMat = this->mixColMat * tmpMat;
+
 			// copy result back to i-th column
 			for(j=0; j<4; j++){
 				state.put(j,i, resMat.get(j,0));

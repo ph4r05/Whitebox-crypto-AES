@@ -23,26 +23,38 @@ using namespace std;
 using namespace NTL;
 
 int WBAESGenerator::shiftRowsLBijection[N_BYTES] = {
-		0, 13, 10, 7,
+		/*0, 13, 10, 7,
 		4,  1, 14, 11,
 		8,  5,  2, 15,
-		12, 9,  6,  3
+		12, 9,  6,  3*/
+		0,  1,  2,  3,
+		 7,  4,  5,  6,
+		10, 11,  8,  9,
+		13, 14, 15, 12
 };
 
 // Shift rows selector
 int WBAESGenerator::shiftRows[N_BYTES] = {
-		 0,  5, 10, 15,
+		 /*0,  5, 10, 15,
 		 4,  9, 14,  3,
 		 8, 13,  2,  7,
-		12,  1,  6, 11
+		12,  1,  6, 11*/
+		 0,  1,  2,  3,
+		 5,  6,  7,  4,
+		10, 11,  8,  9,
+		15, 12, 13, 14
 };
 
 
 int WBAESGenerator::shiftRowsInv[N_BYTES] = {
-		0, 13, 10, 7,
+		/*0, 13, 10, 7,
 		4,  1, 14, 11,
 		8,  5,  2, 15,
-		12, 9,  6,  3
+		12, 9,  6,  3*/
+		0,  1,  2,  3,
+		 7,  4,  5,  6,
+		10, 11,  8,  9,
+		13, 14, 15, 12
 };
 
 WBAESGenerator::WBAESGenerator() {
@@ -133,6 +145,7 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCou
 
 			int newIdx;
 			// Connect result XOR layer 4 to T2 boxes in next round
+			// TODO: FIX shift rows logic, BUG HERE, probably
 			newIdx = shiftOp[4*i+0];
 			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT2[r+1][ newIdx % 4 ][ newIdx / 4]);
 			newIdx = shiftOp[4*i+1];
@@ -154,8 +167,8 @@ int WBAESGenerator::generateMixingBijections(MB08x08_TABLE L08x08[][MB_CNT_08x08
 	for(r=0; r<L08x08rounds; r++){
 		for(i=0; i<MB_CNT_08x08_PER_ROUND; i++){
 #ifndef WBAESGEN_IDENTITY_MB_08x08
-			generateMixingBijection(L08x08[r][i]->mb, 8, 4);
-			L08x08[r][i]->inv = inv(L08x08[r][i]->mb);
+			generateMixingBijection(L08x08[r][i].mb, 8, 4);
+			L08x08[r][i].inv = inv(L08x08[r][i].mb);
 #else
 			ident(L08x08[r][i].mb, 8);
 			ident(L08x08[r][i].inv, 8);
@@ -167,8 +180,8 @@ int WBAESGenerator::generateMixingBijections(MB08x08_TABLE L08x08[][MB_CNT_08x08
 	for(r=0; r<MB32x32rounds; r++){
 		for(i=0; i<MB_CNT_32x32_PER_ROUND; i++){
 #ifndef WBAESGEN_IDENTITY_MB_32x32
-			generateMixingBijection(MB32x32[r][i]->mb, 32, 4);
-			MB32x32[r][i]->inv = inv(MB32x32[r][i]->mb);
+			generateMixingBijection(MB32x32[r][i].mb, 32, 4);
+			MB32x32[r][i].inv = inv(MB32x32[r][i].mb);
 #else
 			ident(MB32x32[r][i].mb, 32);
 			ident(MB32x32[r][i].inv, 32);
@@ -244,6 +257,9 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 		assert(this->compare_vec_GF2E(backupKey, expandedKey));
 	}
 
+	cout << "Generator key: " << endl;
+	dumpVector(backupKey);
+
 	//
 	// Build L lookup table from L_k stripes using shiftRowsLBijection (Lr_k is just simplification for indexes)
 	// Now we are determining Lbox that will be used in next round.
@@ -261,10 +277,13 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 				for(b=0; b<256; b++){
 					mat_GF2 tmpMat(INIT_SIZE, 8, 1);
 					BYTE_to_matGF2(b, tmpMat, 0, 0);
+
 					// multiply with 8x8 mixing bijection to obtain transformed value
 					tmpMat = *(Lr_k[j]) * tmpMat;
 					// convert back to byte value
 					Lr_k_table[j][b] = matGF2_to_BYTE(tmpMat,0,0);
+// DEBUG
+//					cout << "Lbox["<<r<<"]["<<j<<"]"<<"["<<((int)b)<<"] = " << ((int)Lr_k_table[j][b]) << endl;
 				}
 			}
 		}
@@ -278,6 +297,8 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 			// T table construction (Type2)
 			//
 			for(j=0; j<N_SECTIONS; j++){
+//cout << "T["<<r<<"]["<<i<<"]["<<j<<"] key = 16*" << r << " + " << ((int)shiftRowsOp[ j*4 + i ]) <<  " = " << (vecRoundKey[r][i][16*r + shiftRowsOp[ j*4 + i ]]) << endl;
+
 				// Build tables - for each byte
 				for(b=0; b<256; b++){
 					GF2E		tmpGF2E;
@@ -419,18 +440,30 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// Build [0 tmpE 0 0]^T stripe where tmpE is in j-th position
 					mat_GF2E zj(INIT_SIZE, 4, 1);
 					zj.put(j,0, tmpE);
+
 					// Multiply with MC matrix from our AES dedicated for this round, only in 1..9 rounds (not in last round)
 					if (encrypt){
-						mcres = r<N_ROUNDS-1 ? this->AESCipher[r*4 + i].mixColMat * zj : zj;
+						mcres = r<(N_ROUNDS-1) ? this->AESCipher[r*4 + i].mixColMat * zj : zj;
 					} else {
-						mcres = r<N_ROUNDS-1 ? this->AESCipher[r*4 + i].mixColInvMat * zj : zj;
+						mcres = r<(N_ROUNDS-1) ? this->AESCipher[r*4 + i].mixColInvMat * zj : zj;
 					}
 
 					// Apply 32x32 Mixing bijection, mPreMB is initialized to mat_GF2 with 32x1 dimensions,
 					// GF2E values are encoded to binary column vectors
 					mat_GF2E_to_mat_GF2_col(mPreMB, mcres, AES_FIELD_DIM);
+					//cout << "mPreMB: [" << mPreMB.NumRows() << " x " << mPreMB.NumCols() << " ] " << endl;
+					//dumpMatrix(mPreMB);
+					//cout << endl << "MB: [" << eMB_MB32x32[r][i].mb.NumRows() << " x " << eMB_MB32x32[r][i].mb.NumCols() << " ] " << endl;
+					//dumpMatrix(eMB_MB32x32[r][i].mb); cout << endl;
+
 					mPreMB = eMB_MB32x32[r][i].mb * mPreMB;
+
+					//
+					// TESTING - multiply by inversion
+
+
 					// Convert transformed vector back to values
+					mapResult.l = 0;
 					matGF2_to_W32b(mPreMB, 0, 0, mapResult);
 
 					// Encode mapResult with out encoding
@@ -460,9 +493,12 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// builds binary matrix [0 0 bb 0], if j==2
 					BYTE_to_matGF2(bb, tmpMat, j*8, 0);
 					// Build MB multiplication result
+
+
 					tmpMat = eMB_MB32x32[r][j].inv * tmpMat;
 					// Encode using L mixing bijection (another matrix multiplication)
 					// Map bytes from result via L bijections
+					mapResult.l = 0;
 					mapResult.B[0] = Lr_k_table[0][matGF2_to_BYTE(tmpMat, 8*0, 0)];
 					mapResult.B[1] = Lr_k_table[1][matGF2_to_BYTE(tmpMat, 8*1, 0)];
 					mapResult.B[2] = Lr_k_table[2][matGF2_to_BYTE(tmpMat, 8*2, 0)];
@@ -471,6 +507,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					iocoding_encode32x32(mapResult, mapResult, codingMap_edT3[r][i][j], false, pCoding04x04, pCoding08x08);
 					// Store result value to lookup table
 					genAES_edTab3[r][i*4+j][b] = mapResult;
+// cout << "T3["<<r<<"]["<<i<<"]["<<j<<"]["<<b<<"] = "; dumpW32b(mapResult);
 				}
 			}
 
@@ -485,8 +522,10 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 						int	 bb = b;
 						CODING & xorCoding = j > 2 ? codingMap_edXOR2[r][i][(j-3)*8+k] : codingMap_edXOR1[r][i][j*8+k];
 						bb = iocoding_encode08x08(bb, xorCoding.IC, true, pCoding04x04, pCoding08x08);
+//cout << "XTB["<<r<<"]["<<i<<"]["<<j<<"]["<<k<<"]["<<b<<"] = " << HI(bb) << " ^ " << LO(bb) << " = ";
 						bb = HI(bb) ^ LO(bb);
 						bb = iocoding_encode08x08(bb, xorCoding.OC, false, pCoding04x04, pCoding08x08);
+//cout << bb << endl;
 						//
 						//             ________________________ ROUND
 						//            |   _____________________ Section with same AES structure/MixCol stripe
@@ -495,6 +534,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 						//            |  |  |  |   ____________ Mapping for input value
 						//            |  |  |  |  |
 						genAES_edXTab[r][i][j][k][b] = bb;
+
 					}
 				}
 			}

@@ -448,10 +448,18 @@ void GenericAES::encryptInternal(mat_GF2E& state, vec_GF2E& expandedKey){
 	this->AddRoundKey(state, expandedKey, 0);
 	// rounds
 	for(r=1; r<=10; r++){
+cout << "R[" << (r-1) << "] dump: " << endl; dumpMatrix(state);
 		this->ByteSub(state);
+cout << "R[" << (r-1) << "] ByteSub dump: " << endl; dumpMatrix(state);
 		this->ShiftRows(state);
+cout << "R[" << (r-1) << "] ShiftRows dump: " << endl; dumpMatrix(state);
 		if(r<10) this->MixColumn(state);
+cout << "R[" << (r-1) << "] MixCol dump: " << endl; dumpMatrix(state);
 		this->AddRoundKey(state, expandedKey, 16*r);
+
+		cout << "EndOfRound[" << (r-1) << "] dump: " << endl;
+		dumpMatrix(state);
+		cout << endl;
 	}
 }
 
