@@ -172,6 +172,9 @@ void dumpVector(NTL::GF2E * a, size_t len);
 void dumpVector(long * a, size_t len);
 void dumpMatrix(NTL::mat_GF2E& a);
 void dumpMatrix(NTL::mat_GF2& a);
+void dumpMatrix(ofstream& out, NTL::mat_GF2E& a);
+void dumpVector(ofstream& out, NTL::vec_GF2E& a);
+void dumpVector(ofstream& out, NTL::GF2E * a, size_t len);
 
 /**
  * Initializes matrix from specified array.

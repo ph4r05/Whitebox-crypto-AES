@@ -17,6 +17,8 @@
 // NTL dependencies
 #include "NTLUtils.h"
 #include <iomanip>
+#include <iostream>
+#include <fstream>
 NTL_CLIENT
 
 using namespace std;
@@ -102,5 +104,29 @@ int initMatrix(mat_GF2& M, long *data){
 	}
 
 	return 0;
+}
+
+void dumpMatrix(ofstream& out, NTL::mat_GF2E& a){
+	unsigned int i,j, n = a.NumRows(), m=a.NumCols();
+	for (i=0; i<n; i++){
+		for(j=0; j<m; j++){
+			out << GF2EHEX(a[i][j]) << ",";
+		}
+		out << "|";
+	}
+}
+
+void dumpVector(ofstream& out, NTL::vec_GF2E& a){
+	unsigned int i, len = a.length();
+	for (i=0; i<len; i++){
+		out << GF2EHEX(a[i]) << ",";
+	}
+}
+
+void dumpVector(ofstream& out, NTL::GF2E * a, size_t len){
+	unsigned int i;
+	for (i=0; i<len; i++){
+		out << GF2EHEX(a[i]) << ",";
+	}
 }
 

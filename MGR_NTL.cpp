@@ -31,9 +31,14 @@
 #include "MixingBijections.h"
 #include "WBAES.h"
 #include "WBAESGenerator.h"
+#include <iostream>
+#include <fstream>
 NTL_CLIENT
 
 #define GENERIC_AES_DEBUG 1
+int MBgen(void);
+int dualAESTest(void);
+int A1A2relationsGenerator(void);
 
 // hardcoded elements
 // http://stackoverflow.com/questions/2236197/c-easiest-way-to-initialize-an-stl-vector-with-hardcoded-elements
@@ -47,6 +52,9 @@ int main(void) {
 	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
+
+	A1A2relationsGenerator();
+	exit(2);
 
 	GenericAES defAES;
 	defAES.init(0x11B, 0x03);
@@ -77,6 +85,80 @@ int main(void) {
  	dumpW128b(newState);
 
  	cout << endl << "Exiting..." << endl;
+}
+
+int A1A2relationsGenerator(void){
+	// very poor PRNG seeding, but just for now
+	srand((unsigned)time(0));
+	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
+	GF2E::init(defaultModulus);
+
+	ofstream dump;
+	ofstream dumpA;
+	dump.open("/media/share/AES_A1A2dump.txt");
+	dumpA.open("/media/share/AES_signature.txt");
+
+
+	dump  << "polynomial;generator;qq;ii;problems;A1;A2" << endl;
+	dumpA << "polynomial;generator;sbox;sboxinv;mixcol;mixcolinv" << endl;
+
+	GenericAES defAES;
+	defAES.init(0x11B, 0x03);
+	defAES.printAll();
+
+	int AES_gen, AES_poly;
+	for(AES_poly=0; AES_poly < AES_IRRED_POLYNOMIALS; AES_poly++){
+		for(AES_gen=0; AES_gen < AES_GENERATORS; AES_gen++){
+			GenericAES dualAES;
+			dualAES.initFromIndex(AES_poly, AES_gen);
+
+			// write to file
+			dumpA   << CHEX(GenericAES::irreduciblePolynomials[AES_poly]) << ";"
+					<< CHEX(GenericAES::generators[AES_poly][AES_gen]) << ";";
+			dumpVector(dumpA, dualAES.sboxAffineGF2E, 256); dumpA << ";";
+			dumpVector(dumpA, dualAES.sboxAffineInvGF2E, 256); dumpA << ";";
+			dumpMatrix(dumpA, dualAES.mixColMat); dumpA << ";";
+			dumpMatrix(dumpA, dualAES.mixColInvMat); dumpA << ";";
+			dumpA << endl;
+			dumpA.flush();
+
+			//cout << "A1 and A2 relations, testing all possible" << endl;
+			int ii,qq,probAll;
+			for(qq=0;qq<8; qq++){
+				for(ii=1;ii<256;ii++){
+					int problems=0;
+					vec_GF2E A1;
+					vec_GF2E A2;
+					dualAES.generateA1A2Relations(A1, A2, ii, qq);
+					problems = dualAES.testA1A2Relations(A1, A2);
+
+					// write to file
+					dump    << CHEX(GenericAES::irreduciblePolynomials[AES_poly]) << ";"
+							<< CHEX(GenericAES::generators[AES_poly][AES_gen]) << ";"
+							<< qq << ";" << ii << ";" << problems << ";";
+					dumpVector(dump, A1);
+					dump << ";";
+					dumpVector(dump, A2);
+					dump << endl;
+
+					if (problems>0){
+						cout << "Current Dual AES: "
+								<< CHEX(GenericAES::irreduciblePolynomials[AES_poly]) << ";"
+								<< CHEX(GenericAES::generators[AES_poly][AES_gen]) << endl;
+						cout << "Problem with relations ii="<<ii<<"; qq="<<qq<<"; problems=" << problems << endl;
+						probAll+=1;
+					}
+				}
+			}
+
+			// force write
+			dump.flush();
+		}
+	}
+
+	dumpA.close();
+	dump.close();
+	return 0;
 }
 
 int dualAESTest(void){
@@ -127,16 +209,36 @@ int dualAESTest(void){
 	mat_GF2 sqr = dualAES.makeSquareMatrix(1);
 	dumpMatrix(sqr);
 
-	cout << "A1 and A2 relations " << endl;
+
+	cout << "A1 and A2 relations, testing all possible" << endl;
+	int ii,qq,probAll;
+	for(qq=0;qq<8; qq++){
+		for(ii=1;ii<256;ii++){
+			int problems=0;
+			vec_GF2E A1;
+			vec_GF2E A2;
+			dualAES.generateA1A2Relations(A1, A2, ii, qq);
+			problems = dualAES.testA1A2Relations(A1, A2);
+
+			if (problems>0){
+				cout << "Problem with relations ii="<<ii<<"; qq="<<qq<<"; problems=" << problems << endl;
+				probAll+=1;
+			}
+		}
+	}
+
+	cout << "All relations tested, problemsAll = " << probAll << endl;
+
 	vec_GF2E A1;
 	vec_GF2E A2;
-	dualAES.generateA1A2Relations(A1, A2, 0xd5, 5);
+	dualAES.generateA1A2Relations(A1, A2, 1+(rand() % 0xfe), rand() % 7);
+	cout << "Testing relations A1 A2: Problems = " << dualAES.testA1A2Relations(A1, A2) << endl;
+
 	cout << "A1: " << endl;
 	dumpVector(A1);
 
 	cout << "A2: " << endl;
 	dumpVector(A2);
-	dualAES.testA1A2Relations(A1, A2);
 
 	cout << "Generating random bijections: " << endl;
 	vec_GF2X rndB;

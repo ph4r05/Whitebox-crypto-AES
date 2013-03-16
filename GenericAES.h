@@ -304,6 +304,15 @@ public:
      */
     mat_GF2E mixColMat;
     mat_GF2E mixColInvMat;
+
+    /**
+     * 4. table: Sbox + affine transformation
+     * long representation -> long representation
+     */
+    long sboxAffine[AES_FIELD_SIZE];
+    long sboxAffineInv[AES_FIELD_SIZE];
+    GF2E sboxAffineGF2E[AES_FIELD_SIZE];		// cached object version for easy manipulation
+    GF2E sboxAffineInvGF2E[AES_FIELD_SIZE];	// cached object version for easy manipulation
 private:
 
     /**
@@ -364,15 +373,6 @@ private:
       * generator exponent to generator exponent
       */
      long sbox[AES_FIELD_SIZE];
-     
-     /**
-      * 4. table: Sbox + affine transformation
-      * long representation -> long representation
-      */
-     long sboxAffine[AES_FIELD_SIZE];
-     long sboxAffineInv[AES_FIELD_SIZE];
-     GF2E sboxAffineGF2E[AES_FIELD_SIZE];		// cached object version for easy manipulation
-     GF2E sboxAffineInvGF2E[AES_FIELD_SIZE];	// cached object version for easy manipulation
 };
 
 #endif /* GENERICAES_H_ */

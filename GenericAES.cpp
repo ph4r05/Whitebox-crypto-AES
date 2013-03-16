@@ -345,6 +345,7 @@ void GenericAES::build() {
 #endif
 
 	// Computing whole Sboxes with inversion + affine transformation in generic AES
+	// Sbox in Dual AES: G(x) = T(const) + T(A(T^{-1}(x)))
 	for(i=0; i<AES_FIELD_SIZE; i++){
 		long tmpLong;
 
