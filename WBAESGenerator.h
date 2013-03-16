@@ -297,6 +297,9 @@ typedef struct _WBACR_AES_CODING_MAP {
                 dst[(i)+4][(j)] = ((c) & 1<<4) ? 1:0; dst[(i)+5][(j)] = ((c) & 1<<5) ? 1:0; \
                 dst[(i)+6][(j)] = ((c) & 1<<6) ? 1:0; dst[(i)+7][(j)] = ((c) & 1<<7) ? 1:0;}
 
+// Positive modulo
+#define POS_MOD(a,m) (((a) % (m)) < 0 ? ((a) % (m)) + (m) : (a) % (m))
+
 class WBAESGenerator {
 public:
 	WBAESGenerator();

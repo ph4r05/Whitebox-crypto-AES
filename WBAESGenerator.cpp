@@ -229,8 +229,13 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	defaultAES.expandKey(expandedKey, defaultKey, ksize);	// key schedule for default AES
 	backupKey = expandedKey;								// backup default AES expanded key for test routine
 	for(i=0; i<N_ROUNDS * N_SECTIONS; i++){
-		int rndPolynomial = 0;//rand() % AES_IRRED_POLYNOMIALS;
-		int rndGenerator = 0;//rand() % AES_GENERATORS;
+#ifndef WBAESGEN_IDENTITY_AES
+		int rndPolynomial = rand() % AES_IRRED_POLYNOMIALS;
+		int rndGenerator = rand() % AES_GENERATORS;
+#else
+		int rndPolynomial = 0;
+		int rndGenerator = 0;
+#endif
 		this->AESCipher[i].initFromIndex(rndPolynomial, rndGenerator);
 
 		// convert BYTE[] to key
@@ -324,29 +329,43 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// Applying inverse transformation is a little bit tricky here, illustration follows.
 					// We know that indexes to boxes T0 T1 T2 T3 from state array will take ShiftRows() into account:
 					//
-					// Each quartet corresponds to "section" (i idx) encoded with separate Dual AES. For exampe 0,5,10,15 are
-					// encoded with particular AES (different from quartet 04,09,14,03), feed to T0,1,2,3 boxes and
-					// stored to 0,1,2,3 output bytes.
+					// Each quartet corresponds to "section"/column (i-idx) encoded with separate Dual AES.
+					// For example 0,5,10,15 state bytes are encoded with particular AES (different from quartet 01,06,11,12),
+					// feed to T0,1,2,3 boxes and stored to 00,04,08,12 output state bytes.
 					//
 					// In next round we again take 0,5,10,15 from state array, but it previous round it was: 0,9,2,11
 					// each byte encoded by different dual AES: 0,1,2,3 respectively.
 					//
-					// -----------------------------------------------------   +
-					// 00 00 00 00 | 01 01 01 01 | 02 02 02 02 | 03 03 03 03   |  (section or Dual AES used to encode section in this round)
-					// -----------------------------------------------------   v
-					// 00 05 10 15 | 04 09 14 03 | 08 13 02 07 | 12 01 06 11   |  (state byte selected to feed Tbox == ShiftRows(prevLine))
-					// -----------------------------------------------------   v
-					// 00 01 02 03 | 04 05 06 07 | 08 09 10 11 | 12 13 14 15   |  (will feed Tboxes in THIS round (and result state bytes)
-					// -----------------------------------------------------   v
-					// 00 09 02 11 | 04 13 06 15 | 08 01 10 03 | 12 05 14 07   |  (new indexes in next round in terms of old indexes from prev. rnd.)
-					// -----------------------------------------------------   v
-					// 00 01 02 03 | 01 02 03 00 | 02 03 00 01 | 03 00 01 02   |  (Dual AES used to encode current byte in previous round)
-					// -----------------------------------------------------   +
-
+					// Each column in matrix below is encoded with separate dual AES. (matrix = ShiftRows(stateArray))
+					//
+					//             +------------------------- ShiftRows() again - next round
+					//             |              +---------- In this matrix, we take columns again,
+					//             |              |           so StateByte_00,06,08,14 -> Tbox_00,01,02,03.
+					//             |              |
+					// 00 01 02 03 | 00 01 02 03  | Encoded    0  1  2  3
+					// 05 06 07 04 | 06 07 04 05  | by DUAL    1  2  3  0
+					// 10 11 08 09 | 08 09 10 11  | AES from   2  3  0  1
+					// 15 12 13 14 | 14 15 12 13  | prev. rnd  3  0  1  2
+					//
 					// Thus inverse transformation is ((4*r-1) + ((i+j) % 4)), i=section.
 					// Revert Dual AES representation from previous round to default AES.
+					//
+					// Decryption: principle is the same, so just summary:
+					//
+					//             +------------------------- ShiftRowsInv() again - next round
+					//             |              +---------- In this matrix, we take columns again,
+					//             |              |           so StateByte_00,06,08,14 -> Tbox_00,01,02,03.
+					//             |              |
+					// 00 01 02 03 | 00 01 02 03  | Encoded    0  1  2  3
+					// 07 04 05 06 | 06 07 04 05  | by DUAL    3  0  1  2
+					// 10 11 08 09 | 08 09 10 11  | AES from   2  3  0  1
+					// 13 14 15 12 | 14 15 12 13  | prev. rnd  1  2  3  0
+					//
 					if(r>0){
-						this->AESCipher[(4*r-1) + ((i+j) % 4)].applyTinv(tmpGF2E);
+						if (encrypt)
+							this->AESCipher[(4*(r-1)) + POS_MOD(i+j, 4)].applyTinv(tmpGF2E);
+						else
+							this->AESCipher[(4*(r-1)) + POS_MOD(i-j, 4)].applyTinv(tmpGF2E);
 					}
 
 					// Now apply new transformation - convert to cur Dual AES representation from default AES
@@ -405,7 +424,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 						}
 
 						// revert last dual AES transformation here
-						this->AESCipher[4*r + i].applyTinv(tmpGF2E);
+						this->AESCipher[4*r + i].applyTinv(tmpE);
 
 						// Now we use output encoding G and quit, no MixColumn or Mixing bijections here.
 						bb = getLong(tmpE);

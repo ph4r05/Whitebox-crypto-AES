@@ -136,16 +136,19 @@ typedef XTB    W32XTB[8];
  * Typesafe wrapper for macro OP8XOR.
  */
 inline void op8xor(const W32b& o1, const W32b& o2, const W32XTB& xtb, W32b& res){
+#ifdef WBAESGEN_IDENTITY_4x4
+	// Simple XOR table test - only if IO 4x4 encoding is disabled
 	W32b tmpRes, a1, a2;
 	a1.l = o1.l;
 	a2.l = o2.l;
 	tmpRes.l = o1.l ^ o2.l;
-
+#endif
     OP8XOR(o1, o2, xtb, res);
-
+#ifdef WBAESGEN_IDENTITY_4x4
     if (res.l != tmpRes.l){
     	cout << "XOR warning!!! expected: " << CHEX(tmpRes.l) << " but got: " << CHEX(res.l) << " = " << CHEX(a1.l) << " ^ " << CHEX(a2.l) << endl;
     }
+#endif
 }
 
 inline void dumpW128b(W128b& a){
