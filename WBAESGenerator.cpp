@@ -23,34 +23,28 @@ using namespace std;
 using namespace NTL;
 
 int WBAESGenerator::shiftRowsLBijection[N_BYTES] = {
-		/*0, 13, 10, 7,
+		0, 13, 10, 7,
 		4,  1, 14, 11,
 		8,  5,  2, 15,
-		12, 9,  6,  3*/
-		0,  1,  2,  3,
-		 7,  4,  5,  6,
-		10, 11,  8,  9,
-		13, 14, 15, 12
+		12, 9,  6,  3
+};
+
+int WBAESGenerator::shiftRowsLBijectionInv[N_BYTES] = {
+		 0,  5, 10, 15,
+		 4,  9, 14,  3,
+		 8, 13,  2,  7,
+		12,  1,  6, 11
 };
 
 // Shift rows selector
 int WBAESGenerator::shiftRows[N_BYTES] = {
-		 /*0,  5, 10, 15,
-		 4,  9, 14,  3,
-		 8, 13,  2,  7,
-		12,  1,  6, 11*/
 		 0,  1,  2,  3,
 		 5,  6,  7,  4,
 		10, 11,  8,  9,
 		15, 12, 13, 14
 };
 
-
 int WBAESGenerator::shiftRowsInv[N_BYTES] = {
-		/*0, 13, 10, 7,
-		4,  1, 14, 11,
-		8,  5,  2, 15,
-		12, 9,  6,  3*/
 		0,  1,  2,  3,
 		 7,  4,  5,  6,
 		10, 11,  8,  9,
@@ -71,9 +65,7 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCou
 	int r,i,cIdx=0;
 
 	// Encryption/Decryption dependent operation and tables
-	// yes, shiftRowsInv is used in case of encryption, this is relation saying to which Tbox
-	// will be mapped output byte 0,1,2,3,4,...
-	int (&shiftOp)[N_BYTES] 							 = encrypt ? (this->shiftRowsInv) : (this->shiftRows);
+	int (&shiftOp)[N_BYTES] 							 = encrypt ? (this->shiftRowsLBijection) : (this->shiftRowsLBijectionInv);
 	W08x32Coding  (&edT2)[N_ROUNDS][N_SECTIONS][4]		 = encrypt ? (map.eT2)  		  : (map.dT2);
 	W08x32Coding  (&edT3)[N_ROUNDS][N_SECTIONS][4]       = encrypt ? (map.eT3)   		  : (map.dT3);
 	CODING        (&edXOR1)[N_ROUNDS][N_SECTIONS][24]    = encrypt ? (map.eXOR1) 		  : (map.dXOR1);
@@ -145,15 +137,14 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCou
 
 			int newIdx;
 			// Connect result XOR layer 4 to T2 boxes in next round
-			// TODO: FIX shift rows logic, BUG HERE, probably
 			newIdx = shiftOp[4*i+0];
-			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT2[r+1][ newIdx % 4 ][ newIdx / 4]);
+			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
 			newIdx = shiftOp[4*i+1];
-			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT2[r+1][ newIdx % 4 ][ newIdx / 4]);
+			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
 			newIdx = shiftOp[4*i+2];
-			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT2[r+1][ newIdx % 4 ][ newIdx / 4]);
+			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
 			newIdx = shiftOp[4*i+3];
-			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT2[r+1][ newIdx % 4 ][ newIdx / 4]);
+			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
 		}
 	}
 
@@ -218,8 +209,8 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	this->generateMixingBijections(eMB_L08x08, MB_CNT_08x08_ROUNDS, eMB_MB32x32, MB_CNT_32x32_ROUNDS);
 
 	// Encryption/Decryption dependent functions and tables
-	int (&nextTbox)[N_BYTES]     = encrypt ? (this->shiftRowsInv) : (this->shiftRows);
-	int (&shiftRowsOp)[N_BYTES]  = encrypt ? (this->shiftRows)    : (this->shiftRowsInv);
+	int (&nextTbox)[N_BYTES]     = encrypt ? (this->shiftRowsLBijection) : (this->shiftRowsLBijectionInv);
+	int (&shiftRowsOp)[N_BYTES]  = encrypt ? (this->shiftRows)    		 : (this->shiftRowsInv);
 	W32XTB        (&genAES_edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS]  = encrypt ? genAES.eXTab    : genAES.dXTab;
 	AES_TB_TYPE2  (&genAES_edTab2)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES.eTab2    : genAES.dTab2;
 	AES_TB_TYPE3  (&genAES_edTab3)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES.eTab3    : genAES.dTab3;
@@ -257,22 +248,23 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 		assert(this->compare_vec_GF2E(backupKey, expandedKey));
 	}
 
-	cout << "Generator key: " << endl;
-	dumpVector(backupKey);
-
 	//
 	// Build L lookup table from L_k stripes using shiftRowsLBijection (Lr_k is just simplification for indexes)
 	// Now we are determining Lbox that will be used in next round.
 	// Also pre-compute lookup tables by matrix multiplication
 	//
 	for(r=0; r<N_ROUNDS; r++){
-		mat_GF2 * Lr_k[4];
-		BYTE	  Lr_k_table[4][256];
-		// Encoding L bijections are not in the last round so do not work with them
-		for(i=0; r<(N_ROUNDS-1) && i<N_SECTIONS; i++){
+
+
+		// Iterate by mix cols/sections/dual AES-es
+		for(i=0; i<N_SECTIONS; i++){
+			// Restore modulus for current AES for computation in GF2E.
 			this->AESCipher[r*4 + i].restoreModulus();
 
-			for(j=0; j<N_SECTIONS; j++){
+			mat_GF2 * Lr_k[4];
+			BYTE	  Lr_k_table[4][256];
+
+			for(j=0; r<(N_ROUNDS-1) && j<N_SECTIONS; j++){
 				Lr_k[j] = &(eMB_L08x08[r][nextTbox[i*N_SECTIONS + j]].mb);
 				for(b=0; b<256; b++){
 					mat_GF2 tmpMat(INIT_SIZE, 8, 1);
@@ -282,16 +274,8 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					tmpMat = *(Lr_k[j]) * tmpMat;
 					// convert back to byte value
 					Lr_k_table[j][b] = matGF2_to_BYTE(tmpMat,0,0);
-// DEBUG
-//					cout << "Lbox["<<r<<"]["<<j<<"]"<<"["<<((int)b)<<"] = " << ((int)Lr_k_table[j][b]) << endl;
 				}
 			}
-		}
-
-		// Iterate by mix cols/sections/dual AES-es
-		for(i=0; i<N_SECTIONS; i++){
-			// Restore modulus for current AES for computation in GF2E.
-			this->AESCipher[r*4 + i].restoreModulus();
 
 			//
 			// T table construction (Type2)
@@ -451,11 +435,6 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// Apply 32x32 Mixing bijection, mPreMB is initialized to mat_GF2 with 32x1 dimensions,
 					// GF2E values are encoded to binary column vectors
 					mat_GF2E_to_mat_GF2_col(mPreMB, mcres, AES_FIELD_DIM);
-					//cout << "mPreMB: [" << mPreMB.NumRows() << " x " << mPreMB.NumCols() << " ] " << endl;
-					//dumpMatrix(mPreMB);
-					//cout << endl << "MB: [" << eMB_MB32x32[r][i].mb.NumRows() << " x " << eMB_MB32x32[r][i].mb.NumCols() << " ] " << endl;
-					//dumpMatrix(eMB_MB32x32[r][i].mb); cout << endl;
-
 					mPreMB = eMB_MB32x32[r][i].mb * mPreMB;
 
 					//
@@ -495,7 +474,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// Build MB multiplication result
 
 
-					tmpMat = eMB_MB32x32[r][j].inv * tmpMat;
+					tmpMat = eMB_MB32x32[r][i].inv * tmpMat;
 					// Encode using L mixing bijection (another matrix multiplication)
 					// Map bytes from result via L bijections
 					mapResult.l = 0;

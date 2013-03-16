@@ -79,6 +79,8 @@ void WBAES::encdec(W128b& state, bool encrypt){
 		// Perform rest of the operations on 4 tuples.
 		for(i=0; i<N_BYTES; i+=4){
 			// Apply type 2 tables to all bytes, counting also shift rows selector.
+			// One section ~ 1 column of state array, so select 1 column, first will
+			// have indexes 0,4,8,12. Also take ShiftRows() into consideration.
 			ires[i+0].l = edTab2[r][i+0][state.B[shiftOp[i/4+0*4]]].l;
 			ires[i+1].l = edTab2[r][i+1][state.B[shiftOp[i/4+1*4]]].l;
 			ires[i+2].l = edTab2[r][i+2][state.B[shiftOp[i/4+2*4]]].l;
@@ -105,9 +107,7 @@ void WBAES::encdec(W128b& state, bool encrypt){
 
 
 			// XOR results of T2 boxes
-//cout << "XOR[" << r << "][" << i << "] " << CHEX(ires[i+0].l) << " ^ " << CHEX(ires[i+1].l) << " = ";
 			op8xor(ires[i+0], ires[i+1], edXTab[r][i/4][0], ires[i+0]);  // 1 xor 2
-//cout << CHEX(ires[i+0].l) << endl;
 			op8xor(ires[i+2], ires[i+3], edXTab[r][i/4][1], ires[i+2]);  // 3 xor 4
 			op8xor(ires[i+0], ires[i+2], edXTab[r][i/4][2], ires[i+0]);  // (1 xor 2) xor (3 xor 4) - next XOR stage
 

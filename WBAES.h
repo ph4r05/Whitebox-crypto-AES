@@ -137,7 +137,6 @@ typedef XTB    W32XTB[8];
  */
 inline void op8xor(const W32b& o1, const W32b& o2, const W32XTB& xtb, W32b& res){
 	W32b tmpRes, a1, a2;
-
 	a1.l = o1.l;
 	a2.l = o2.l;
 	tmpRes.l = o1.l ^ o2.l;

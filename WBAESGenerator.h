@@ -28,9 +28,9 @@
 #include "MixingBijections.h"
 
 // DEBUG
-#define WBAESGEN_IDENTITY_4x4
+//#define WBAESGEN_IDENTITY_4x4
 #define WBAESGEN_IDENTITY_8x8
-#define WBAESGEN_IDENTITY_MB_08x08
+//#define WBAESGEN_IDENTITY_MB_08x08
 //#define WBAESGEN_IDENTITY_MB_32x32
 
 //  DEFINITIONS OF STRINGS USED AS INSERTION BEGIN OF GENERATED TABLES INTO HEADER FILES  
@@ -305,32 +305,53 @@ public:
 	// Effect of shift rows operation for L bijections in T3 tables.
     // DEF:  shiftRowsLBijection[i] = to which T2 table in next round
     //       will be i-th byte of state passed as input from this round.
+	//
+	// Recall that T2 boxes are indexed by columns, so in first column there
+	// are boxes T2_0, T2_1, T2_2, T2_3. But state array is indexed by rows.
     //
     // With this information we can construct L^r OUT bijection in T3 tables
     // to match L^{r+1, -1} IN bijection in T2 tables in next round.
     //
     // Every round operates on state byte in this way 
-    // Upper row - which byte is selected, lower row - which byte is stored
-    //
-    // 00 05 10 15 | 04 09 14 03 | 08 12 02 07 | 12 01 06 11   |
-    // -----------------------------------------------------   v
-    // 00 01 02 03 | 04 05 06 07 | 08 09 10 11 | 12 13 14 15
-    // 
-    // In next round, shift rows operation will be used again, so 
-    // This table gives prescript how input bytes will be 
-    // mapped to T_boxes in next round (upper row), counting with 
-    // shift operation in the beggining of the next round.
-    //
-    // Example: First 4 bytes taken from byte array 0,5,10,15 (shift rows effect) 
-    //      will feed T2_0,T2_1,T2_2,T2_3 boxes.
-    // 
-    // 00 01 02 03 | 04 05 06 07 | 08 09 10 11 | 12 13 14 15   |
-    // -----------------------------------------------------   v
-    // 00 13 10 07 | 04 01 14 11 | 08 05 02 15 | 12 09 06 03
+    // Upper row - which byte is selected from state array to 1,2,3,4-th column
+	//		(separated by "|")
 	//
-	// => same as ShiftRowsInv()
+	// Lower row - which byte is stored
+    //
+    // 00 05 10 15 | 01 06 11 12 | 02 07 08 13 | 03 04 09 14   |
+    // -----------------------------------------------------   v
+    // 00 04 08 12 | 01 05 09 13 | 02 06 10 14 | 03 07 11 15
+	//
+	// Equals with:
+	//                                   +------------------------- ShiftRows() in next round
+	//               +-------------------|------------------------- L(T2(ShiftRows()))
+	//               |                   |                   +----- Corresponding Tboxes
+	//               |                   |                   |
+	//  00 01 02 03  |  00' 01' 02' 03'  |  00' 01' 02' 03'  |  00 04 08 12
+	//  04 05 06 07  |  05' 06' 07' 04'  |  06' 07' 04' 05'  |  01 05 09 13
+	//  08 09 10 11  |  10' 11' 08' 09'  |  08' 09' 10' 11'  |  02 06 10 14
+	//  12 13 14 15  |  15' 12' 13' 14'  |  14' 15' 12' 13'  |  03 07 11 15
+	//                         |
+	//                         +----------------------------------- Will feed next T2 box
+	//                         |
+	//                  00  04  08  12     |
+	//                  13  01  05  09     |  = ShiftRowsInv(CorrespondingTboxes)
+	//                  10  14  02  07     |
+	//                  07  11  15  03     |
+	//
+	// For example 00',06',08',14' will be feed to T2_0,1,2,3 boxes in new round.
+    //
+	// Note: actual table is transposed since Tboxes are indexed by cols.
+	//
+    // In next round, shift rows operation will be used again, so 
+    // this table gives prescript how input bytes will be
+    // mapped to T_boxes in next round (upper row), counting with 
+    // shift operation in the beginning of the next round.
     static int shiftRowsLBijection[N_BYTES];
     
+    // Same principle as previous = ShiftRows(CorrespondingTboxes)
+    static int shiftRowsLBijectionInv[N_BYTES];
+
     // How shift rows affects state array - indexes.
     // Selector to state array in the beginning of encryption round
     // 
