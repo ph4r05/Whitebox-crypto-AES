@@ -27,25 +27,6 @@
 #include "WBAES.h"
 #include "MixingBijections.h"
 
-// DEBUG
-//#define WBAESGEN_IDENTITY_AES
-//#define WBAESGEN_IDENTITY_4x4
-#define WBAESGEN_IDENTITY_8x8
-//#define WBAESGEN_IDENTITY_MB_08x08
-//#define WBAESGEN_IDENTITY_MB_32x32
-
-//  DEFINITIONS OF STRINGS USED AS INSERTION BEGIN OF GENERATED TABLES INTO HEADER FILES  
-//  INSERTION BEHAVIOUR:
-//  1. SEARCH FOR '#keyword#'
-//  2. #keyword#user_data#  EXPECTED 
-//  2. REPLACED BY 'keyworduser_data = {...TABLE DATA...}' STRING 
-#define STR_ROUNDTABLES         "#roundTables#"
-#define STR_XORTABLES           "#xorTables#"
-#define STR_FINALROUNDTABLE     "#finalRoundTable#"
-#define STR_INVROUNDTABLES      "#invRoundTables#"
-#define STR_INVXORTABLES        "#invXorTables#"
-#define STR_INVFIRSTROUNDTABLE  "#invFirstRoundTable#"
-
 #define NO_CODING           0x00000000  // IDENTITY CODING
 #define UNASSIGNED_CODING   0xFFFFFFFF  // INVALID CODING
 #define UNUSED_CODING       0xFFFFFFFE  // This coding is not in use (XOR tables use only lower 4 bits for result)
@@ -67,9 +48,6 @@
 #define MB_CNT_08x08_PER_ROUND 16
 #define MB_CNT_32x32_ROUNDS 9
 #define MB_CNT_32x32_PER_ROUND 4
-
-
-#define IOBLOCK_BASEID      10000   //FIRST CODING ID ASSIGNED TO 8-BITS IO BLOCK CONDING. INTRODUCED TO STOP MISMASH BETWEN 4-BITS AND 8-BITS CODING IDs
 
 //
 //  HIGHLOW, DEFINE TWO 4-BITS CODING FOR 8-BITS ARGUMENT
@@ -256,7 +234,7 @@ typedef struct _WBACR_AES_CODING_MAP {
 // This macro accepts XOR tables 32bit wide.
 #define CONNECT_XOR_TO_XOR(xtb1, offset1, xtb3, offset3, HL) {                  \
     xtb3[(offset3)+0].IC.HL = xtb1[(offset1)+0].OC.L;                           \
-	xtb3[(offset3)+1].IC.HL = xtb1[(offset1)+1].OC.L;                           \
+    xtb3[(offset3)+1].IC.HL = xtb1[(offset1)+1].OC.L;                           \
     xtb3[(offset3)+2].IC.HL = xtb1[(offset1)+2].OC.L;                           \
     xtb3[(offset3)+3].IC.HL = xtb1[(offset1)+3].OC.L;                           \
     xtb3[(offset3)+4].IC.HL = xtb1[(offset1)+4].OC.L;                           \
@@ -385,6 +363,13 @@ public:
     GenericAES AESCipher[N_ROUNDS * N_SECTIONS];
     inline GenericAES& getAESCipher(int idx){ return this->AESCipher[idx]; };
 
+    // use given protection or not?
+    bool useDualAESIdentity;
+    bool useIO04x04Identity;
+    bool useIO08x08Identity;
+    bool useMB08x08Identity;
+    bool useMB32x32Identity;
+
     //
     // Mixing bijections
     // Round 2..10, 16x 08x08 MB (L)
@@ -429,11 +414,14 @@ public:
 	// Initializes:
 	//      MB_L32x32 - 8x8 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
 	//      MB_MB08x08 - 32x32 bit mixing bijection (invertible matrix), with 4x4 submatrices with full rank
-	int generateMixingBijections(MB08x08_TABLE L08x08[][MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE MB32x32[][MB_CNT_32x32_PER_ROUND], int MB32x32rounds);
-	int generateMixingBijections();
+	int generateMixingBijections(
+			MB08x08_TABLE L08x08[][MB_CNT_08x08_PER_ROUND], int L08x08rounds,
+			MB32x32_TABLE MB32x32[][MB_CNT_32x32_PER_ROUND], int MB32x32rounds,
+			bool MB08x08Identity=false, bool MB32x32Identity=false);
+	int generateMixingBijections(bool identity=false);
 
  	// generates input output 128b coding
-	void generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES]);
+	void generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES], bool identity=false);
 
 	//
 	// Generate random coding (bijections).
@@ -441,20 +429,16 @@ public:
 
 	//
 	// Raw method for generating random bijections
-	int generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size);
-	int generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size);
-	int generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject);
-	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject);
+	int generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size, bool identity=false);
+	int generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size, bool identity=false);
+	int generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject, bool identity=false);
+	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject, bool identity=false);
  	
 	// test whitebox implementation with test vectors
-	int testWithVectors(bool coutOutput);
+	int testWithVectors(bool coutOutput, WBAES &genAES);
 
 	inline void BYTEArr_to_vec_GF2E(const BYTE * arr, size_t len, NTL::vec_GF2E& dst){
- 		unsigned int j;
- 		dst.SetLength(len);
-		for(j=0; j<len; j++){
-			dst.put(j, GF2EFromLong(arr[j], AES_FIELD_DIM));
-		}
+		charArr_to_vec_GF2E(arr, len, dst);
  	}
 
  	// Converts column of 8 binary values to BYTE value

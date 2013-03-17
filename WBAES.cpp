@@ -151,3 +151,34 @@ void WBAES::encdec(W128b& state, bool encrypt){
 		}
 	}
 }
+
+int WBAES::save(char * filename){
+#ifdef WBAES_BOOTS_SERIALIZATION
+	std::ofstream ofs(filename);
+	boost::archive::binary_oarchive oa(ofs);
+	oa << this;
+	ofs.close();
+
+	return 0;
+#else
+	cerr << "WBAES::save: Boost is not enabled, use WBAES_BOOTS_SERIALIZATION" << endl;
+	return -1;
+#endif
+}
+
+int WBAES::load(char * filename){
+#ifdef WBAES_BOOTS_SERIALIZATION
+	// open the archive
+	std::ifstream ifs(filename);
+	boost::archive::binary_iarchive ia(ifs);
+
+	// restore the schedule from the archive
+	ia >> *this;
+
+	ifs.close();
+	return 0;
+#else
+	cerr << "WBAES::load: Boost is not enabled, use WBAES_BOOTS_SERIALIZATION" << endl;
+	return -1;
+#endif
+}

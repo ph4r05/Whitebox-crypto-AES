@@ -1,8 +1,8 @@
-CXXFLAGS =	-O0 -g -Wall -fmessage-length=0 -L -lntl -std=c++0x
+CXXFLAGS =	-O0 -g -Wall -fmessage-length=0 -L -lntl -std=c++0x 
 
 OBJS =		MGR_NTL.o GenericAES.o NTLUtils.o MixingBijections.o WBAES.o WBAESGenerator.o
 
-LIBS = -lntl
+LIBS = -lntl -L/opt/local/lib/ -lboost_iostreams -lboost_serialization
 
 TARGET =	MGR_NTL
 

@@ -16,6 +16,8 @@
 #include <cstdlib>
 #include <ctime>
 
+#define WBAES_BOOTS_SERIALIZATION 1
+
 // NTL dependencies
 #include <NTL/GF2.h>
 #include <NTL/GF2X.h>
@@ -62,7 +64,9 @@ int main(void) {
 	defAES.printAll();
 
 	WBAESGenerator generator;
-	int errors = generator.testWithVectors(true);
+	WBAES genAES;
+	int errors = generator.testWithVectors(true, genAES);
+
 	cout << "Testing done, errors: " << errors << endl;
 
 /*

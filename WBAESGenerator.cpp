@@ -52,14 +52,16 @@ int WBAESGenerator::shiftRowsInv[N_BYTES] = {
 };
 
 WBAESGenerator::WBAESGenerator() {
-	;
+	useDualAESIdentity=false;
+	useIO04x04Identity=false;
+	useIO08x08Identity=true;
+	useMB08x08Identity=false;
+	useMB32x32Identity=false;
 }
 
 WBAESGenerator::~WBAESGenerator() {
 	;
 }
-
-
 
 void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCount, bool encrypt){
 	int r,i,cIdx=0;
@@ -151,43 +153,46 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCou
 	*codingCount = cIdx+1;
 }
 
-int WBAESGenerator::generateMixingBijections(MB08x08_TABLE L08x08[][MB_CNT_08x08_PER_ROUND], int L08x08rounds, MB32x32_TABLE MB32x32[][MB_CNT_32x32_PER_ROUND], int MB32x32rounds){
+int WBAESGenerator::generateMixingBijections(
+		MB08x08_TABLE L08x08[][MB_CNT_08x08_PER_ROUND], int L08x08rounds,
+		MB32x32_TABLE MB32x32[][MB_CNT_32x32_PER_ROUND], int MB32x32rounds,
+		bool MB08x08Identity, bool MB32x32Identity){
 	int r,i;
 
 	// Generate all required 8x8 mixing bijections.
 	for(r=0; r<L08x08rounds; r++){
 		for(i=0; i<MB_CNT_08x08_PER_ROUND; i++){
-#ifndef WBAESGEN_IDENTITY_MB_08x08
-			generateMixingBijection(L08x08[r][i].mb, 8, 4);
-			L08x08[r][i].inv = inv(L08x08[r][i].mb);
-#else
-			ident(L08x08[r][i].mb, 8);
-			ident(L08x08[r][i].inv, 8);
-#endif
+			if (!MB08x08Identity){
+				generateMixingBijection(L08x08[r][i].mb, 8, 4);
+				L08x08[r][i].inv = inv(L08x08[r][i].mb);
+			} else {
+				ident(L08x08[r][i].mb, 8);
+				ident(L08x08[r][i].inv, 8);
+			}
 		}
 	}
 
 	// Generate all required 32x32 mixing bijections.
 	for(r=0; r<MB32x32rounds; r++){
 		for(i=0; i<MB_CNT_32x32_PER_ROUND; i++){
-#ifndef WBAESGEN_IDENTITY_MB_32x32
-			generateMixingBijection(MB32x32[r][i].mb, 32, 4);
-			MB32x32[r][i].inv = inv(MB32x32[r][i].mb);
-#else
-			ident(MB32x32[r][i].mb, 32);
-			ident(MB32x32[r][i].inv, 32);
-#endif
+			if (!MB32x32Identity){
+				generateMixingBijection(MB32x32[r][i].mb, 32, 4);
+				MB32x32[r][i].inv = inv(MB32x32[r][i].mb);
+			} else {
+				ident(MB32x32[r][i].mb, 32);
+				ident(MB32x32[r][i].inv, 32);
+			}
 		}
 	}
 	return 0;
 }
 
-int WBAESGenerator::generateMixingBijections(){
-	return generateMixingBijections(this->MB_L08x08, MB_CNT_08x08_ROUNDS, this->MB_MB32x32, MB_CNT_32x32_ROUNDS);
+int WBAESGenerator::generateMixingBijections(bool identity){
+	return generateMixingBijections(this->MB_L08x08, MB_CNT_08x08_ROUNDS, this->MB_MB32x32, MB_CNT_32x32_ROUNDS, identity);
 }
 
-void WBAESGenerator::generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES]){
-	this->generate8X8Bijections((CODING8X8_TABLE*) &coding, N_BYTES);
+void WBAESGenerator::generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES], bool identity){
+	this->generate8X8Bijections((CODING8X8_TABLE*) &coding, N_BYTES, identity);
 }
 
 void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, CODING8X8_TABLE* pCoding08x08, bool encrypt){
@@ -201,7 +206,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 
 	// Preparing all 4Bits internal encoding/decoding bijections
 	CODING4X4_TABLE* pCoding04x04 = new CODING4X4_TABLE[codingCount+1];
-	this->generate4X4Bijections(pCoding04x04, codingCount+1);
+	this->generate4X4Bijections(pCoding04x04, codingCount+1, useIO04x04Identity);
 
 	// Generate mixing bijections
 	MB08x08_TABLE eMB_L08x08 [MB_CNT_08x08_ROUNDS][MB_CNT_08x08_PER_ROUND];
@@ -229,13 +234,8 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	defaultAES.expandKey(expandedKey, defaultKey, ksize);	// key schedule for default AES
 	backupKey = expandedKey;								// backup default AES expanded key for test routine
 	for(i=0; i<N_ROUNDS * N_SECTIONS; i++){
-#ifndef WBAESGEN_IDENTITY_AES
-		int rndPolynomial = rand() % AES_IRRED_POLYNOMIALS;
-		int rndGenerator = rand() % AES_GENERATORS;
-#else
-		int rndPolynomial = 0;
-		int rndGenerator = 0;
-#endif
+		int rndPolynomial = useDualAESIdentity ? 0 : rand() % AES_IRRED_POLYNOMIALS;
+		int rndGenerator  = useDualAESIdentity ? 0 : rand() % AES_GENERATORS;
 		this->AESCipher[i].initFromIndex(rndPolynomial, rndGenerator);
 
 		// convert BYTE[] to key
@@ -536,58 +536,57 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	delete[] pCoding04x04;
 }
 
-int WBAESGenerator::generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size){
+int WBAESGenerator::generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size, bool identity){
 	unsigned int i,c;
 	for(i=0; i<size; i++){
-		c |= generate4X4Bijection(&tbl[i].coding, &tbl[i].invCoding);
+		c |= generate4X4Bijection(&tbl[i].coding, &tbl[i].invCoding, identity);
 	}
 
 	return c;
 }
 
-int WBAESGenerator::generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size){
+int WBAESGenerator::generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size, bool identity){
 	unsigned int i,c;
 	for(i=0; i<size; i++){
-		c |= generate8X8Bijection(&tbl[i].coding, &tbl[i].invCoding);
+		c |= generate8X8Bijection(&tbl[i].coding, &tbl[i].invCoding, identity);
 	}
 
 	return c;
 }
 
-int WBAESGenerator::generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject){
-#ifndef WBAESGEN_IDENTITY_4x4
-	return generateRandomBijection((unsigned char*)biject, (unsigned char*)invBiject, 16, 1);
-#else
-	int i;
-	for(i=0; i<16; i++){
-		(*biject)[i]    = i;
-		(*invBiject)[i] = i;
-	}; return 0;
-#endif
+int WBAESGenerator::generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject, bool identity){
+	if (!identity){
+		return generateRandomBijection((unsigned char*)biject, (unsigned char*)invBiject, 16, 1);
+	} else {
+		int i;
+		for(i=0; i<16; i++){
+			(*biject)[i]    = i;
+			(*invBiject)[i] = i;
+		}; return 0;
+	}
 }
 
-int WBAESGenerator::generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject){
-#ifndef WBAESGEN_IDENTITY_8x8
-	return generateRandomBijection((unsigned char*)biject, (unsigned char*)invBiject, 256, 1);
-#else
-	int i;
-	for(i=0; i<256; i++){
-		(*biject)[i]    = i;
-		(*invBiject)[i] = i;
-	}; return 0;
-#endif
+int WBAESGenerator::generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject, bool identity){
+	if (!identity){
+		return generateRandomBijection((unsigned char*)biject, (unsigned char*)invBiject, 256, 1);
+	} else {
+		int i;
+		for(i=0; i<256; i++){
+			(*biject)[i]    = i;
+			(*invBiject)[i] = i;
+		}; return 0;
+	}
 }
 
 
-int WBAESGenerator::testWithVectors(bool coutOutput){
+int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
 
 	// generate table implementation for given key
 	int i, err=0;
-	WBAESGenerator generator;
-	WBAES genAES;
+
 	CODING8X8_TABLE coding[16];
 	W128b plain, cipher, state;
-	generateIO128Coding(coding);
+	generateIO128Coding(coding, true);
 
 	if (coutOutput){
 		cout << "Generating table implementation for testvector key: " << endl;

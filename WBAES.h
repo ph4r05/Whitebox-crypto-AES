@@ -12,6 +12,25 @@
 #include "NTLUtils.h"
 #include <iomanip>
 
+
+// BOOST serialization
+#ifdef WBAES_BOOTS_SERIALIZATION
+#include <cstddef> // NULL
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <boost/archive/tmpdir.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/list.hpp>
+#include <boost/serialization/assume_abstract.hpp>
+#include <boost/serialization/split_free.hpp>
+#endif
+
 // 4bit operations support on 8bit storage
 #define HI(x)   (((x) >> 4) & 0xF)                      // HI(xxxxyyyy) = 0000xxxx 
 #define LO(x)   ((x) & 0xF)                             // LO(xxxxyyyy) = 0000yyyy
@@ -87,14 +106,6 @@ typedef W32b AES_TB_TYPE3[256];
  
 // 8 XOR tables for XORing 2x32bit input to obtain 32bit output 
 typedef XTB    W32XTB[8];
-
-//
-// WBACR AES TABLES DEFINITIONS    
-//
-//typedef MCSTRIP ROUND_TABLE[256];           // 8 x 32 bits table
-//typedef BITS4   XOR_TABLE[256];             // 8 x 4 bits table
-//typedef BYTE    FINALROUND_TABLE[256];      // 8 x 8 bits table
-//typedef BYTE    INVFIRSTROUND_TABLE[256];   // 8 x 8 bits table
 
 // 32bit wide XOR, o1,o2 are of type W32b, xtb is of type W32XTB. 
 // Returns unsigned long int value directly.
@@ -185,7 +196,23 @@ class WBAES {
 public:
 	WBAES();
 	virtual ~WBAES();
+
+#ifdef WBAES_BOOTS_SERIALIZATION
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int /* file_version */){
+		ar & eXTab;
+		ar & eTab2;
+		ar & eTab3;
+		ar & dXTab;
+		ar & dTab2;
+		ar & dTab3;
+	}
+#endif
 	
+	int save(char * filename);
+	int load(char * filename);
+
 	// How shift rows affects state array - indexes.
 	// Selector to state array in the beggining of encryption round
 	// 
@@ -212,7 +239,7 @@ public:
 	
 	// Type I - just first round
 	// @deprecated - useless here
-	AES_TB_TYPE1 eFirstRoundTab;
+	//AES_TB_TYPE1 eFirstRoundTab;
 	
 	// Type II tables
     AES_TB_TYPE2 eTab2[N_ROUNDS][N_BYTES];
@@ -244,5 +271,24 @@ public:
     bool dumpEachRound;
 };
 
+#ifdef WBAES_BOOTS_SERIALIZATION
+// serialization functions
+namespace boost{ namespace serialization {
+template<class Archive> inline void serialize(Archive &ar, union _W32B &i, const unsigned version){
+   ar & make_nvp("l",i.l);
 
+}}};
+
+namespace boost{ namespace serialization {
+template<class Archive> inline void serialize(Archive &ar, union _W128B &i, const unsigned version){
+   ar & i.l[0];
+   ar & i.l[1];
+   ar & i.l[2];
+   ar & i.l[3];
+}}};
+
+BOOST_CLASS_IMPLEMENTATION(union _W32B ,boost::serialization::object_serializable);
+BOOST_CLASS_IMPLEMENTATION(union _W128 ,boost::serialization::object_serializable);
+BOOST_CLASS_IMPLEMENTATION(WBAES, boost::serialization::object_serializable);
+#endif
 #endif /* WBAES_H_ */
