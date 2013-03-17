@@ -28,6 +28,7 @@
 #include "MixingBijections.h"
 
 // DEBUG
+//#define WBAESGEN_IDENTITY_AES
 //#define WBAESGEN_IDENTITY_4x4
 #define WBAESGEN_IDENTITY_8x8
 //#define WBAESGEN_IDENTITY_MB_08x08
@@ -310,7 +311,7 @@ public:
     //       will be i-th byte of state passed as input from this round.
     //
     // Recall that T2 boxes are indexed by columns, so in first column there
-    // are boxes T2_0, T2_1, T2_2, T2_3. But state array is indexed by rows.
+    // are boxes T2_0, T2_1, T2_2, T2_3. But state array is indexed by rows (note: not by design).
     //
     // With this information we can construct L^r OUT bijection in T3 tables
     // to match L^{r+1, -1} IN bijection in T2 tables in next round.
@@ -445,6 +446,9 @@ public:
 	int generate4X4Bijection(BIJECT4X4 *biject, BIJECT4X4 *invBiject);
 	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject);
  	
+	// test whitebox implementation with test vectors
+	int testWithVectors(bool coutOutput);
+
 	inline void BYTEArr_to_vec_GF2E(const BYTE * arr, size_t len, NTL::vec_GF2E& dst){
  		unsigned int j;
  		dst.SetLength(len);
@@ -487,7 +491,7 @@ public:
             return inverse ?
                   HILO(
                 	USE_IDENTITY_CODING(hl.H) ? HI(src) : tbl4[hl.H].invCoding[HI(src)],
-                	USE_IDENTITY_CODING(hl.L)	? LO(src) : tbl4[hl.L].invCoding[LO(src)])
+                	USE_IDENTITY_CODING(hl.L) ? LO(src) : tbl4[hl.L].invCoding[LO(src)])
 
                 : HILO(
                 	USE_IDENTITY_CODING(hl.H) ? HI(src) : tbl4[hl.H].coding[HI(src)],

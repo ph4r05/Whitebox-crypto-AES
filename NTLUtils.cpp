@@ -52,12 +52,7 @@ void dumpVector(NTL::vec_GF2& a){
 }
 
 void dumpVector(long * a, size_t len){
-	unsigned int i;
-	for (i=0; i<len; i++){
-		cout << " " << CHEX(a[i]) << " ";
-		if (((i+1) % 16) == 0) cout << endl;
-	}
-	cout << endl;
+	dumpVectorT<long>(a, len);
 }
 
 void dumpVector(GF2E * a, size_t len){

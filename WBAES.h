@@ -128,6 +128,16 @@ typedef XTB    W32XTB[8];
     res.B[3] = HILO(xtb[6][OP2HI(o1.B[3], o2.B[3])] ,                          \
                     xtb[7][OP2LO(o1.B[3], o2.B[3])] ); }
 
+// Switches indexing of state array from by-row to by-col and vice versa
+//
+// 00 01 02 03        00 04 08 12
+// 04 05 06 07        01 05 09 13
+// 08 09 10 11  --->  02 06 10 14
+// 12 13 14 15        03 07 11 15
+//
+#define IDX_TRANSPOSE(i) ( 4*((i)%4) + ((i)/4) )
+inline int idxTranspose(int i) { return IDX_TRANSPOSE(i); };
+
 /**
  * Simple 32bit wide XOR operation.
  * O1, O2 are W32b operands. 
@@ -166,6 +176,10 @@ inline void dumpW32b(W32b& a){
 	}
 	std::cout << std::endl;
 }
+
+// Reads character vector to W128b, by columns - required format for encryption input
+void arr_to_W128b(unsigned char * src, size_t offset, W128b& dst);
+bool compare_W128b(const W128b& src, const W128b& dst);
 
 class WBAES {
 public:
@@ -226,6 +240,8 @@ public:
 
     // Type III tables
     AES_TB_TYPE3 dTab3[N_ROUNDS][N_BYTES];
+
+    bool dumpEachRound;
 };
 
 

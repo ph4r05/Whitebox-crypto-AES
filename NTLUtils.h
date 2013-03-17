@@ -22,6 +22,7 @@
 #include <NTL/mat_GF2E.h>
 #include <math.h>
 #include <assert.h>
+#include <iomanip>
 NTL_CLIENT
 
 
@@ -175,6 +176,15 @@ void dumpMatrix(NTL::mat_GF2& a);
 void dumpMatrix(ofstream& out, NTL::mat_GF2E& a);
 void dumpVector(ofstream& out, NTL::vec_GF2E& a);
 void dumpVector(ofstream& out, NTL::GF2E * a, size_t len);
+
+template<typename T> void dumpVectorT(T * a, size_t len){
+	unsigned int i;
+	for (i=0; i<len; i++){
+		cout << " " << CHEX(a[i]) << " ";
+		if (((i+1) % 16) == 0) cout << endl;
+	}
+	cout << endl;
+}
 
 // Compares two GF2E vectors - long values has to be equal => return true otherwise fase
 inline bool compare_vec_GF2E(const NTL::vec_GF2E& a, const NTL::vec_GF2E& b){

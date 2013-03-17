@@ -36,8 +36,24 @@ int WBAES::shiftRowsInv[N_BYTES] = {
 		13, 14, 15, 12
 };
 
+void arr_to_W128b(unsigned char * src, size_t offset, W128b& dst){
+	int i=0;
+	for(i=0; i<16; i++){
+		dst.B[idxTranspose(i)] = src[offset+i];
+	}
+}
+
+bool compare_W128b(const W128b& src, const W128b& dst){
+	int i;
+	for(i=0; i<16; i++){
+		if (src.B[i]!=dst.B[i]) return false;
+	}
+
+	return true;
+}
+
 WBAES::WBAES() {
-	;
+	dumpEachRound = false;
 }
 
 WBAES::~WBAES() {
@@ -63,9 +79,6 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->eTab3) 	   : (this->dTab3);
 
 	for(r=0; r<N_ROUNDS; r++){
-//		cout << "inputState[" << r << "] dump: " << endl;
-		dumpW128b(state);
-
 		// Perform rest of the operations on 4 tuples.
 		for(i=0; i<N_BYTES; i+=4){
 			// Apply type 2 tables to all bytes, counting also shift rows selector.
@@ -132,7 +145,9 @@ void WBAES::encdec(W128b& state, bool encrypt){
 			state.B[i/4+12] = r<(N_ROUNDS-1) ? ires[i].B[3] : ires[i+3].B[0];
 		}
 
-		cout << "EndOfRound[" << r << "] dump: " << endl;
-		dumpW128b(state);
+		if (dumpEachRound){
+			cout << "EndOfRound[" << r << "] dump: " << endl;
+			dumpW128b(state);
+		}
 	}
 }

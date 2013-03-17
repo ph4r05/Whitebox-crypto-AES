@@ -240,17 +240,10 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 
 		// convert BYTE[] to key
 		BYTEArr_to_vec_GF2E(key, ksize, vecKey[i/N_SECTIONS][i%N_SECTIONS]);
+		this->AESCipher[i].applyT(vecKey[i/N_SECTIONS][i%N_SECTIONS]);
 
 		// Prepare key schedule from vector representation of encryption key
 		this->AESCipher[i].expandKey(vecRoundKey[i/N_SECTIONS][i%N_SECTIONS], vecKey[i/N_SECTIONS][i%N_SECTIONS], ksize);
-
-		//
-		// TEST ROUTINE: dual AES expanded key === dualAES.applyT(default AES expanded key)
-		// should hold in all cases. Consistency check...
-		this->AESCipher[i].applyT(expandedKey);
-		assert(compare_vec_GF2E(vecRoundKey[i/N_SECTIONS][i%N_SECTIONS], expandedKey));
-		this->AESCipher[i].applyTinv(expandedKey);
-		assert(compare_vec_GF2E(backupKey, expandedKey));
 	}
 
 	//
@@ -394,13 +387,13 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// for computation in one section in WBAES. Inside section (column) we are iterating over
 					// rows (j). Key is serialized by rows.
 					if (encrypt){
-						tmpGF2E += vecRoundKey[r][i][16*r + shiftRowsOp[ j*4 + i ]];
+						tmpGF2E += vecRoundKey[r][i][16*r + idxTranspose(shiftRowsOp[ j*4 + i ])];
 					} else if(r==0) {
 						// Decryption & first round => add k_10 to state.
 						// Same logic applies here
 						// AddRoundKey(State, k_10)  | -> InvShiftRows(State)
 						// InvShiftRows(State)       | -> AddRoundKey(State, InvShiftRows(k_10))
-						tmpGF2E += vecRoundKey[r][i][16*N_ROUNDS + shiftRowsOp[ j*4 + i ]];
+						tmpGF2E += vecRoundKey[r][i][16*N_ROUNDS + idxTranspose(shiftRowsOp[ j*4 + i ])];
 					}
 
 					// SBox transformation with dedicated AES for this round and section
@@ -413,14 +406,14 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// Decryption case:
 					// T(x) = Sbox(x) + k
 					if (!encrypt){
-						tmpE += vecRoundKey[r][i][16*(N_ROUNDS-r-1) + j*4 + i];
+						tmpE += vecRoundKey[r][i][16*(N_ROUNDS-r-1) + idxTranspose(j*4 + i)];
 					}
 
 					// If we are in last round we also have to add k_10, not affected by ShiftRows()
 					if (r==N_ROUNDS-1){
 						// Adding last encryption key (k_10) by special way is performed only in encryption
 						if (encrypt) {
-							tmpE += vecRoundKey[r][i][16*(r+1) + j*4 + i];
+							tmpE += vecRoundKey[r][i][16*(r+1) + idxTranspose(j*4 + i)];
 						}
 
 						// revert last dual AES transformation here
@@ -585,3 +578,74 @@ int WBAESGenerator::generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject
 #endif
 }
 
+
+int WBAESGenerator::testWithVectors(bool coutOutput){
+
+	// generate table implementation for given key
+	int i, err=0;
+	WBAESGenerator generator;
+	WBAES genAES;
+	CODING8X8_TABLE coding[16];
+	W128b plain, cipher, state;
+	generateIO128Coding(coding);
+
+	if (coutOutput){
+		cout << "Generating table implementation for testvector key: " << endl;
+		dumpVectorT(GenericAES::testVect128_key, 16);
+	}
+
+	generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, coding, true);
+	generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, coding, false);
+
+	// see [http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf]
+	if (coutOutput){
+		cout << "Testing Dual Whitebox AES generator implementation on test vectors..." << endl;
+	}
+
+	for(i=0; i<AES_TESTVECTORS; i++){
+		arr_to_W128b(GenericAES::testVect128_plain[i], 0, plain);
+		arr_to_W128b(GenericAES::testVect128_plain[i], 0, state);
+		arr_to_W128b(GenericAES::testVect128_cipher[i], 0, cipher);
+
+		// encryption
+		genAES.encrypt(state);
+		if (coutOutput){
+			cout << "Testvector index: " << i << endl;
+			cout << "=====================" << endl;
+			cout << "Testvector plaintext: " << endl;
+			dumpW128b(plain); cout << endl;
+
+			cout << "Testvector ciphertext: " << endl;
+			dumpW128b(cipher); cout << endl;
+
+			cout << "Enc(plaintext_test): " << endl;
+			dumpW128b(state); cout << endl;
+		}
+
+		if (compare_W128b(state, cipher)){
+			if (coutOutput) cout << "[  OK  ]    Enc(plaintext) == ciphertext_test" << endl;
+		} else {
+			err++;
+			if (coutOutput) cout << "[ ERROR ]:  Enc(plaintext) != ciphertext_test" << endl;
+		}
+
+		genAES.decrypt(state);
+		if (coutOutput){
+			cout << "Dec(Enc(plaintext_test)): " << endl;
+			dumpW128b(state); cout << endl;
+		}
+
+		if (compare_W128b(state, plain)){
+			if (coutOutput) cout << "[  OK  ]    Dec(Enc(plaintext)) == plaintext_test" << endl;
+		} else {
+			err++;
+			if (coutOutput) cout << "[ ERROR ]:  Dec(Enc(plaintext)) != plaintext_test" << endl;
+		}
+
+		if (coutOutput){
+			cout << "==========================================================================================" << endl;
+		}
+	}
+
+	return err;
+}

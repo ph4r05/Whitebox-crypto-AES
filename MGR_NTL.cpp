@@ -54,13 +54,18 @@ int main(void) {
 	GF2E::init(defaultModulus);
 
 	//A1A2relationsGenerator();
-	dualAESTest();
+	//dualAESTest();
 	//exit(2);
 
 	GenericAES defAES;
 	defAES.init(0x11B, 0x03);
 	defAES.printAll();
 
+	WBAESGenerator generator;
+	int errors = generator.testWithVectors(true);
+	cout << "Testing done, errors: " << errors << endl;
+
+/*
 	cout << "===Done===" << endl << "Going to generate WBAES..." << endl;
 	WBAESGenerator generator;
 	WBAES genAES;
@@ -86,6 +91,7 @@ int main(void) {
  	dumpW128b(newState);
 
  	cout << endl << "Exiting..." << endl;
+*/
 }
 
 int A1A2relationsGenerator(void){

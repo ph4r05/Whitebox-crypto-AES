@@ -760,10 +760,6 @@ int GenericAES::testWithVectors(){
 		}
 
 		cout << "==========================================================================================" << endl;
-
-		//if (compare_vec_GF2E(state, cipher)==false){
-		//	cout << "Testvector, mismatch." << endl;
-		//}
 	}
 
 	return 0;
