@@ -42,6 +42,8 @@
 // number of columns of key array
 #define AES_NK_128 4
 #define AES_NK_256 8
+#define AES_TESTVECTORS 4
+#define AES_BYTES 16
 
 // AES KEY size
 enum keySize {
@@ -62,6 +64,17 @@ public:
 	 * List of all generators usable to generate AES FIELD for given irreducible polynomial (1st index)
 	 */
 	static long generators[AES_IRRED_POLYNOMIALS][AES_GENERATORS];
+
+	/**
+	 * AES testvectors
+	 */
+	static unsigned char testVect128_key[AES_BYTES];
+	static unsigned char testVect128_plain[5][AES_BYTES];
+	static unsigned char testVect128_cipher[5][AES_BYTES];
+
+	static unsigned char testVect256_key[32];
+	static unsigned char testVect256_plain[AES_TESTVECTORS][AES_BYTES];
+	static unsigned char testVect256_cipher[AES_TESTVECTORS][AES_BYTES];
 
 	GenericAES();
 	virtual ~GenericAES();
@@ -118,6 +131,9 @@ public:
 	void encryptInternal(mat_GF2E& result, vec_GF2E& expandedKey);
 	void decryptInternal(mat_GF2E& result, vec_GF2E& expandedKey);
 
+	void encrypt(vec_GF2E& result, vec_GF2E& expandedKey);
+	void decrypt(vec_GF2E& result, vec_GF2E& expandedKey);
+
 	void applyT(mat_GF2E& state);
 	void applyT(vec_GF2E& state);
 	void applyT(GF2E& state);
@@ -165,7 +181,7 @@ public:
 		int i,j;
 		for(i=0; i<4; i++){
 			for(j=0; j<4; j++){
-				state[i][j] += expandedKey[offset + i*4+j];
+				state[i][j] += expandedKey[offset + j*4+i];
 			}
 		}
 	}
@@ -241,6 +257,7 @@ public:
 		}
 	}
 
+	int testWithVectors();
 	int testByteSub();
 	int testMixColumn();
 
@@ -313,6 +330,12 @@ public:
     long sboxAffineInv[AES_FIELD_SIZE];
     GF2E sboxAffineGF2E[AES_FIELD_SIZE];		// cached object version for easy manipulation
     GF2E sboxAffineInvGF2E[AES_FIELD_SIZE];	// cached object version for easy manipulation
+
+    /**
+     * Base change matrices
+     */
+    mat_GF2 T;
+    mat_GF2 Tinv;
 private:
 
     /**
@@ -330,12 +353,6 @@ private:
      * Previous context
      */
     GF2EContext prevModulusContext;
-
-    /**
-     * Base change matrices
-     */
-    mat_GF2 T;
-    mat_GF2 Tinv;
 
     /**
      * Mix column modulus polynomial & multiply polynomial

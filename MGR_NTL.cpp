@@ -53,8 +53,9 @@ int main(void) {
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
 
-	A1A2relationsGenerator();
-	exit(2);
+	//A1A2relationsGenerator();
+	dualAESTest();
+	//exit(2);
 
 	GenericAES defAES;
 	defAES.init(0x11B, 0x03);
@@ -122,9 +123,10 @@ int A1A2relationsGenerator(void){
 			dumpA << endl;
 			dumpA.flush();
 
-			//cout << "A1 and A2 relations, testing all possible" << endl;
+			cout << "+";
 			int ii,qq,probAll;
 			for(qq=0;qq<8; qq++){
+				cout << ".";
 				for(ii=1;ii<256;ii++){
 					int problems=0;
 					vec_GF2E A1;
@@ -170,11 +172,13 @@ int dualAESTest(void){
 	GenericAES defAES;
 	defAES.init(0x11B, 0x03);
 	defAES.printAll();
+	defAES.testWithVectors();
 
 	GenericAES dualAES;
 	dualAES.init(0x11D, 0x9d);
 	//dualAES.initFromIndex(15,5);
 	dualAES.printAll();
+	dualAES.testWithVectors();
 
 	// try round key expansion
 	vec_GF2E roundKey;

@@ -453,17 +453,6 @@ public:
 		}
  	}
 
- 	// Compares two GF2E vectors - long values has to be equal => return true otherwise fase
- 	inline bool compare_vec_GF2E(const NTL::vec_GF2E& a, const NTL::vec_GF2E& b){
- 		int i,n = a.length();
- 		if (n!=b.length()) return false;
- 		for(i=0; i<n; i++){
- 			if (getLong(a[i]) != getLong(b[i])) return false;
- 		}
-
- 		return true;
- 	}
-
  	// Converts column of 8 binary values to BYTE value
     inline BYTE matGF2_to_BYTE(NTL::mat_GF2& src, int row, int col){
     	return ColBinaryVectorToByte(src, row, col);

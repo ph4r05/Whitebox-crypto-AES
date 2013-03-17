@@ -14,6 +14,44 @@ using namespace NTL;
 
 //#define GENERIC_AES_DEBUG 1
 
+unsigned char GenericAES::testVect128_key[16] = {
+		0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
+
+unsigned char GenericAES::testVect128_plain[5][AES_BYTES] = {
+		{0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34},
+		{0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a},
+		{0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51},
+		{0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a, 0x52, 0xef},
+		{0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10}
+};
+
+unsigned char GenericAES::testVect128_cipher[5][AES_BYTES] = {
+		{0x39, 0x25, 0x84, 0x1d, 0x02, 0xdc, 0x09, 0xfb, 0xdc, 0x11, 0x85, 0x97, 0x19, 0x6a, 0x0b, 0x32},
+		{0x3a, 0xd7, 0x7b, 0xb4, 0x0d, 0x7a, 0x36, 0x60, 0xa8, 0x9e, 0xca, 0xf3, 0x24, 0x66, 0xef, 0x97},
+		{0xf5, 0xd3, 0xd5, 0x85, 0x03, 0xb9, 0x69, 0x9d, 0xe7, 0x85, 0x89, 0x5a, 0x96, 0xfd, 0xba, 0xaf},
+		{0x43, 0xb1, 0xcd, 0x7f, 0x59, 0x8e, 0xce, 0x23, 0x88, 0x1b, 0x00, 0xe3, 0xed, 0x03, 0x06, 0x88},
+		{0x7b, 0x0c, 0x78, 0x5e, 0x27, 0xe8, 0xad, 0x3f, 0x82, 0x23, 0x20, 0x71, 0x04, 0x72, 0x5d, 0xd4}
+};
+
+unsigned char GenericAES::testVect256_key[32] = {
+		0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b, 0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
+		0x1f, 0x35, 0x2c, 0x07, 0x3b, 0x61, 0x08, 0xd7, 0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4
+};
+
+unsigned char GenericAES::testVect256_plain[AES_TESTVECTORS][AES_BYTES] = {
+		{0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a},
+		{0xae, 0x2d, 0x8a, 0x57, 0x1e, 0x03, 0xac, 0x9c, 0x9e, 0xb7, 0x6f, 0xac, 0x45, 0xaf, 0x8e, 0x51},
+		{0x30, 0xc8, 0x1c, 0x46, 0xa3, 0x5c, 0xe4, 0x11, 0xe5, 0xfb, 0xc1, 0x19, 0x1a, 0x0a, 0x52, 0xef},
+		{0xf6, 0x9f, 0x24, 0x45, 0xdf, 0x4f, 0x9b, 0x17, 0xad, 0x2b, 0x41, 0x7b, 0xe6, 0x6c, 0x37, 0x10}
+};
+
+unsigned char GenericAES::testVect256_cipher[AES_TESTVECTORS][AES_BYTES] = {
+		{0xf3, 0xee, 0xd1, 0xbd, 0xb5, 0xd2, 0xa0, 0x3c, 0x06, 0x4b, 0x5a, 0x7e, 0x3d, 0xb1, 0x81, 0xf8},
+		{0x59, 0x1c, 0xcb, 0x10, 0xd4, 0x10, 0xed, 0x26, 0xdc, 0x5b, 0xa7, 0x4a, 0x31, 0x36, 0x28, 0x70},
+		{0xb6, 0xed, 0x21, 0xb9, 0x9c, 0xa6, 0xf4, 0xf9, 0xf1, 0x53, 0xe7, 0xb1, 0xbe, 0xaf, 0xed, 0x1d},
+		{0x23, 0x30, 0x4b, 0x7a, 0x39, 0xf9, 0xf3, 0xff, 0x06, 0x7d, 0x8d, 0x8f, 0x9e, 0x24, 0xec, 0xc7}
+};
+
 long GenericAES::irreduciblePolynomials[AES_IRRED_POLYNOMIALS] =
 	{0x11B, 0x11D, 0x12B, 0x12D, 0x139, 0x13F, 0x14D, 0x15F,
 	 0x163, 0x165, 0x169, 0x171, 0x177, 0x17B, 0x187, 0x18B,
@@ -445,22 +483,25 @@ void GenericAES::encryptInternal(mat_GF2E& state, vec_GF2E& expandedKey){
 	int r;
 	restoreModulus();
 
+//cout << "R[start] dump: " << endl; dumpMatrix(state);
 	// Add Round key:
 	this->AddRoundKey(state, expandedKey, 0);
+//cout << "R[start] AddRoundKey: " << endl; dumpMatrix(state);
+
 	// rounds
 	for(r=1; r<=10; r++){
-cout << "R[" << (r-1) << "] dump: " << endl; dumpMatrix(state);
+//cout << "R[" << (r-1) << "] StartOfRound: " << endl; dumpMatrix(state);
 		this->ByteSub(state);
-cout << "R[" << (r-1) << "] ByteSub dump: " << endl; dumpMatrix(state);
+//cout << "R[" << (r-1) << "] After ByteSub dump: " << endl; dumpMatrix(state);
 		this->ShiftRows(state);
-cout << "R[" << (r-1) << "] ShiftRows dump: " << endl; dumpMatrix(state);
+//cout << "R[" << (r-1) << "] After ShiftRows dump: " << endl; dumpMatrix(state);
 		if(r<10) this->MixColumn(state);
-cout << "R[" << (r-1) << "] MixCol dump: " << endl; dumpMatrix(state);
+//cout << "R[" << (r-1) << "] After MixCol dump: " << endl; dumpMatrix(state);
 		this->AddRoundKey(state, expandedKey, 16*r);
 
-		cout << "EndOfRound[" << (r-1) << "] dump: " << endl;
-		dumpMatrix(state);
-		cout << endl;
+//		cout << "EndOfRound[" << (r-1) << "] dump: " << endl;
+//		dumpMatrix(state);
+//		cout << endl;
 	}
 }
 
@@ -489,6 +530,20 @@ void GenericAES::decryptInternal(mat_GF2E& state, vec_GF2E& expandedKey){
 		this->AddRoundKey(state, expandedKey, 16*r);
 		if(r!=0) this->MixColumnInv(state);
 	}
+}
+
+void GenericAES::encrypt(vec_GF2E& result, vec_GF2E& expandedKey){
+	mat_GF2E mat;
+	vector2matrix(result, mat, 4, false);
+	encryptInternal(mat, expandedKey);
+	matrix2vector(mat, result, false);
+}
+
+void GenericAES::decrypt(vec_GF2E& result, vec_GF2E& expandedKey){
+	mat_GF2E mat;
+	vector2matrix(result, mat, 4, false);
+	decryptInternal(mat, expandedKey);
+	matrix2vector(mat, result, false);
 }
 
 // test routine - verify inversion
@@ -604,6 +659,7 @@ mat_GF2 GenericAES::makeSquareMatrix(int q){
 
 int GenericAES::testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2){
 	int i,f=0;
+	restoreModulus();
 	for(i=0; i<AES_FIELD_SIZE; i++){
 		long desiredResult = sboxAffine[i];
 		long afterA1 = getLong(A1.get(i));
@@ -616,6 +672,101 @@ int GenericAES::testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2){
 		}
 	}
 	return (-1)*f;
+}
+
+int GenericAES::testWithVectors(){
+	vec_GF2E key, dkey, expkey, plain, plainOrig, cipher, cipherOrig, state, state2;
+	int i=0;
+
+	restoreModulus();
+
+	// see [http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf]
+	cout << "Testing AES encryption/decryption on test vectors..." << endl;
+
+	charArr_to_vec_GF2E(GenericAES::testVect128_key, 16, key);
+
+	applyT(key);
+	expandKey(expkey, key, KEY_SIZE_16);
+
+	cout << "Expanded key: " << endl;
+	dumpVector(expkey);
+
+
+	for(i=0; i<AES_TESTVECTORS; i++){
+		charArr_to_vec_GF2E(GenericAES::testVect128_plain[i], 16, plain);
+		charArr_to_vec_GF2E(GenericAES::testVect128_plain[i], 16, plainOrig);
+		charArr_to_vec_GF2E(GenericAES::testVect128_cipher[i], 16, cipher);
+		charArr_to_vec_GF2E(GenericAES::testVect128_cipher[i], 16, cipherOrig);
+
+		cout << "Testvector number " << i << endl;
+		cout << "Original plain text: " << endl;
+		dumpVector(plainOrig);
+
+		cout << "Original cipher text: " << endl;
+		dumpVector(cipherOrig);
+
+		state = plain;
+		applyT(plain);
+		applyT(state);
+		applyT(cipher);
+
+		cout << "Dual plain text: " << endl;
+		dumpVector(state);
+
+		cout << "Dual testvect ciphertext: " << endl;
+		dumpVector(cipher);
+
+		// encrypt
+		encrypt(state, expkey);
+		state2 = state;
+		cout << "Encrypted dual state: " << endl;
+		dumpVector(state);
+
+		if (compare_vec_GF2E(cipher, state)){
+			cout << "[ OK ]:  Encrypt(T(plaintext)) == T(ciphertext)" << endl;
+		} else {
+			cout << "[ERROR]: Encrypt(T(plaintext)) != T(ciphertext)" << endl;
+		}
+
+		applyTinv(state2);
+		cout << "Encrypted dual INV state: " << endl;
+		dumpVector(state2);
+
+		if (compare_vec_GF2E(cipherOrig, state2)){
+			cout << "[ OK ]:  T^{-1}(Encrypt(T(plaintext))) == ciphertext" << endl;
+		} else {
+			cout << "[ERROR]: T^{-1}(Encrypt(T(plaintext))) != ciphertext" << endl;
+		}
+
+		// decrypt
+		decrypt(state, expkey);
+		cout << "Decrypted again: " << endl;
+		dumpVector(state);
+
+		if (compare_vec_GF2E(plain, state)){
+			cout << "[ OK ]:  Decrypt(Encrypt(plaintext)) == T(plaintext)" << endl;
+		} else {
+			cout << "[ERROR]: Decrypt(Encrypt(plaintext)) != T(plaintext)" << endl;
+		}
+
+		applyTinv(state);
+		cout << "Decrypted inv state: " << endl;
+		dumpVector(state);
+
+		if (compare_vec_GF2E(plainOrig, state)){
+			cout << "[ OK ]:  T^{-1}(Decrypt(Encrypt(plaintext))) == plaintext_testvector" << endl;
+		} else {
+			cout << "[ERROR]: T^{-1}(Decrypt(Encrypt(plaintext))) != plaintext_testvector" << endl;
+		}
+
+		cout << "==========================================================================================" << endl;
+
+		//if (compare_vec_GF2E(state, cipher)==false){
+		//	cout << "Testvector, mismatch." << endl;
+		//}
+	}
+
+	return 0;
 }
 
 void GenericAES::printAll() {

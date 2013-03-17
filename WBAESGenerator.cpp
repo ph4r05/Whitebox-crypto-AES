@@ -248,9 +248,9 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 		// TEST ROUTINE: dual AES expanded key === dualAES.applyT(default AES expanded key)
 		// should hold in all cases. Consistency check...
 		this->AESCipher[i].applyT(expandedKey);
-		assert(this->compare_vec_GF2E(vecRoundKey[i/N_SECTIONS][i%N_SECTIONS], expandedKey));
+		assert(compare_vec_GF2E(vecRoundKey[i/N_SECTIONS][i%N_SECTIONS], expandedKey));
 		this->AESCipher[i].applyTinv(expandedKey);
-		assert(this->compare_vec_GF2E(backupKey, expandedKey));
+		assert(compare_vec_GF2E(backupKey, expandedKey));
 	}
 
 	//

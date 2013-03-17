@@ -176,6 +176,21 @@ void dumpMatrix(ofstream& out, NTL::mat_GF2E& a);
 void dumpVector(ofstream& out, NTL::vec_GF2E& a);
 void dumpVector(ofstream& out, NTL::GF2E * a, size_t len);
 
+// Compares two GF2E vectors - long values has to be equal => return true otherwise fase
+inline bool compare_vec_GF2E(const NTL::vec_GF2E& a, const NTL::vec_GF2E& b){
+	int i,n = a.length();
+	if (n!=b.length()) return false;
+	for(i=0; i<n; i++){
+		if (getLong(a[i]) != getLong(b[i])) return false;
+	}
+
+	return true;
+}
+
+void matrix2vector(const NTL::mat_GF2E& src, NTL::vec_GF2E& dst, bool byRows);
+void vector2matrix(const NTL::vec_GF2E& src, NTL::mat_GF2E& dst, int rowLen, bool byRows);
+void charArr_to_vec_GF2E(const unsigned char * arr, size_t len, NTL::vec_GF2E& dst);
+
 /**
  * Initializes matrix from specified array.
  * Data must be at least dimension of given matrix.

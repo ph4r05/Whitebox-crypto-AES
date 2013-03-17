@@ -130,3 +130,32 @@ void dumpVector(ofstream& out, NTL::GF2E * a, size_t len){
 	}
 }
 
+void matrix2vector(const NTL::mat_GF2E& src, NTL::vec_GF2E& dst, bool byRows){
+	int i,j, n = byRows ? src.NumRows() : src.NumCols(), m = byRows ? src.NumCols() : src.NumRows();
+
+	dst.SetLength(n*m);
+	for(i=0; i<n; i++){
+		for(j=0; j<m; j++){
+			dst.put(i*m + j, byRows ? src.get(i, j) : src.get(j, i));
+		}
+	}
+}
+
+void vector2matrix(const NTL::vec_GF2E& src, NTL::mat_GF2E& dst, int rowLen, bool byRows){
+	int i,n=src.length();
+	dst.SetDims(n/rowLen, rowLen);
+	for(i=0; i<n; i++){
+		if (byRows)
+			dst.put(i / rowLen, i % rowLen, src.get(i));
+		else
+			dst.put(i % rowLen, i / rowLen, src.get(i));
+	}
+}
+
+void charArr_to_vec_GF2E(const unsigned char * arr, size_t len, NTL::vec_GF2E& dst){
+	unsigned int j;
+	dst.SetLength(len);
+	for(j=0; j<len; j++){
+		dst.put(j, GF2EFromLong((unsigned long)arr[j], 8));
+	}
+}
