@@ -320,6 +320,11 @@ public:
 	 */
 	int testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2);
 
+	/**
+	 * Tests linearity of A1 relation: A1(x) ^ A1(y) == A1(x^y)
+	 */
+	int testA1XorLinearity(vec_GF2E& A1);
+
     /**
      * Mix column GF2E matrix computed
      */

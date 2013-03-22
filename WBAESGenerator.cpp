@@ -256,6 +256,8 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 
 		// generate A1 A2 relations
 		this->AESCipher[i].generateA1A2Relations(genA1[i], genA2[i], genA[i], genI[i]);
+		if (this->AESCipher[i].testA1A2Relations(genA1[i], genA2[i]) != 0) cout << "Error in A1A2 generator" << endl;
+		if (this->AESCipher[i].testA1XorLinearity(genA1[i])!=0) cout << "Error in A1 linearity!" << endl;
 	}
 
 	//
@@ -399,9 +401,13 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// for computation in one section in WBAES. Inside section (column) we are iterating over
 					// rows (j). Key is serialized by rows.
 					if (encrypt){
+						if (r==0){
+							// In first round during encryption, there is no A1 applied in previous round, so just apply here
+							tmpGF2E = genA1[4*r+i][getLong(tmpGF2E)];
+						}
+
 						GF2E tmpKey = vecRoundKey[r][i][16*r + idxTranspose(shiftRowsOp[ j*4 + i ])];
-						tmpGF2E    += tmpKey;
-						//tmpGF2E    += genA1[4*i+i][getLong(tmpKey)];
+						tmpGF2E    += genA1[4*r+i][getLong(tmpKey)];
 					} else if(r==0) {
 						// Decryption & first round => add k_10 to state.
 						// Same logic applies here
@@ -416,6 +422,11 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					GF2E tmpE = encrypt ?
 							  this->AESCipher[r*4 + i].ByteSub(tmpGF2E)
 							: this->AESCipher[r*4 + i].ByteSubInv(tmpGF2E);
+
+					// Dual AES with A1 A2 relations, after Sbox apply A2 relation
+					if (encrypt){
+						tmpE = genA2[4*r+i][getLong(tmpE)];
+					}
 
 					// Decryption case:
 					// T(x) = Sbox(x) + k
@@ -451,11 +462,42 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					mat_GF2E zj(INIT_SIZE, 4, 1);
 					zj.put(j,0, tmpE);
 
-					// TODO: update MC coefficients according to A1 i coefficient (power to 2^i)
-
 					// Multiply with MC matrix from our AES dedicated for this round, only in 1..9 rounds (not in last round)
 					if (encrypt){
 						mcres = r<(N_ROUNDS-1) ? this->AESCipher[r*4 + i].mixColMat * zj : zj;
+						// Encryption:
+						// Dual AES, apply A1 for next round here.
+						//
+						// We have one 4x1 GF2E matrix. In each next j-iteration we will have
+						// different 4x1 matrices, XORed with each other afterwards.
+						// XOR is performed by rows, thus all elements in one row are added together,
+						// so they have to have same dual AES encodings => we have to apply
+						// different transformation on each element.
+						//
+						// Every resulting element after XOR is passed to different T2 boxes.
+						//
+						//  Cur. round |  Next round |              |
+						// 00 01 02 03 | 00 01 02 03 | AES encoding | 00 01 02 03
+						// 05 06 07 04 | 06 07 04 05 | in next      | 03 00 01 02
+						// 10 11 08 09 | 08 09 10 11 | round        | 02 03 00 01
+						// 15 12 13 14 | 14 15 12 13 |              | 01 02 03 00
+						//
+						// One i iteration corresponds to one column above. One i=0 iteration should look like this:
+						// Every A in next diagram is A_I = A^1_{r+1, I} - simplified syntax
+						//
+						// | A_0 (02 T(x)) |   | A_0 (03 T(x)) |   | A_0 (01 T(x)) |   | A_0 (01 T(x)) |
+						// | A_3 (01 T(x)) | + | A_3 (02 T(x)) | + | A_3 (03 T(x)) | + | A_3 (01 T(x)) |
+						// | A_2 (02 T(x)) |   | A_2 (01 T(x)) |   | A_2 (02 T(x)) |   | A_2 (03 T(x)) |
+						// | A_1 (03 T(x)) |   | A_1 (01 T(x)) |   | A_1 (01 T(x)) |   | A_1 (02 T(x)) |
+						//
+						int tmpi;
+						for(tmpi=0; tmpi<4; tmpi++){
+							this->AESCipher[ 4* r     + i                 ].applyTinv(mcres[tmpi]);
+							this->AESCipher[(4*(r+1)) + POS_MOD(i-tmpi, 4)].applyT(   mcres[tmpi]);
+							applyLookupTable(genA1[(4*(r+1)) + POS_MOD(i-tmpi, 4)],   mcres[tmpi]);
+							this->AESCipher[(4*(r+1)) + POS_MOD(i-tmpi, 4)].applyTinv(mcres[tmpi]);
+							this->AESCipher[ 4* r     + i                 ].applyT(   mcres[tmpi]);
+						}
 					} else {
 						mcres = r<(N_ROUNDS-1) ? this->AESCipher[r*4 + i].mixColInvMat * zj : zj;
 					}
@@ -500,8 +542,6 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// builds binary matrix [0 0 bb 0], if j==2
 					BYTE_to_matGF2(bb, tmpMat, j*8, 0);
 					// Build MB multiplication result
-
-
 					tmpMat = eMB_MB32x32[r][i].inv * tmpMat;
 					// Encode using L mixing bijection (another matrix multiplication)
 					// Map bytes from result via L bijections

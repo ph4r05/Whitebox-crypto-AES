@@ -206,6 +206,10 @@ void matrix2vector(const NTL::mat_GF2E& src, NTL::vec_GF2E& dst, bool byRows);
 void vector2matrix(const NTL::vec_GF2E& src, NTL::mat_GF2E& dst, int rowLen, bool byRows);
 void charArr_to_vec_GF2E(const unsigned char * arr, size_t len, NTL::vec_GF2E& dst);
 
+void applyLookupTable(vec_GF2E& ltable, GF2E& tgt);
+void applyLookupTable(vec_GF2E& ltable, vec_GF2E& tgt);
+void applyLookupTable(vec_GF2E& ltable, mat_GF2E& tgt);
+
 /**
  * Initializes matrix from specified array.
  * Data must be at least dimension of given matrix.

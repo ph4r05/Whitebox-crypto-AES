@@ -101,6 +101,13 @@ int main(void) {
 
 	WBAESGenerator generator;
 	WBAES genAES;
+
+
+	//generator.useDualAESIdentity=true;
+	//generator.useIO04x04Identity=true;
+	//generator.useIO08x08Identity=true;
+	//generator.useMB08x08Identity=true;
+	///generator.useMB32x32Identity=true;
 	int errors = generator.testWithVectors(true, genAES);
 
 	cout << "Testing done, errors: " << errors << endl;

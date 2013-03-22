@@ -862,6 +862,19 @@ void GenericAES::printAll() {
 	return;
 }
 
+int GenericAES::testA1XorLinearity(vec_GF2E& A1){
+	int i,j,err=0;
+	for(i=0; i<256; i++){
+		for(j=0; j<256; j++){
+			if (getLong(A1[i] + A1[j]) != getLong(A1[i^j])){
+				cout << "Error in A1 linearity; " << endl;
+				err++;
+			}
+		}
+	}
+
+	return err;
+}
 
 
 

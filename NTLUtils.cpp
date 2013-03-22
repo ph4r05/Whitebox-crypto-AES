@@ -160,3 +160,23 @@ void charArr_to_vec_GF2E(const unsigned char * arr, size_t len, NTL::vec_GF2E& d
 		dst.put(j, GF2EFromLong((unsigned long)arr[j], 8));
 	}
 }
+
+void applyLookupTable(vec_GF2E& ltable, GF2E& tgt){
+	tgt = ltable[getLong(tgt)];
+}
+
+void applyLookupTable(vec_GF2E& ltable, vec_GF2E& tgt){
+	int i, n=tgt.length();
+	for(i=0; i<n; i++){
+		tgt[i] = ltable[getLong(tgt[i])];
+	}
+}
+
+void applyLookupTable(vec_GF2E& ltable, mat_GF2E& tgt){
+	int i,j,n=tgt.NumRows(),m=tgt.NumCols();
+	for(i=0; i<n; i++){
+		for(j=0; j<m; j++){
+			tgt[i][j] = ltable[getLong(tgt[i][j])];
+		}
+	}
+}
