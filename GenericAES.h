@@ -285,6 +285,10 @@ public:
      *       modulo    = irreducible polynomial defining elements of field GF(2^8)
 	 */
 	void generateA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, int a, int q);
+	/**
+	 * Same as previous, but generates a,q by random from interval
+	 */
+	void generateA1A2Relations(vec_GF2E& A1, vec_GF2E& A2);
 
 	/**
 	 * Generates 8x8 bit matrix representing multiplication by a \in GF(2^8) by

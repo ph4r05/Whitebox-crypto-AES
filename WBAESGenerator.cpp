@@ -52,6 +52,7 @@ int WBAESGenerator::shiftRowsInv[N_BYTES] = {
 };
 
 WBAESGenerator::WBAESGenerator() {
+	useDualAESARelationsIdentity=false;
 	useDualAESIdentity=false;
 	useIO04x04Identity=false;
 	useIO08x08Identity=true;
@@ -224,6 +225,12 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	CODING        (&codingMap_edXOR1)[N_ROUNDS][N_SECTIONS][24]         = encrypt ? codingMap.eXOR1 : codingMap.dXOR1;
 	CODING        (&codingMap_edXOR2)[N_ROUNDS][N_SECTIONS][24]         = encrypt ? codingMap.eXOR2 : codingMap.dXOR2;
 
+	// A1, A2 relations
+	int genA[N_ROUNDS * N_SECTIONS];						// constant a for A1A2 relations
+	int genI[N_ROUNDS * N_SECTIONS];						// exponent for A1A2 relations
+	vec_GF2E genA1[N_ROUNDS * N_SECTIONS];					// A1 relation
+	vec_GF2E genA2[N_ROUNDS * N_SECTIONS];					// A2 relation
+
 	// Generate random dual AES instances, key schedule
 	vec_GF2E vecRoundKey[N_ROUNDS][N_SECTIONS];
 	vec_GF2E vecKey[N_ROUNDS][N_SECTIONS];
@@ -236,6 +243,8 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	for(i=0; i<N_ROUNDS * N_SECTIONS; i++){
 		int rndPolynomial = useDualAESIdentity ? 0 : rand() % AES_IRRED_POLYNOMIALS;
 		int rndGenerator  = useDualAESIdentity ? 0 : rand() % AES_GENERATORS;
+		genA[i]			  = useDualAESARelationsIdentity ? 1 : (rand() % 255) + 1;
+		genI[i]			  = useDualAESARelationsIdentity ? 0 : rand() % 8;
 		this->AESCipher[i].initFromIndex(rndPolynomial, rndGenerator);
 
 		// convert BYTE[] to key
@@ -244,6 +253,9 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 
 		// Prepare key schedule from vector representation of encryption key
 		this->AESCipher[i].expandKey(vecRoundKey[i/N_SECTIONS][i%N_SECTIONS], vecKey[i/N_SECTIONS][i%N_SECTIONS], ksize);
+
+		// generate A1 A2 relations
+		this->AESCipher[i].generateA1A2Relations(genA1[i], genA2[i], genA[i], genI[i]);
 	}
 
 	//
@@ -387,7 +399,9 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// for computation in one section in WBAES. Inside section (column) we are iterating over
 					// rows (j). Key is serialized by rows.
 					if (encrypt){
-						tmpGF2E += vecRoundKey[r][i][16*r + idxTranspose(shiftRowsOp[ j*4 + i ])];
+						GF2E tmpKey = vecRoundKey[r][i][16*r + idxTranspose(shiftRowsOp[ j*4 + i ])];
+						tmpGF2E    += tmpKey;
+						//tmpGF2E    += genA1[4*i+i][getLong(tmpKey)];
 					} else if(r==0) {
 						// Decryption & first round => add k_10 to state.
 						// Same logic applies here
@@ -436,6 +450,8 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// Build [0 tmpE 0 0]^T stripe where tmpE is in j-th position
 					mat_GF2E zj(INIT_SIZE, 4, 1);
 					zj.put(j,0, tmpE);
+
+					// TODO: update MC coefficients according to A1 i coefficient (power to 2^i)
 
 					// Multiply with MC matrix from our AES dedicated for this round, only in 1..9 rounds (not in last round)
 					if (encrypt){

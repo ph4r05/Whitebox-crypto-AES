@@ -364,6 +364,7 @@ public:
     inline GenericAES& getAESCipher(int idx){ return this->AESCipher[idx]; };
 
     // use given protection or not?
+    bool useDualAESARelationsIdentity;
     bool useDualAESIdentity;
     bool useIO04x04Identity;
     bool useIO08x08Identity;

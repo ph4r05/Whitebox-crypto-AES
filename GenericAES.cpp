@@ -560,6 +560,10 @@ int GenericAES::testMixColumn(){
 	return 1;
 }
 
+void GenericAES::generateA1A2Relations(vec_GF2E& A1, vec_GF2E& A2){
+	generateA1A2Relations(A1, A2, (rand() % 255) + 1, rand() % 8);
+}
+
 void GenericAES::generateA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, int a, int q){
 	restoreModulus();
 	if (a==0){
@@ -619,8 +623,8 @@ mat_GF2 GenericAES::makeMultAMatrix(int a){
 
 	int i,j,base=1;
 	for(j=0; j<AES_FIELD_DIM; j++){
-		// for i-th column polynomial base vector
-		GF2E tmp = GF2EFromLong(base, AES_FIELD_DIM) * aRepr;
+		GF2E tmp = GF2EFromLong(base, AES_FIELD_DIM) * aRepr;	// for i-th column polynomial base vector
+		//GF2E tmp = g[25*j] * aRepr;
 		base = 2*base;
 		for(i=0; i<AES_FIELD_DIM; i++){
 			nbase.put(i, j, tmp.LoopHole()[i]);
@@ -636,8 +640,8 @@ mat_GF2 GenericAES::makeSquareMatrix(int q){
 
 	int i,j,base=1;
 	for(j=0; j<AES_FIELD_DIM; j++){
-		// for i-th column polynomial base vector
-		GF2E tmp = GF2EFromLong(base, AES_FIELD_DIM);
+		GF2E tmp = GF2EFromLong(base, AES_FIELD_DIM); // for i-th column polynomial base vector
+		//GF2E tmp = g[25*j];
 		if (q>0)
 			tmp = tmp*tmp;
 		base = 2*base;

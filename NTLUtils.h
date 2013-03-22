@@ -23,9 +23,13 @@
 #include <math.h>
 #include <assert.h>
 #include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
 NTL_CLIENT
 
 
+#define CHEX8(x) "0x" << setw(8) << setfill('0') << hex << ((unsigned long int)x)
 #define CHEX(x) "0x" << setw(2) << setfill('0') << hex << ((unsigned long int)x)
 #define GF2EHEX(x) "0x" << setw(2) << setfill('0') << hex << (getLong(x))
 
@@ -173,9 +177,10 @@ void dumpVector(NTL::GF2E * a, size_t len);
 void dumpVector(long * a, size_t len);
 void dumpMatrix(NTL::mat_GF2E& a);
 void dumpMatrix(NTL::mat_GF2& a);
-void dumpMatrix(ofstream& out, NTL::mat_GF2E& a);
-void dumpVector(ofstream& out, NTL::vec_GF2E& a);
-void dumpVector(ofstream& out, NTL::GF2E * a, size_t len);
+void dumpMatrix(ostream& out, NTL::mat_GF2E& a);
+void dumpVector(ostream& out, NTL::vec_GF2E& a);
+void dumpVector(ostream& out, NTL::GF2E * a, size_t len);
+std::string dumpVector2str(NTL::vec_GF2E& a);
 
 template<typename T> void dumpVectorT(T * a, size_t len){
 	unsigned int i;

@@ -33,20 +33,54 @@
 #include "MixingBijections.h"
 #include "WBAES.h"
 #include "WBAESGenerator.h"
+#include "md5.h"
 #include <iostream>
 #include <fstream>
+#include <boost/unordered_set.hpp>
+#include <boost/unordered_map.hpp>
+#include <boost/foreach.hpp>
+
 NTL_CLIENT
+using namespace std;
+using namespace NTL;
+using namespace boost;
+
+typedef struct _a1a2rec {
+	unsigned long int id;
+	int count;
+	vector<unsigned long int> * vec;
+} a1a2rec;
+typedef unordered_map<std::string, a1a2rec> a1a2map;
 
 #define GENERIC_AES_DEBUG 1
+
+std::string hashLookupTable(vec_GF2E s);
 int MBgen(void);
 int dualAESTest(void);
 int A1A2relationsGenerator(void);
 
+// hashes lookup table using MD5 hash
+std::string hashLookupTable(vec_GF2E s){
+	std::string inputBuffer = dumpVector2str(s);
+	char buff[inputBuffer.size()];					// c++0x feature
+	inputBuffer.copy(buff, inputBuffer.size(), 0);	// copy serialized lookup table to char array
+
+	MD5_CTX mdContext;
+	MD5Init(&mdContext);
+	MD5Update(&mdContext, (unsigned char * )buff, inputBuffer.size());
+	MD5Final(&mdContext);
+
+	// hexcoding
+	ostringstream ss;
+	int i=0; for(i=0; i<MD5_DIGEST_LENGTH; i++) ss << CHEX(mdContext.digest[i]);
+	inputBuffer = ss.str();
+	return inputBuffer;
+}
+
 // hardcoded elements
 // http://stackoverflow.com/questions/2236197/c-easiest-way-to-initialize-an-stl-vector-with-hardcoded-elements
 
-using namespace std;
-using namespace NTL;
+
 int main(void) {
 	long i,j;
 
@@ -56,6 +90,8 @@ int main(void) {
 	GF2E::init(defaultModulus);
 
 	//A1A2relationsGenerator();
+	//exit(2);
+
 	//dualAESTest();
 	//exit(2);
 
@@ -104,13 +140,17 @@ int A1A2relationsGenerator(void){
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
 
+	// unordered_map
+	a1a2map a1store;
+	a1a2map a2store;
+
 	ofstream dump;
 	ofstream dumpA;
 	dump.open("/media/share/AES_A1A2dump.txt");
 	dumpA.open("/media/share/AES_signature.txt");
 
 
-	dump  << "polynomial;generator;qq;ii;problems;A1;A2" << endl;
+	dump  << "id;polynomial;generator;qq;ii;problems;A1;A2" << endl;
 	dumpA << "polynomial;generator;sbox;sboxinv;mixcol;mixcolinv" << endl;
 
 	GenericAES defAES;
@@ -138,6 +178,7 @@ int A1A2relationsGenerator(void){
 			for(qq=0;qq<8; qq++){
 				cout << ".";
 				for(ii=1;ii<256;ii++){
+					unsigned long int id = (AES_poly << 24) | (AES_gen << 16) | (qq << 8) | ii;
 					int problems=0;
 					vec_GF2E A1;
 					vec_GF2E A2;
@@ -145,7 +186,8 @@ int A1A2relationsGenerator(void){
 					problems = dualAES.testA1A2Relations(A1, A2);
 
 					// write to file
-					dump    << CHEX(GenericAES::irreduciblePolynomials[AES_poly]) << ";"
+					dump    << CHEX(id) << ";"
+							<< CHEX(GenericAES::irreduciblePolynomials[AES_poly]) << ";"
 							<< CHEX(GenericAES::generators[AES_poly][AES_gen]) << ";"
 							<< qq << ";" << ii << ";" << problems << ";";
 					dumpVector(dump, A1);
@@ -154,11 +196,69 @@ int A1A2relationsGenerator(void){
 					dump << endl;
 
 					if (problems>0){
-						cout << "Current Dual AES: "
+						cout << "!!!Current Dual AES: "
 								<< CHEX(GenericAES::irreduciblePolynomials[AES_poly]) << ";"
 								<< CHEX(GenericAES::generators[AES_poly][AES_gen]) << endl;
-						cout << "Problem with relations ii="<<ii<<"; qq="<<qq<<"; problems=" << problems << endl;
+						cout << "!!!Problem with relations ii="<<ii<<"; qq="<<qq<<"; problems=" << problems << endl;
 						probAll+=1;
+					}
+
+					//
+					// A1 A2 duplicity check via unordered hashed structure
+					//
+					a1a2rec rec;
+					rec.count=1;
+					rec.id = id;
+					rec.vec = NULL;
+
+					std::string a1hash = hashLookupTable(A1);
+					std::string a2hash = hashLookupTable(A2);
+
+					// A1 hashing
+					if (a1store.count(a1hash)==0){
+						a1store[a1hash] = rec;		// new A1 hash
+					} else {
+						a1a2rec &trec = a1store.at(a1hash);	// already contains some record
+						trec.count++;
+						if (trec.vec==NULL) trec.vec = new vector<unsigned long int>();
+						trec.vec->push_back(id);
+
+						if (false)
+						cout << "A1: Spoiler, duplicate of ["
+								<< CHEX8(id) << ";"
+								<< CHEX(GenericAES::irreduciblePolynomials[AES_poly]) << ";"
+								<< CHEX(GenericAES::generators[AES_poly][AES_gen]) << ";"
+								<< qq << ";" << ii << ";] collide with ["
+
+								<< CHEX8(trec.id) << ";"
+								<< CHEX(GenericAES::irreduciblePolynomials[(trec.id >> 24) & 0xff]) << ";"
+								<< CHEX(GenericAES::generators[(trec.id >> 24) & 0xff][(trec.id >> 16) & 0xff]) << ";"
+								<< ((trec.id >> 16) & 0xff) << ";" << ((trec.id) & 0xff) << ";] count="
+
+								<< trec.count << endl;
+					}
+
+					// A2 hashing
+					if (a2store.count(a2hash)==0){
+						a2store[a2hash] = rec;		// new A2 hash
+					} else {
+						a1a2rec &trec = a2store.at(a2hash);	// already contains some record
+						trec.count++;
+						if (trec.vec==NULL) trec.vec = new vector<unsigned long int>();
+						trec.vec->push_back(id);
+
+						cout << "A2: Spoiler, duplicate of ["
+							<< CHEX8(id) << ";"
+							<< CHEX(GenericAES::irreduciblePolynomials[AES_poly]) << ";"
+							<< CHEX(GenericAES::generators[AES_poly][AES_gen]) << ";"
+							<< qq << ";" << ii << ";] collide with ["
+
+							<< CHEX8(trec.id) << ";"
+							<< CHEX(GenericAES::irreduciblePolynomials[(trec.id >> 24) & 0xff]) << ";"
+							<< CHEX(GenericAES::generators[(trec.id >> 24) & 0xff][(trec.id >> 16) & 0xff]) << ";"
+							<< ((trec.id >> 16) & 0xff) << ";" << ((trec.id) & 0xff) << ";] count="
+
+							<< trec.count << endl;
 					}
 				}
 			}
@@ -168,6 +268,54 @@ int A1A2relationsGenerator(void){
 		}
 	}
 
+
+
+	//
+	// Hashing completed, harvest our results...
+	//
+	dumpA << "======================================================" << endl << "CollisionsA1" << endl;
+	BOOST_FOREACH( a1a2map::value_type & v, a1store ) {
+		if (v.second.count==1) continue;
+		a1a2rec &trec = v.second;
+
+		dumpA << "colisions=" << trec.count << " ["
+			<< CHEX8(trec.id) << ";"
+			<< CHEX(GenericAES::irreduciblePolynomials[(trec.id >> 24) & 0xff]) << ";"
+			<< CHEX(GenericAES::generators[(trec.id >> 24) & 0xff][(trec.id >> 16) & 0xff]) << ";"
+			<< ((trec.id >> 16) & 0xff) << ";" << ((trec.id) & 0xff) << "] ";
+		vector<unsigned long int> * pvec = trec.vec;
+		for(std::vector<unsigned long int>::iterator it = pvec->begin(); it != pvec->end(); ++it) {
+		    unsigned long int id = *it;
+		    dumpA << "["
+				<< CHEX8(id) << ";"
+				<< CHEX(GenericAES::irreduciblePolynomials[(id >> 24) & 0xff]) << ";"
+				<< CHEX(GenericAES::generators[(id >> 24) & 0xff][(id >> 16) & 0xff]) << ";"
+				<< ((id >> 16) & 0xff) << ";" << ((id) & 0xff) << "] ";
+		}
+		dumpA << endl;
+	}
+
+	dumpA << "======================================================" << endl << "CollisionsA2" << endl;
+	BOOST_FOREACH( a1a2map::value_type & v, a2store ) {
+		if (v.second.count==1) continue;
+		a1a2rec &trec = v.second;
+
+		dumpA << "colisions=" << trec.count << " ["
+			<< CHEX8(trec.id) << ";"
+			<< CHEX(GenericAES::irreduciblePolynomials[(trec.id >> 24) & 0xff]) << ";"
+			<< CHEX(GenericAES::generators[(trec.id >> 24) & 0xff][(trec.id >> 16) & 0xff]) << ";"
+			<< ((trec.id >> 16) & 0xff) << ";" << ((trec.id) & 0xff) << "] ";
+		vector<unsigned long int> * pvec = trec.vec;
+		for(std::vector<unsigned long int>::iterator it = pvec->begin(); it != pvec->end(); ++it) {
+			unsigned long int id = *it;
+			dumpA << "["
+				<< CHEX8(id) << ";"
+				<< CHEX(GenericAES::irreduciblePolynomials[(id >> 24) & 0xff]) << ";"
+				<< CHEX(GenericAES::generators[(id >> 24) & 0xff][(id >> 16) & 0xff]) << ";"
+				<< ((id >> 16) & 0xff) << ";" << ((id) & 0xff) << "] ";
+		}
+		dumpA << endl;
+	}
 	dumpA.close();
 	dump.close();
 	return 0;

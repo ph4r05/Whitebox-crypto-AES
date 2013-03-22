@@ -101,7 +101,7 @@ int initMatrix(mat_GF2& M, long *data){
 	return 0;
 }
 
-void dumpMatrix(ofstream& out, NTL::mat_GF2E& a){
+void dumpMatrix(ostream& out, NTL::mat_GF2E& a){
 	unsigned int i,j, n = a.NumRows(), m=a.NumCols();
 	for (i=0; i<n; i++){
 		for(j=0; j<m; j++){
@@ -111,14 +111,20 @@ void dumpMatrix(ofstream& out, NTL::mat_GF2E& a){
 	}
 }
 
-void dumpVector(ofstream& out, NTL::vec_GF2E& a){
+void dumpVector(ostream& out, NTL::vec_GF2E& a){
 	unsigned int i, len = a.length();
 	for (i=0; i<len; i++){
 		out << GF2EHEX(a[i]) << ",";
 	}
 }
 
-void dumpVector(ofstream& out, NTL::GF2E * a, size_t len){
+std::string dumpVector2str(NTL::vec_GF2E& a){
+	 std::ostringstream out;
+	 dumpVector(out, a);
+	 return out.str();
+}
+
+void dumpVector(ostream& out, NTL::GF2E * a, size_t len){
 	unsigned int i;
 	for (i=0; i<len; i++){
 		out << GF2EHEX(a[i]) << ",";
