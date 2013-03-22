@@ -402,10 +402,10 @@ void GenericAES::build() {
 		this->sboxAffineInvGF2E[tmpLong] = GF2EFromLong(i, AES_FIELD_DIM);
 		this->sboxAffineInv[tmpLong] = i;
 
-		// Inversion, idea is the same, i is long representation of element in GF, apply inverted affine transformation and take inverse
+		// Inversion, idea is the same, i is the long representation of element in GF, apply inverted affine transformation and take inverse
 		// Ax^{-1} + c is input to this transformation
-		// [A^{-1} * (A{x^-1} + c) + d]^{-1} is this transformation;
-		// correctness: [A^{-1} * (Ax^-1 + c) + d]^{-1} =
+		//              [A^{-1} * (A{x^-1} + c) + d]^{-1} is this transformation;
+		// correctness: [A^{-1} * (Ax^-1   + c) + d]^{-1} =
 		//				[A^{-1}Ax^{-1} + A^{-1}c + d]^{-1} =	//	A^{-1}c = d
 		//				[x^{-1}        + 0]^{-1} =
 		//				x
@@ -661,14 +661,14 @@ mat_GF2 GenericAES::makeSquareMatrix(int q){
 	return ret;
 }
 
-int GenericAES::testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2){
+int GenericAES::testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, bool encryption){
 	int i,f=0;
 	restoreModulus();
 	for(i=0; i<AES_FIELD_SIZE; i++){
-		long desiredResult = sboxAffine[i];
-		long afterA1 = getLong(A1.get(i));
-		long afterSb = sboxAffine[afterA1];
-		long afterA2 = getLong(A2.get(afterSb));
+		long desiredResult = encryption ? sboxAffine[i] : sboxAffineInv[i];
+		long afterA1       = getLong(A1.get(i));
+		long afterSb       = encryption ? sboxAffine[afterA1] : sboxAffineInv[i];
+		long afterA2       = getLong(A2.get(afterSb));
 		if (desiredResult != afterA2){
 			cout << "Failed A1A2: field elem; S("<<CHEX(i)<<") = " << CHEX(desiredResult) << "; (A2 * S * A1)("<<CHEX(i)<<")=" << CHEX(afterA2) << "; ";
 			cout << "a1: " << CHEX(afterA1) << "; Sb: " << CHEX(afterSb) << "; a2: " << CHEX(afterA2) << endl;
