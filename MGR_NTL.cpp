@@ -41,12 +41,15 @@
 #include <boost/foreach.hpp>
 #include <set>
 #include <map>
+#include "LinearAffineEq.h"
 
 
 NTL_CLIENT
 using namespace std;
 using namespace NTL;
 using namespace boost;
+using namespace wbacr;
+using namespace wbacr::laeqv;
 
 typedef struct _a1a2rec {
 	unsigned long int id;
@@ -82,28 +85,6 @@ std::string hashLookupTable(vec_GF2E s){
 
 // hardcoded elements
 // http://stackoverflow.com/questions/2236197/c-easiest-way-to-initialize-an-stl-vector-with-hardcoded-elements
-
-typedef unsigned int bsetElem;
-typedef unordered_set<bsetElem> bset;
-typedef map<bsetElem, bsetElem> smap;
-typedef std::pair<bsetElem, bsetElem> smapElem;
-
-// returns set C = A \ B
-bset setDiff(const bset &A, const bset &B){
-	bset newSet(A);
-	for(bset::const_iterator it = B.begin(); it != B.end(); ++it){
-		newSet.erase(*it);
-	}
-
-	return newSet;
-}
-
-void dumpMap(const smap& mp){
-	smap::const_iterator it = mp.begin();
-	for(; it != mp.end(); ++it){
-		cout << "  mp[" << setw(2) << (it->first) << "] = " << setw(2) << (it->second) << endl;
-	}
-}
 
 
 int main(void) {
@@ -213,8 +194,9 @@ int main(void) {
 			//
 			// At first, backup Ca, Cb, Ua, Ub - will be restored in case of incorrect guess
 			//
-			Ua_back = Ua; Ub_back = Ub;
-			Ca_back = Ca; Cb_back = Cb;
+			Ua_back = Ua;   Ub_back = Ub;
+			Ca_back = Ca;   Cb_back = Cb;
+			mapA = tmpMapA; mapB = tmpMapB;
 
 			//
 			// 1. If previous guess rejected, restore Ca, Cb, Ua, Ub
@@ -239,9 +221,11 @@ int main(void) {
 			bsetElem x, y;
 			cout << endl << "A: Cycle 1 start, |Na| = " << Na.size() << endl;
 
+			// Pick x \in Na; Na = Na \ {x};
 			it1 = Na.begin(); x = *it1; Na.erase(it1);
 			cout << "A: newX is [" << x << "]" << endl;
 
+			// Nb = S2( x + Ca ) \ Cb
 			if (Ca.size() > 0){
 				bset tmpSet;
 				for (it1=Ca.begin(); it1!=Ca.end(); ++it1){
@@ -266,7 +250,7 @@ int main(void) {
 						tmpMapB.insert( pair<bsetElem,bsetElem>(S2[tmp], S1[amap]));
 					}
 				}
-				Nb = setDiff(tmpSet, Cb);
+				Nb = LinearAffineEq::setDiff(tmpSet, Cb);
 			}
 
 			// Ca = Ca U (x + Ca)
@@ -281,7 +265,8 @@ int main(void) {
 			double vectKnown = Nb.size() + log2(Cb.size());
 			cout << "A: vect knownB: " << vectKnown << endl;
 			if (vectKnown>8){
-				cout << "A: ## check linearity, derive,..." << endl;
+
+
 			}
 		}
 		cout << endl;
@@ -321,7 +306,7 @@ int main(void) {
 						tmpMapA.insert(smapElem(S2inv[tmp], S1inv[bmap]));
 					}
 				}
-				Na = setDiff(tmpSet, Ca);
+				Na = LinearAffineEq::setDiff(tmpSet, Ca);
 			}
 
 			// Cb = Cb U (x + Cb)
@@ -336,13 +321,16 @@ int main(void) {
 			double vectKnown = Na.size() + log2(Ca.size());
 			cout << "B: vect knownA: " << vectKnown << endl;
 			if (vectKnown>8){
-				cout << "B: ## check linearity, derive,..." << endl;
+				cout << "B: ## check linearity of A, derive,..." << endl;
+				LinearAffineEq::dumpMap(tmpMapA);
+
+
 			}
 		}
 
 		cout << endl << "EEEnd of both cycles, remove Ca, Cb from Ua Ub" << endl;
-		Ua = setDiff(Ua, Ca);
-		Ub = setDiff(Ub, Cb);
+		Ua = LinearAffineEq::setDiff(Ua, Ca);
+		Ub = LinearAffineEq::setDiff(Ub, Cb);
 
 		cout    << " |Ua| = " << setw(3) << Ua.size()
 				<< " |Ub| = " << setw(3) << Ub.size()
@@ -352,10 +340,10 @@ int main(void) {
 				<< " |Nb| = " << setw(3) << Nb.size() << endl;
 
 		cout << "Dump mapA: " << endl;
-		dumpMap(tmpMapA);
+		LinearAffineEq::dumpMap(tmpMapA);
 
 		cout << "Dump mapB: " << endl;
-		dumpMap(tmpMapB);
+		LinearAffineEq::dumpMap(tmpMapB);
 	}
 }
 
