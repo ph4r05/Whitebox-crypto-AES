@@ -66,7 +66,8 @@ inline long getLong(const NTL::GF2E& x) {
     return tmp.xrep.length() == 0 ? 0L : tmp.xrep[0];
 }
 
-inline NTL::mat_GF2 colVector(const unsigned char c){
+template<typename T>
+inline NTL::mat_GF2 colVector(const T c){
 	NTL::mat_GF2 ret(INIT_SIZE, 8, 1);
 	ret[0][0] = c & (1<<0); 	ret[1][0] = c & (1<<1);
 	ret[2][0] = c & (1<<2); 	ret[3][0] = c & (1<<3);
