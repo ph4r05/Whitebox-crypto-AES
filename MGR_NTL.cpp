@@ -148,203 +148,20 @@ int main(void) {
 	//
 	// Linear equivalence algorithm
 	//
-	bset Ua, Ub, Na, Nb, Ca, Cb;
-	bset Ua_back, Ub_back, Ca_back, Cb_back;	// backup in case of incorrect guess
 	bsetElem S2[256];
 	bsetElem S2inv[256];
 	bsetElem * S1 = S2;
 	bsetElem * S1inv = S2inv;
-	bsetElem guesses1[255]; int guess1Idx=0;
-	randomPermutationT(guesses1, 255, 1);
 	for(i=0; i<256; i++) {
 		S2[i] = defAES.sboxAffine[i];
 		S2inv[i] = defAES.sboxAffineInv[i];
 	}
 
-	// mappings known
-	smap mapA, mapB, tmpMapA, tmpMapB;
-
-	// init Ua, Ub, Na, Nb
-	Ca.insert(0); Na.insert(0);
-	Cb.insert(0); Nb.insert(0);
-	tmpMapA.insert( pair<bsetElem,bsetElem>(0, 0) );
-	mapA.insert(    pair<bsetElem,bsetElem>(0, 0) );
-	tmpMapB.insert( pair<bsetElem,bsetElem>(0, 0) );
-	mapB.insert(    pair<bsetElem,bsetElem>(0, 0) );
-
-	// random initialization of Ua, Ub
-	bsetElem rndInit[255];
-	randomPermutationT(rndInit, 255, 1);
-	for(i=0; i<255; i++){
-		Ua.insert(rndInit[i]);
-		Ub.insert(rndInit[i]);
-	}
-
-	bset::const_iterator it1, it2, it3;
-	while(Ua.empty()==false && Ub.empty()==false && guess1Idx < 255){
-		cout << endl << "====================================================================================" << endl
-				<< "Main cycle started " << endl;
-
-		//
-		// starting with new guess
-		//
-		if (Na.empty() && Nb.empty()){
-			bsetElem x, guess;
-			int rnd = rand() % Ua.size();
-			//
-			// At first, backup Ca, Cb, Ua, Ub - will be restored in case of incorrect guess
-			//
-			Ua_back = Ua;   Ub_back = Ub;
-			Ca_back = Ca;   Cb_back = Cb;
-			mapA = tmpMapA; mapB = tmpMapB;
-
-			//
-			// 1. If previous guess rejected, restore Ca, Cb, Ua, Ub
-			// Guess A(x) for some x \in Ua
-			// Set Na = {x}, Ua = Ua / {x}
-			//
-			cout << "New guess;" << endl;
-			it1 = Ua.begin(); for(i=0; i<rnd; ++i, ++it1);
-			x = *it1; Ua.erase(it1);
-			Na.insert(x);
-			cout << "G: x was selected as [" << x << "]" << endl;
-
-			guess = guesses1[guess1Idx++];
-			cout << "G: guessed value: " << guess << endl;
-			tmpMapA.insert( smapElem(x, guess) );
-		}
-
-		//
-		// Na cycle
-		//
-		while(Na.empty() == false){
-			bsetElem x, y;
-			cout << endl << "A: Cycle 1 start, |Na| = " << Na.size() << endl;
-
-			// Pick x \in Na; Na = Na \ {x};
-			it1 = Na.begin(); x = *it1; Na.erase(it1);
-			cout << "A: newX is [" << x << "]" << endl;
-
-			// Nb = S2( x + Ca ) \ Cb
-			if (Ca.size() > 0){
-				bset tmpSet;
-				for (it1=Ca.begin(); it1!=Ca.end(); ++it1){
-					bsetElem curr = *it1;
-					bsetElem tmp = x ^ curr;
-					tmpSet.insert(S2[tmp]);
-					// Use linearity of A to build mapping for tmp
-					tmpMapA.insert(smapElem(tmp, tmpMapA[x] ^ tmpMapA[curr]));
-
-					cout << "    curr=" << setw(2) << (curr)
-							<< "; tmp = " << setw(2) << tmp
-							<< "; S2[tmp]    = " << setw(2) << S2[tmp] << endl;
-					cout << "A:     adding mapping for A(x^curr) = A(" << (tmp) << ") = A(x) ^ A(curr) = " << tmpMapA[x] << " ^ " << tmpMapA[curr] << " = " << (tmpMapA[x] ^ tmpMapA[curr]) << endl;
-
-					//
-					// A(x) = S^{-1}_1 (B(S_2(x)))
-					// S1 * A = B * S2
-					if (Cb.count(S2[tmp])==0){
-						const bsetElem amap = tmpMapA[tmp];
-
-						cout << "A:     adding mapping for B(S2(tmp)) = B("<< S2[tmp] <<") = S1(A(tmp)) = S1(" << amap << ") = " << S1[amap] << endl;
-						tmpMapB.insert( pair<bsetElem,bsetElem>(S2[tmp], S1[amap]));
-					}
-				}
-				Nb = LinearAffineEq::setDiff(tmpSet, Cb);
-			}
-
-			// Ca = Ca U (x + Ca)
-			cout << "A: Ca size pre: " << Ca.size() << endl;
-			bset tmpSet(Ca);
-			for(it1=tmpSet.begin(); it1 != tmpSet.end(); ++it1){
-				Ca.insert( x ^ (*it1) );
-			}
-			Ca.insert(x);
-			cout << "A: Ca size post: " << Ca.size() << endl;
-
-			double vectKnown = Nb.size() + log2(Cb.size());
-			cout << "A: vect knownB: " << vectKnown << endl;
-			if (vectKnown>8){
-
-
-			}
-		}
-		cout << endl;
-
-		//
-		// Nb cycle
-		//
-		while(Nb.empty() == false){
-			bsetElem x, y;
-			cout << "B: Cycle 2 start, |Nb| = " << Nb.size() << endl;
-
-			it1 = Nb.begin(); x = *it1; Nb.erase(it1);
-			cout << "B: newX is [" << x << "]" << endl;
-
-			if (Cb.size() > 0){
-				bset tmpSet;
-				for (it1=Cb.begin(); it1!=Cb.end(); ++it1){
-					bsetElem curr = *it1;
-					bsetElem tmp = x ^ curr;
-					tmpSet.insert(S2inv[tmp]);
-
-					// Use linearity of B to build mapping for tmp
-					tmpMapB.insert(smapElem(tmp, tmpMapB[x] ^ tmpMapB[curr]));
-
-					cout << "    curr=" << setw(2) << (curr)
-							<< "; tmp = " << setw(2) << tmp
-							<< "; S2inv[tmp] = " << setw(2) << S2inv[tmp] << endl;
-					cout << "B:     adding mapping for B(x^curr) = B(" << (tmp) << ") = B(x) ^ B(curr) = " << tmpMapB[x] << " ^ " << tmpMapB[curr] << " = " << (tmpMapB[x] ^ tmpMapB[curr]) << endl;
-
-					//
-					//       A            = S^{-1}_1 * B * S_2
-					//       A * S_2^{-1} = S^{-1}_1 * B
-					if (Ca.count(S2inv[tmp])==0){
-						const bsetElem bmap = tmpMapB[tmp];
-
-						cout << "B:     adding mapping for A(S2inv(tmp)) = A(" << S2inv[tmp] << ") = S1inv(B(tmp)) = S1inv(" << bmap << ") = " << (S1inv[bmap]) << endl;
-						tmpMapA.insert(smapElem(S2inv[tmp], S1inv[bmap]));
-					}
-				}
-				Na = LinearAffineEq::setDiff(tmpSet, Ca);
-			}
-
-			// Cb = Cb U (x + Cb)
-			cout << "B: Cb size pre: " << Cb.size() << endl;
-			bset tmpSet(Cb);
-			for(it1=tmpSet.begin(); it1 != tmpSet.end(); ++it1){
-				Cb.insert( x ^ *it1 );
-			}
-			Cb.insert(x);
-			cout << "B: Cb size post: " << Cb.size() << endl;
-
-			double vectKnown = Na.size() + log2(Ca.size());
-			cout << "B: vect knownA: " << vectKnown << endl;
-			if (vectKnown>8){
-				cout << "B: ## check linearity of A, derive,..." << endl;
-				LinearAffineEq::dumpMap(tmpMapA);
-
-
-			}
-		}
-
-		cout << endl << "EEEnd of both cycles, remove Ca, Cb from Ua Ub" << endl;
-		Ua = LinearAffineEq::setDiff(Ua, Ca);
-		Ub = LinearAffineEq::setDiff(Ub, Cb);
-
-		cout    << " |Ua| = " << setw(3) << Ua.size()
-				<< " |Ub| = " << setw(3) << Ub.size()
-				<< " |Ca| = " << setw(3) << Ca.size()
-				<< " |Cb| = " << setw(3) << Cb.size()
-				<< " |Na| = " << setw(3) << Na.size()
-				<< " |Nb| = " << setw(3) << Nb.size() << endl;
-
-		cout << "Dump mapA: " << endl;
-		LinearAffineEq::dumpMap(tmpMapA);
-
-		cout << "Dump mapB: " << endl;
-		LinearAffineEq::dumpMap(tmpMapB);
-	}
+	LinearAffineEq eqCheck;
+	eqCheck.setDimension(8);
+	eqCheck.verbosity=1;
+	int result = eqCheck.findLinearEquivalences(S1, S1inv, S2, S2inv);
+	cout << "Done, result = " << result <<  " ; count= " << eqCheck.relationsCount << endl;
 }
 
 int A1A2relationsGenerator(void){
