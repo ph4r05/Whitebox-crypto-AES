@@ -148,7 +148,7 @@ int main(void) {
 
 	LinearAffineEq eqCheck;
 	eqCheck.setDimension(8);
-	eqCheck.verbosity=1;
+	eqCheck.verbosity=0;
 	eqCheck.randomizeXGuess=false;
 
 	bsetElem S2[256];
@@ -159,9 +159,6 @@ int main(void) {
 	for(a=0; a<256; a++){
 		cout << "+++++++++++++++++++++++++++++ @@[ " << a << "]" << endl;
 		for(b=0; b<256; b++){
-			/*if (b!=0x3a && b!=0x52 && b!=0x5c && b!=0xa5 && b!=0x6b && b!=0xa2 && b!=0x01){
-				continue;
-			}*/
 
 			time_t  tt;
 			struct tm * now = localtime(&tt);
@@ -180,15 +177,14 @@ int main(void) {
 			clock_t time_begin = clock();
 
 			for(i=0; i<256; i++) {
-				S1[i]      = defAES.sboxAffine[i ^ a];
-				S1inv[S1[i]] = i;
-				S2[i]    = defAES.sboxAffine[i] ^ b;
-				S2inv[S2[i]] = i;
+				//S1[i]      = defAES.sboxAffine[i ^ a];
+				//S2[i]    = defAES.sboxAffine[i] ^ b;
 
-				//S1[i]      = defAES.sboxAffineInv[i ^ a];
-				//S1inv[S1[i]] = i;
-				//S2[i]      = defAES.sboxAffineInv[i] ^ b;
-				//S2inv[S2[i]] = i;
+				S1[i]      = defAES.sboxAffineInv[i ^ b];
+				S2[i]      = defAES.sboxAffineInv[i] ^ a;
+
+				S1inv[S1[i]] = i;
+				S2inv[S2[i]] = i;
 			}
 
 			linearEquivalencesList resultList;
