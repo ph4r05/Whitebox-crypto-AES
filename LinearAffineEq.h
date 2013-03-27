@@ -106,6 +106,16 @@ public:
 protected:
 	unsigned int dim;
 	unsigned int size; // 2^dim
+
+	/**
+	 * Builds lookup table for transformation given as matrix multiplication and compares with
+	 * already obtained mapping values in mapA.
+	 *
+	 * Computes affine transformation: Ta * x + cst
+	 *
+	 * If everything is OK, 0 is returned, if at least one value mismatches, negative number is returned.
+	 */
+	int buildLookupTableAndCheck(mat_GF2 & Ta, bsetElem cst, smap & mapA);
 };
 
 

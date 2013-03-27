@@ -27,6 +27,9 @@ using namespace boost;
 
 LinearAffineEq::LinearAffineEq() {
 	verbosity=0;
+	relationsCount=0;
+	size=256;
+	dim=8;
 }
 
 LinearAffineEq::~LinearAffineEq() {
@@ -128,12 +131,41 @@ mat_GF2 LinearAffineEq::values2GF2matrix(const bset & s, const smap & m, int dim
 	return ret;
 }
 
+int LinearAffineEq::buildLookupTableAndCheck(mat_GF2 & Ta, bsetElem cst, smap & mapA){
+	for(unsigned int i=0; i<size; i++){
+		mat_GF2 e = colVector(i);
+		mat_GF2 v = Ta * e;
+		GF2X res = colVector_GF2X(v, 0);
+		bsetElem resE = getLong(res) + cst;
+
+		// check mapping, if it is correct (consistent table data with new computed data)
+		if (mapA.count(i)>0){
+			if (mapA[i] != resE) {
+				if (verbosity){
+					cout << "Mapping inconsistent for i=" << i
+						<< "; mapA[i] = " << mapA[i]
+						<< "; resE = " << resE << endl;
+					cout << "colVector: " << endl;
+					dumpMatrix(e);
+					cout << " Ta*e " << endl;
+					dumpMatrix(v);
+					cout << "res: " << res << endl;
+				}
+				return -4;
+			}
+		} else {
+			mapA.insert(smapElem(i, resE));
+		}
+	}
+
+	return 0;
+}
+
 int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 							  	  	  	  smap & mapA,       smap & mapB,
 							  	  	  	  bsetElem * S1,     bsetElem * S1inv,
 							  	  	  	  bsetElem * S2,     bsetElem * S2inv,
 							  	  	  	  mat_GF2 & Ta, 	 mat_GF2 & Tb){
-
 	// Extract linearly independent vectors, to determine mapping.
 	// We need matrix consisting of Avect to be invertible in order to determine
 	// matrix representation of transformation.
@@ -180,7 +212,10 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 
 	// obtain linear transformation
 	Ta = Aout * AinpInv;
-	if (verbosity) dumpMatrix(Ta);
+	if (verbosity) {
+		cout << "Ta matrix: " << endl;
+		dumpMatrix(Ta);
+	}
 
 	// invertible?
 	inv(det, TAinv, Ta);
@@ -197,38 +232,16 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 	//
 	// A is known (matrix representation), build lookup table
 	//
-	for(unsigned int i=0; i<size; i++){
-		mat_GF2 e = colVector(i);
-		mat_GF2 v = Ta * e;
-		GF2X res = colVector_GF2X(v, 0);
-		bsetElem resE = getLong(res);
-
-		// check mapping, if it is correct (consistent table data with new computed data)
-		if (mapA.count(i)>0){
-			if (mapA[i] != resE) {
-				if (verbosity){
-					cout << "Mapping inconsistent for i=" << i
-						<< "; mapA[i] = " << mapA[i]
-						<< "; resE = " << resE << endl;
-					cout << "colVector: " << endl;
-					dumpMatrix(e);
-					cout << " Ta*e " << endl;
-					dumpMatrix(v);
-					cout << "res: " << res << endl;
-				}
-				return -4;
-			}
-		} else {
-			mapA.insert(smapElem(i, resE));
-		}
+	if (buildLookupTableAndCheck(Ta, 0, mapA)<0){
+		return -4;
 	}
 
 	//
-	// Deriving mapping B from mapping A that is complete now and in matrix form
+	// Deriving mapping B from mapping A that is complete now and in matrix form.
 	//
 	// B * S2 = S1 * A
 	// B(x) = S1 * A * S2^{-1} (x)
-	// From this we derive mapping for B for basis vectors directly
+	// From this we derive mapping for B for basis vectors directly.
 	Tb.SetDims(dim,dim);
 	for(unsigned int i=0; i<dim; i++){
 		bsetElem base = 1 << i;
@@ -243,21 +256,51 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 		dumpMatrix(Tb);
 	}
 
-	// Transformation B invertibility test
+	// Transformation B invertibility test.
+	// Inversion is needed for final test for relations properties with S-boxes
 	mat_GF2 Tbinv;
 	inv(det, Tbinv, Tb);
 	if (det==0){
-		if (verbosity) cout << "B is not linear invertible transformation" << endl;
+		if (verbosity) cout << "B is not linear invertible transformation, cannot create inversion." << endl;
 		return -4;
 	}
 
-	// TODO: check properties for all points in Ua, Ub
+	// build lookup table for B and check already precomputed values
+	if (buildLookupTableAndCheck(Tb, 0, mapB)<0){
+		return -4;
+	}
+
+	// Whole range test for holding desired properties with Sboxes for which
+	// they were designed.
+	// For this we also need B^{-1} transformation.
+	//
+	// We apply this equation here:
+	// B^{-1} * S1 * A = S2
+	//
+	smap mapBinv;
+	buildLookupTableAndCheck(Tbinv, 0, mapBinv);
+
 	if (verbosity) cout << "Testing matrix representation with |Ua| = " << Ua.size() << " and |Ub| = " << Ub.size() << endl;
+	for(bsetElem iter = 0; iter < size; iter++){
+		bsetElem desiredResult = S2[iter];
+		bsetElem myResult = mapBinv[S1[mapA[iter]]];
+		if (desiredResult!=myResult){
+			if (verbosity){
+				cout << "Problem with relations, it does not work for: " << iter << endl;
+				cout << "S2["<<iter<<"]=           " << desiredResult << endl;
+				cout << "B^{-1}[S1[A["<<iter<<"]]]=" << myResult << endl;
+			}
+
+			return -5;
+		}
+	}
+
 	return 0;
 }
 
 int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 										   bsetElem * S2, 		bsetElem * S2inv){
+	int count = 0;
 	int i;
 	bset Ua, Ub, Na, Nb, Ca, Cb;
 	bsetElem guesses1[size-1]; int guess1Idx=0;	// random guesses for A(x) mapping
@@ -313,7 +356,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 			if (guessRejected){
 				// Is everything done?
 				if (stackIdx == -1) {
-					return 0;
+					break;
 				}
 
 				// Revert backups for state variables
@@ -448,6 +491,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 
 				if (verbosity) cout << "Process results here!! Everything OK" << endl;
 
+				count+=1;
 				relationsCount+=1;
 				guessRejected=true;
 				Na.clear(); Nb.clear();
@@ -519,6 +563,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 
 				if (verbosity) cout << "Process results here!! Everything OK" << endl;
 
+				count += 1;
 				relationsCount+=1;
 				guessRejected=true;
 				Na.clear(); Nb.clear();
@@ -543,7 +588,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 		}
 	}
 
-	return 0;
+	return count;
 }
 
 } /* namespace laeqv */
