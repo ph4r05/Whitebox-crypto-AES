@@ -58,6 +58,30 @@ void LinearAffineEq::dumpSet(const bset s){
 	}
 }
 
+void LinearAffineEq::dumpMapS(ostream& out, const smap& mp, bool newline){
+	for(smap::const_iterator it = mp.begin(); it != mp.end(); ++it){
+		out << "[" << setw(2) << (it->first) << "]=" << setw(2) << (it->second) << ",";
+		if (newline) out << endl;
+	}
+}
+
+void LinearAffineEq::dumpSetS(ostream& out, const bset s){
+	for(bset::const_iterator it = s.begin(); it != s.end(); ++it){
+		out << setw(2) << (*it) << " ";
+	}
+}
+std::string LinearAffineEq::dumpMapT(const smap& mp, bool newline){
+	std::ostringstream out;
+	LinearAffineEq::dumpMapS(out, mp, newline);
+	return out.str();
+}
+
+std::string LinearAffineEq::dumpSetT(const bset s){
+	std::ostringstream out;
+	LinearAffineEq::dumpSetS(out, s);
+	return out.str();
+}
+
 // extract lineary independent vectors from input map - keys
 bset LinearAffineEq::extractLinearlyIndependent(const smap& mp){
 	bset tmpKeySet;
@@ -165,7 +189,9 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 							  	  	  	  smap & mapA,       smap & mapB,
 							  	  	  	  bsetElem * S1,     bsetElem * S1inv,
 							  	  	  	  bsetElem * S2,     bsetElem * S2inv,
-							  	  	  	  mat_GF2 & Ta, 	 mat_GF2 & Tb){
+							  	  	  	  mat_GF2 & Ta, 	 mat_GF2 & Tb,
+							  	  	  	  mat_GF2 & Tbinv,   smap & mapBinv,
+							  	  	  	  bool AisA){
 	// Extract linearly independent vectors, to determine mapping.
 	// We need matrix consisting of Avect to be invertible in order to determine
 	// matrix representation of transformation.
@@ -242,10 +268,16 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 	// B * S2 = S1 * A
 	// B(x) = S1 * A * S2^{-1} (x)
 	// From this we derive mapping for B for basis vectors directly.
+	//
+	// Or B and A are swapped here and we want to compute values for A(x)
+	// knowing mapping for B(x) (AisA==false)
+	//
+	// A(x) = S1inv * B * S2 (x)
+	//
 	Tb.SetDims(dim,dim);
 	for(unsigned int i=0; i<dim; i++){
 		bsetElem base = 1 << i;
-		bsetElem res = S1[mapA[S2inv[base]]];
+		bsetElem res = AisA ? S1[mapA[S2inv[base]]] : S1inv[mapA[S2[base]]];
 		for(unsigned int j=0; j<dim; j++){
 			Tb.put(j, i, (res & (1<<j)) > 0 ? 1 : 0);
 		}
@@ -257,8 +289,8 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 	}
 
 	// Transformation B invertibility test.
-	// Inversion is needed for final test for relations properties with S-boxes
-	mat_GF2 Tbinv;
+	// Inversion is needed for final test for relations properties with S-boxes.
+	// If AisA==false, it does not mind, both relations has to be invertible.
 	inv(det, Tbinv, Tb);
 	if (det==0){
 		if (verbosity) cout << "B is not linear invertible transformation, cannot create inversion." << endl;
@@ -277,13 +309,24 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 	// We apply this equation here:
 	// B^{-1} * S1 * A = S2
 	//
-	smap mapBinv;
-	buildLookupTableAndCheck(Tbinv, 0, mapBinv);
+	// If AisA==false, we have to reverse mapping here, Ta, Tb, Tainv, Tbinv are swapped,
+	// but relations works only according to equations. We need to return mapBinv for
+	// real B mapping (B^{-1} is needed to verify relations).
+	if (AisA){
+		buildLookupTableAndCheck(Tbinv, 0, mapBinv);
+	} else {
+		mapBinv.clear();
+		buildLookupTableAndCheck(TAinv, 0, mapBinv);
+		Tbinv = TAinv;
+	}
 
+	//
+	// Again take swapping A and B into account.
+	//
 	if (verbosity) cout << "Testing matrix representation with |Ua| = " << Ua.size() << " and |Ub| = " << Ub.size() << endl;
 	for(bsetElem iter = 0; iter < size; iter++){
 		bsetElem desiredResult = S2[iter];
-		bsetElem myResult = mapBinv[S1[mapA[iter]]];
+		bsetElem myResult = AisA ? mapBinv[S1[mapA[iter]]] : mapBinv[S1[mapB[iter]]];
 		if (desiredResult!=myResult){
 			if (verbosity){
 				cout << "Problem with relations, it does not work for: " << iter << endl;
@@ -298,8 +341,9 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 	return 0;
 }
 
-int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
-										   bsetElem * S2, 		bsetElem * S2inv){
+int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
+										   bsetElem * S2,   bsetElem * S2inv,
+										   linearEquivalencesList * list){
 	int count = 0;
 	int i;
 	bset Ua, Ub, Na, Nb, Ca, Cb;
@@ -446,7 +490,8 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 					bsetElem curr = *it1;
 					bsetElem tmp = x ^ curr;
 					tmpSet.insert(S2[tmp]);
-					// Use linearity of A to build mapping for tmp
+
+					// Use linearity of A to build mapping for tmp, we will need this values later
 					mapA.insert(smapElem(tmp, mapA[x] ^ mapA[curr]));
 
 					if (verbosity){
@@ -476,12 +521,17 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 			}
 			Ca.insert(x);
 
-			// check linearity and derive
+			// Check if we have enough vectors to build A and B mappings from them. We need 8 linearly independent
+			// vectors in A mapping to build its matrix representation and to continue with computation.
+			//
+			// Check if B is invertible linear mapping, if yes, derive A and check A,B on all points that left in Ua, Ub
 			double vectKnown = Nb.size() + log2(Cb.size());
 			if (verbosity) cout << "A: vect knownB: " << vectKnown << endl;
 			if (vectKnown > dim){
-				mat_GF2 Ta, Tb;
-				int result = checkInvertibleLinear(Ua, Ub, mapA, mapB, S1, S1inv, S2, S2inv, Ta, Tb);
+				mat_GF2 Ta, Tb, Tbinv; smap mapBinv;
+
+				if (verbosity) cout << "A: checking whether B is linear invertible: " << vectKnown << endl;
+				int result = checkInvertibleLinear(Ub, Ua, mapB, mapA, S1, S1inv, S2, S2inv, Tb, Ta, Tbinv, mapBinv, false);
 				if (result==-1 || result==-2) continue;
 				if (result==-3 || result==-4 || result==-5){
 					guessRejected=true;
@@ -490,6 +540,13 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 				}
 
 				if (verbosity) cout << "Process results here!! Everything OK" << endl;
+				if (list!=NULL){
+					linearEquiv_t tmpStruct;
+					tmpStruct.Ta = Ta;       tmpStruct.Tb = Tb;
+					tmpStruct.TaV = mapA;    tmpStruct.TbV = mapB;
+					tmpStruct.Tbinv = Tbinv; tmpStruct.TbinvV = mapBinv;
+					list->push_back(tmpStruct);
+				}
 
 				count+=1;
 				relationsCount+=1;
@@ -497,7 +554,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 				Na.clear(); Nb.clear();
 			}
 		}
-		cout << endl;
+		if (verbosity) cout << endl;
 
 		//
 		// Nb cycle
@@ -548,12 +605,18 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 			}
 			Cb.insert(x);
 
+			// Check if we have enough vectors to build A and B mappings from them. We need 8 linearly independent
+			// vectors in B mapping to build its matrix representation and to continue with computation.
+			//
+			// Check if A is invertible linear mapping, if yes, derive B and check A,B on all points that left in Ua, Ub
 			double vectKnown = Na.size() + log2(Ca.size());
 			if (verbosity) cout << "B: vect knownA: " << vectKnown << endl;
 			if (vectKnown>dim){
 				if (verbosity) cout << "B: ## check linearity of A, derive,..." << endl;
-				mat_GF2 Ta, Tb;
-				int result = checkInvertibleLinear(Ub, Ua, mapB, mapA, S1, S1inv, S2, S2inv, Tb, Ta);
+				mat_GF2 Ta, Tb, Tbinv; smap mapBinv;
+
+				if (verbosity) cout << "B: checking whether A is linear invertible: " << vectKnown << endl;
+				int result = checkInvertibleLinear(Ua, Ub, mapA, mapB, S1, S1inv, S2, S2inv, Ta, Tb, Tbinv, mapBinv, true);
 				if (result==-1 || result==-2) continue;
 				if (result==-3 || result==-4 || result==-5){
 					guessRejected=true;
@@ -563,6 +626,14 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 
 				if (verbosity) cout << "Process results here!! Everything OK" << endl;
 
+				if (list!=NULL){
+					linearEquiv_t tmpStruct;
+					tmpStruct.Ta = Ta;       tmpStruct.Tb = Tb;
+					tmpStruct.TaV = mapA;    tmpStruct.TbV = mapB;
+					tmpStruct.Tbinv = Tbinv; tmpStruct.TbinvV = mapBinv;
+					list->push_back(tmpStruct);
+				}
+
 				count += 1;
 				relationsCount+=1;
 				guessRejected=true;
@@ -570,6 +641,8 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
 			}
 		}
 
+		// Ua = Ua \ Ca
+		// Ub = Ub \ Cb
 		Ua = LinearAffineEq::setDiff(Ua, Ca);
 		Ub = LinearAffineEq::setDiff(Ub, Cb);
 

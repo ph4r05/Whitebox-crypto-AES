@@ -180,3 +180,19 @@ void applyLookupTable(vec_GF2E& ltable, mat_GF2E& tgt){
 		}
 	}
 }
+
+std::string hashString(std::string inputBuffer){
+	char buff[inputBuffer.size()];					// c++0x feature
+	inputBuffer.copy(buff, inputBuffer.size(), 0);	// copy serialized lookup table to char array
+
+	MD5_CTX mdContext;
+	MD5Init(&mdContext);
+	MD5Update(&mdContext, (unsigned char * )buff, inputBuffer.size());
+	MD5Final(&mdContext);
+
+	// hexcoding
+	ostringstream ss;
+	int i=0; for(i=0; i<MD5_DIGEST_LENGTH; i++) ss << CHEX(mdContext.digest[i]);
+	inputBuffer = ss.str();
+	return inputBuffer;
+}

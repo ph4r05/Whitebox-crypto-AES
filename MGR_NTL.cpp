@@ -68,19 +68,12 @@ int A1A2relationsGenerator(void);
 // hashes lookup table using MD5 hash
 std::string hashLookupTable(vec_GF2E s){
 	std::string inputBuffer = dumpVector2str(s);
-	char buff[inputBuffer.size()];					// c++0x feature
-	inputBuffer.copy(buff, inputBuffer.size(), 0);	// copy serialized lookup table to char array
+	return hashString(inputBuffer);
+}
 
-	MD5_CTX mdContext;
-	MD5Init(&mdContext);
-	MD5Update(&mdContext, (unsigned char * )buff, inputBuffer.size());
-	MD5Final(&mdContext);
-
-	// hexcoding
-	ostringstream ss;
-	int i=0; for(i=0; i<MD5_DIGEST_LENGTH; i++) ss << CHEX(mdContext.digest[i]);
-	inputBuffer = ss.str();
-	return inputBuffer;
+std::string hashSmap(const smap & map){
+	std::string inputBuffer = LinearAffineEq::dumpMapT(map, false);
+	return hashString(inputBuffer);
 }
 
 // hardcoded elements
@@ -148,20 +141,92 @@ int main(void) {
 	//
 	// Linear equivalence algorithm
 	//
-	bsetElem S2[256];
-	bsetElem S2inv[256];
-	bsetElem * S1 = S2;
-	bsetElem * S1inv = S2inv;
-	for(i=0; i<256; i++) {
-		S2[i] = defAES.sboxAffine[i];
-		S2inv[i] = defAES.sboxAffineInv[i];
+	int total=0;
+	bsetElem a,b;
+	unordered_set<std::string> hashes;
+	for(a=0; a<256; a++){
+		cout << "+++++++++++++++++++++++++++++ @@[ " << a << "]" << endl;
+		for(b=0; b<256; b++){
+			cout << "........................... ##[ " << b << "]" << endl;
+
+			bsetElem S2[256];
+			bsetElem S2inv[256];
+			bsetElem S1[256];
+			bsetElem S1inv[256];
+			for(i=0; i<256; i++) {
+				S1[i]      = defAES.sboxAffine[i ^ a];
+				S1inv[S1[i]] = i;
+				S2[i]    = defAES.sboxAffine[i] ^ b;
+				S2inv[S2[i]] = i;
+
+				//S1[i]      = defAES.sboxAffineInv[i ^ a];
+				//S1inv[S1[i]] = i;
+				//S2[i]      = defAES.sboxAffineInv[i] ^ b;
+				//S2inv[S2[i]] = i;
+			}
+
+			LinearAffineEq eqCheck;
+			eqCheck.setDimension(8);
+			eqCheck.verbosity=0;
+			linearEquivalencesList resultList;
+
+			int result = eqCheck.findLinearEquivalences(S1, S1inv, S2, S2inv, &resultList);
+			total += result;
+
+			cout << "Done, result = " << result <<  " ; count= " << eqCheck.relationsCount <<  " listSize: " << resultList.size() <<  endl;
+			cout << "So far we have [" << total << "]" << endl;
+
+			// Check them now, convert to real affine lookup tables
+			smap L1, L2;
+			int ch = 0;
+			for(linearEquivalencesList::iterator it = resultList.begin(); it != resultList.end(); ++it){
+				linearEquiv_t & el = *it;
+				cout << "Checking [" << ch << "]" << endl;
+
+				bool same=true;
+				bool ok = true;
+				for(i=0; i<256; i++){
+					if (same && el.TbinvV[i] != el.TaV[i]) same=false;
+					bsetElem desired = S2[i];
+					bsetElem myVal = el.TbinvV[S1[el.TaV[i]]];
+
+					L1[i] = el.TaV[i] ^ a;
+					L2[i] = el.TbinvV[i] ^ b;
+
+					if (desired != myVal){
+						ok = false;
+						cout << " ! Error, mismatch S2["<<i<<"]=" << desired
+							 <<	" vs. B^{-1}[S1[A[i]]=" << myVal << endl;
+					}
+				}
+
+				if (same) cout << "A1 == B^{-1}" << endl;
+				else	  cout << "A1 != B^{-1}" << endl;
+
+				if (ok)  cout << "It holds!!" << endl;
+				else	 cout << "BROKEN" << endl;
+
+				// hash it
+				std::string hashL1 = hashSmap(L1);
+				std::string hashL2 = hashSmap(L2);
+				std::string totalHash = hashL1;
+				totalHash.append(";").append(hashL2);
+
+				cout << "Total hash: " << totalHash << endl;
+
+				if (hashes.count(totalHash)>0){
+					cout << "Already in hash set, skipping" << endl;
+				} else {
+					hashes.insert(totalHash);
+				}
+			}
+
+			cout << "So far unique affine relations: " << hashes.size() << endl;
+		}
 	}
 
-	LinearAffineEq eqCheck;
-	eqCheck.setDimension(8);
-	eqCheck.verbosity=1;
-	int result = eqCheck.findLinearEquivalences(S1, S1inv, S2, S2inv);
-	cout << "Done, result = " << result <<  " ; count= " << eqCheck.relationsCount << endl;
+	cout << "Total affine relations: " << total << endl;
+	cout << "Total unique affine relations: " << hashes.size() << endl;
 }
 
 int A1A2relationsGenerator(void){

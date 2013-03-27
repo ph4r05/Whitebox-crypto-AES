@@ -26,6 +26,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include "md5.h"
 NTL_CLIENT
 
 
@@ -217,6 +218,12 @@ void applyLookupTable(vec_GF2E& ltable, mat_GF2E& tgt);
  */
 int initMatrix(mat_GF2& M, long *data);
 
+
+/**
+ * Hashes input string with MD5 hash
+ */
+std::string hashString(std::string inputBuffer);
+
 template <class T> class vector_inserter{
 public:
     NTL::Vec<T>& v;
@@ -226,8 +233,5 @@ public:
 template <class T> vector_inserter<T>& operator+=(NTL::Vec<T>& v,const T& x){
     return vector_inserter<T>(v),x;
 }
-
-
-
 
 #endif /* NTLUTILS_H_ */

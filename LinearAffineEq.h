@@ -25,6 +25,8 @@
 #include <boost/foreach.hpp>
 #include <set>
 #include <map>
+#include <deque>
+#include <iostream>
 
 namespace wbacr {
 namespace laeqv {
@@ -40,7 +42,14 @@ typedef std::pair<bsetElem, bsetElem> smapElem;
 typedef struct _linearEquiv_t {
 	mat_GF2 Ta;
 	mat_GF2 Tb;
+	mat_GF2 Tainv;
+	mat_GF2 Tbinv;
+	smap TaV;
+	smap TbV;
+	smap TbinvV;
 } linearEquiv_t;
+
+typedef deque<linearEquiv_t> linearEquivalencesList;
 
 typedef struct _affineEquiv_t {
 	mat_GF2 Ta;
@@ -49,11 +58,12 @@ typedef struct _affineEquiv_t {
 	GF2X b;
 } affineEquiv_t;
 
-
+// Recursive stack structure - state stored in one virtual
+// recursive call, corresponds to guessing A(x) value part of code.
 typedef struct _linEqGuess_t {
-	bsetElem guessKey;
-	bsetElem guessVal;
-	unsigned int idx;
+	bsetElem guessKey;		// x, for which was value guessed
+	bsetElem guessVal;		// A(x), guessed mapping value for x
+	unsigned int idx;		// index in randomly permuted guess array - to exhaust all possibilities
 	unsigned int guessCn;
 
 	bset Ca, Cb, Ua, Ub;	// values backup for reverting bad guess
@@ -69,8 +79,12 @@ public:
 
 	// returns set C = A \ B
 	static bset setDiff(const bset &A, const bset &B);
+	static void dumpMapS(ostream& out, const smap& mp, bool newline);
+	static void dumpSetS(ostream& out, const bset s);
 	static void dumpMap(const smap& mp);
 	static void dumpSet(const bset s);
+	static std::string dumpMapT(const smap& mp, bool newline);
+	static std::string dumpSetT(const bset s);
 
 	// extract linearly independent vectors from input map - keys
 	static bset extractLinearlyIndependent(const smap& mp);
@@ -79,14 +93,12 @@ public:
 	// converts output values of mapping smap given by values bset to GF2 matrix
 	static mat_GF2 values2GF2matrix(const bset & s, const smap & m, int dim);
 
-	int checkInvertibleLinear(const bset & Ua,   const bset & Ub,
-							  smap & mapA,      smap & mapB,
-							  bsetElem * S1, 	bsetElem * S1inv,
-							  bsetElem * S2, 	bsetElem * S2inv,
-							  mat_GF2 & Ta,		 mat_GF2 & Tb);
-
-	int findLinearEquivalences(bsetElem * S1, 	bsetElem * S1inv,
-							bsetElem * S2, 		bsetElem * S2inv);
+	/**
+	 * Linear Equivalence algorithm
+	 */
+	int findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
+							   bsetElem * S2,   bsetElem * S2inv,
+							   linearEquivalencesList * list);
 
 	inline void setDimension(unsigned int dim){
 		this->dim  = dim;
@@ -106,6 +118,20 @@ public:
 protected:
 	unsigned int dim;
 	unsigned int size; // 2^dim
+
+	/**
+	 * Helper function for Linear Equivalence algorithm.
+	 * Corresponds to part :
+	 * 	If B is invertible linear mapping then
+	 * 	   Derive A and check A,B at al points, that are still left in Ua and Ub
+	 */
+	int checkInvertibleLinear(const bset & Ua,   const bset & Ub,
+							  smap & mapA,       smap & mapB,
+							  bsetElem * S1,     bsetElem * S1inv,
+							  bsetElem * S2,     bsetElem * S2inv,
+							  mat_GF2 & Ta,      mat_GF2 & Tb,
+							  mat_GF2 & Tbinv,   smap & mapBinv,
+							  bool AisA);
 
 	/**
 	 * Builds lookup table for transformation given as matrix multiplication and compares with
