@@ -144,15 +144,19 @@ int main(void) {
 	int total=0;
 	bsetElem a,b;
 	unordered_set<std::string> hashes;
+
+	LinearAffineEq eqCheck;
+	eqCheck.setDimension(8);
+	eqCheck.verbosity=0;
+
+	bsetElem S2[256];
+	bsetElem S2inv[256];
+	bsetElem S1[256];
+	bsetElem S1inv[256];
 	for(a=0; a<256; a++){
 		cout << "+++++++++++++++++++++++++++++ @@[ " << a << "]" << endl;
 		for(b=0; b<256; b++){
 			cout << "........................... ##[ " << b << "]" << endl;
-
-			bsetElem S2[256];
-			bsetElem S2inv[256];
-			bsetElem S1[256];
-			bsetElem S1inv[256];
 			for(i=0; i<256; i++) {
 				S1[i]      = defAES.sboxAffine[i ^ a];
 				S1inv[S1[i]] = i;
@@ -165,11 +169,7 @@ int main(void) {
 				//S2inv[S2[i]] = i;
 			}
 
-			LinearAffineEq eqCheck;
-			eqCheck.setDimension(8);
-			eqCheck.verbosity=0;
 			linearEquivalencesList resultList;
-
 			int result = eqCheck.findLinearEquivalences(S1, S1inv, S2, S2inv, &resultList);
 			total += result;
 
@@ -201,10 +201,7 @@ int main(void) {
 				}
 
 				if (same) cout << "A1 == B^{-1}" << endl;
-				else	  cout << "A1 != B^{-1}" << endl;
-
-				if (ok)  cout << "It holds!!" << endl;
-				else	 cout << "BROKEN" << endl;
+				if (!ok)  cout << "BROKEN!!" << endl;
 
 				// hash it
 				std::string hashL1 = hashSmap(L1);

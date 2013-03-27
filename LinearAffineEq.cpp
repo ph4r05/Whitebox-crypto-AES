@@ -90,6 +90,16 @@ bset LinearAffineEq::extractLinearlyIndependent(const smap& mp){
 	smap::const_iterator it = mp.begin();
 	bset::const_iterator its;
 	int i;
+
+	// quick degenerate case - full base
+	if ((unsigned int)mp.size() == size){
+		for(i=0; i<(signed int)dim; i++){
+			resKeySet.insert(1 << i);
+		}
+
+		return resKeySet;
+	}
+
 	for(i=0; it != mp.end(); ++it){
 		if (it->first == 0) continue;
 		if (i==0){
@@ -101,8 +111,8 @@ bset LinearAffineEq::extractLinearlyIndependent(const smap& mp){
 		i++;
 	}
 
-	// Do while key set is exhausted
-	while(tmpKeySet.empty()==false){
+	// Do while key set is exhausted or we have full generator
+	while(tmpKeySet.empty()==false && resKeySet.size() < dim){
 		// 1. take next vector in set as a base vector, is linearly independent from
 		// vectors in resKeySet. Then remove it from keySet.
 		its = tmpKeySet.begin();
@@ -112,6 +122,7 @@ bset LinearAffineEq::extractLinearlyIndependent(const smap& mp){
 		// Remove all linear combinations of new vectors and old vectors in resKeySet, add to span space
 		spanSpace.insert(newVect);
 		resKeySet.insert(newVect);
+		if (resKeySet.size() == dim) return resKeySet;
 
 		// generate new vectors
 		spanSpace2 = spanSpace;
@@ -347,7 +358,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 	int count = 0;
 	int i;
 	bset Ua, Ub, Na, Nb, Ca, Cb;
-	bsetElem guesses1[size-1]; int guess1Idx=0;	// random guesses for A(x) mapping
+	bsetElem guesses1[size-1]; 					// random guesses for A(x) mapping
 	randomPermutationT(guesses1, size-1, 1);	// make it random - random permutation
 
 	// recursive stack for guesses
@@ -376,7 +387,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 
 	bool guessRejected=false;
 	bset::const_iterator it1, it2, it3;
-	while(Ua.empty()==false && Ub.empty()==false && guess1Idx < 255){
+	while(Ua.empty()==false && Ub.empty()==false){
 		if (verbosity){
 			cout << endl << "===================================================================================="
 				 << endl << "Main cycle started " << endl;
@@ -399,7 +410,8 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 			//
 			if (guessRejected){
 				// Is everything done?
-				if (stackIdx == -1) {
+				if (stackIdx < 0) {
+					if (verbosity) cout << "All possible guesses exhausted" << endl;
 					break;
 				}
 
@@ -441,10 +453,14 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 			}
 			linEqGuess_t & gs = recStack[stackIdx];
 
+			if (verbosity){
+				cout << "Guess index=" << gs.idx << "; stackIdx=" << stackIdx << endl;
+			}
+
 			// Guess A(x) value, avoid duplicate with guesses in recursive stack
 			gs.guessKey = x;
 			gs.guessVal = 0;
-			for(bool freeGuess=true; gs.idx < size; gs.idx++){
+			for(bool freeGuess=true; gs.idx < size; gs.idx++, freeGuess=true){
 				gs.guessVal = guesses1[gs.idx];
 				for(i=0; i<stackIdx; i++) {
 					if (recStack[i].guessVal == gs.guessVal) { freeGuess=false; break; }
@@ -458,16 +474,19 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 				guessRejected=true;
 				Na.clear(); Nb.clear();
 				stackIdx-=1;
+
+				if (verbosity) cout << "Decrementing stackIdx to = " << stackIdx << "; index is exhausted; idx: " << gs.idx << endl;
 				continue;
 			}
 
 			mapA.insert(smapElem(gs.guessKey, gs.guessVal));
 			if (verbosity){
 				cout << "New guess;" << endl;
-				cout << "G: x=" << (recStack[stackIdx].guessKey) << endl;
-				cout << "G: A(x) = " << (recStack[stackIdx].guessVal) << endl;
-				cout << "G: idx = " << gs.idx << endl;
-				cout << "G: stackIdx = " << stackIdx << endl;
+				for(i=0; i<=stackIdx; i++) {
+					cout << "G["<<i<<"]: x=" << (recStack[i].guessKey) << endl;
+					cout << "G["<<i<<"]: A(x) = " << (recStack[i].guessVal) << endl;
+					cout << "G["<<i<<"]: idx = " << recStack[i].idx << endl;
+				}
 			}
 		}
 
@@ -525,9 +544,9 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 			// vectors in A mapping to build its matrix representation and to continue with computation.
 			//
 			// Check if B is invertible linear mapping, if yes, derive A and check A,B on all points that left in Ua, Ub
-			double vectKnown = Nb.size() + log2(Cb.size());
+			double vectKnown = Nb.size() + ceil(log2(Cb.size()));
 			if (verbosity) cout << "A: vect knownB: " << vectKnown << endl;
-			if (vectKnown > dim){
+			if (vectKnown >= dim){
 				mat_GF2 Ta, Tb, Tbinv; smap mapBinv;
 
 				if (verbosity) cout << "A: checking whether B is linear invertible: " << vectKnown << endl;
@@ -609,9 +628,9 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 			// vectors in B mapping to build its matrix representation and to continue with computation.
 			//
 			// Check if A is invertible linear mapping, if yes, derive B and check A,B on all points that left in Ua, Ub
-			double vectKnown = Na.size() + log2(Ca.size());
+			double vectKnown = Na.size() + ceil(log2(Ca.size()));
 			if (verbosity) cout << "B: vect knownA: " << vectKnown << endl;
-			if (vectKnown>dim){
+			if (vectKnown>=dim){
 				if (verbosity) cout << "B: ## check linearity of A, derive,..." << endl;
 				mat_GF2 Ta, Tb, Tbinv; smap mapBinv;
 
@@ -661,6 +680,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 		}
 	}
 
+	if (verbosity) cout << "Finishing linear equivalence cycle " << endl;
 	return count;
 }
 

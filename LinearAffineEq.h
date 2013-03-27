@@ -87,7 +87,7 @@ public:
 	static std::string dumpSetT(const bset s);
 
 	// extract linearly independent vectors from input map - keys
-	static bset extractLinearlyIndependent(const smap& mp);
+	bset extractLinearlyIndependent(const smap& mp);
 	// converts set of vectors to matrix, vector is in column repr.
 	static mat_GF2 vectorSet2GF2matrix(const bset & s, int dim);
 	// converts output values of mapping smap given by values bset to GF2 matrix
