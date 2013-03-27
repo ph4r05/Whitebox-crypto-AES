@@ -30,6 +30,7 @@ LinearAffineEq::LinearAffineEq() {
 	relationsCount=0;
 	size=256;
 	dim=8;
+	randomizeXGuess=true;
 }
 
 LinearAffineEq::~LinearAffineEq() {
@@ -206,7 +207,7 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 	// Extract linearly independent vectors, to determine mapping.
 	// We need matrix consisting of Avect to be invertible in order to determine
 	// matrix representation of transformation.
-	bset Avect = LinearAffineEq::extractLinearlyIndependent(mapA);
+	bset Avect = extractLinearlyIndependent(mapA);
 	if (verbosity) {
 		cout << "Size of linearly independent vectors: " << Avect.size() << endl;
 		LinearAffineEq::dumpSet(Avect);
@@ -427,6 +428,12 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 				guessRejected=false;
 				gs.idx+=1;
 
+				// refresh 0 if applicable in Na, Nb
+				if (S1[0] != 0 && S2[0] != 0){
+					Na.insert(0);
+					Nb.insert(0);
+				}
+
 				if (verbosity){
 					cout << "#GuessWasRejected" << endl;
 				}
@@ -446,10 +453,29 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 
 				// Chose new X and pick value for it
 				// Keep in mind linearity of mapping, so avoid duplicities.
-				int rnd = rand() % Ua.size();
-				it1 = Ua.begin(); for(i=0; i<rnd; ++i, ++it1);
-				x = *it1; Ua.erase(it1);
-				Na.insert(x);
+				if (randomizeXGuess){
+					int rnd = rand() % Ua.size();
+					it1 = Ua.begin(); for(i=0; i<rnd; ++i, ++it1);
+					x = *it1; Ua.erase(it1);
+					Na.insert(x);
+				} else {
+					// No X randomization, just pick basis vectors if possible
+					bool baseFound=false;
+					for(i=0; i<(signed int)dim; i++){
+						if (Ua.count(1<<i)>0){
+							x = 1<<i;
+							Ua.erase(x);
+							Na.insert(x);
+							baseFound=true;
+						}
+					}
+
+					// No basis vector is available in Ua, just pick first one
+					if (!baseFound){
+						it1 = Ua.begin(); x = *it1; Ua.erase(it1);
+						Na.insert(x);
+					}
+				}
 			}
 			linEqGuess_t & gs = recStack[stackIdx];
 

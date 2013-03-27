@@ -108,6 +108,7 @@ public:
 	inline unsigned int getDim(){ return this->dim; }
 	inline unsigned int getSize(){ return this->size; }
 	unsigned int verbosity;
+	bool randomizeXGuess;
 
 
 	//

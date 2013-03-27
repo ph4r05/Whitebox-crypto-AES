@@ -41,6 +41,7 @@
 #include <boost/foreach.hpp>
 #include <set>
 #include <map>
+#include <ctime>
 #include "LinearAffineEq.h"
 
 
@@ -148,15 +149,32 @@ int main(void) {
 	LinearAffineEq eqCheck;
 	eqCheck.setDimension(8);
 	eqCheck.verbosity=0;
+	eqCheck.randomizeXGuess=false;
 
 	bsetElem S2[256];
 	bsetElem S2inv[256];
 	bsetElem S1[256];
 	bsetElem S1inv[256];
+
 	for(a=0; a<256; a++){
 		cout << "+++++++++++++++++++++++++++++ @@[ " << a << "]" << endl;
 		for(b=0; b<256; b++){
+			time_t  tt;
+			struct tm * now = localtime(&tt);
 			cout << "........................... ##[ " << b << "]" << endl;
+			cout << "Timestamp: " << std::dec
+					 << (now->tm_year + 1900) << '-'
+			         << (now->tm_mon + 1) << '-'
+			         << now->tm_mday << " "
+			         << now->tm_hour << ":"
+			         << now->tm_min  << ":"
+			         << now->tm_sec  << hex
+			         << endl;
+
+
+			// timing start
+			clock_t time_begin = clock();
+
 			for(i=0; i<256; i++) {
 				S1[i]      = defAES.sboxAffine[i ^ a];
 				S1inv[S1[i]] = i;
@@ -181,7 +199,7 @@ int main(void) {
 			int ch = 0;
 			for(linearEquivalencesList::iterator it = resultList.begin(); it != resultList.end(); ++it){
 				linearEquiv_t & el = *it;
-				cout << "Checking [" << ch << "]" << endl;
+				cout << "Checking [" << (ch++) << "]" << endl;
 
 				bool same=true;
 				bool ok = true;
@@ -219,6 +237,12 @@ int main(void) {
 			}
 
 			cout << "So far unique affine relations: " << hashes.size() << endl;
+
+			// display elapsed time
+			clock_t time_end = clock();
+			double elapsed_secs = double(time_end - time_begin) / CLOCKS_PER_SEC;
+			time_begin = time_end;
+			cout << "Time elapsed: " << dec << elapsed_secs << hex << endl;
 		}
 	}
 
