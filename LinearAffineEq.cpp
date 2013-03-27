@@ -206,7 +206,16 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 		// check mapping, if it is correct (consistent table data with new computed data)
 		if (mapA.count(i)>0){
 			if (mapA[i] != resE) {
-				if (verbosity) cout << "Mapping inconsistent for i=" << i << endl;
+				if (verbosity){
+					cout << "Mapping inconsistent for i=" << i
+						<< "; mapA[i] = " << mapA[i]
+						<< "; resE = " << resE << endl;
+					cout << "colVector: " << endl;
+					dumpMatrix(e);
+					cout << " Ta*e " << endl;
+					dumpMatrix(v);
+					cout << "res: " << res << endl;
+				}
 				return -4;
 			}
 		} else {

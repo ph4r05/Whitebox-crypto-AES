@@ -69,10 +69,10 @@ inline long getLong(const NTL::GF2E& x) {
 template<typename T>
 inline NTL::mat_GF2 colVector(const T c){
 	NTL::mat_GF2 ret(INIT_SIZE, 8, 1);
-	ret[0][0] = c & (1<<0); 	ret[1][0] = c & (1<<1);
-	ret[2][0] = c & (1<<2); 	ret[3][0] = c & (1<<3);
-	ret[4][0] = c & (1<<4); 	ret[5][0] = c & (1<<5);
-	ret[6][0] = c & (1<<6); 	ret[7][0] = c & (1<<7);
+	ret[0][0] = (c & (1<<0)) > 0 ? 1 : 0; 	ret[1][0] = (c & (1<<1)) > 0 ? 1 : 0;
+	ret[2][0] = (c & (1<<2)) > 0 ? 1 : 0; 	ret[3][0] = (c & (1<<3)) > 0 ? 1 : 0;
+	ret[4][0] = (c & (1<<4)) > 0 ? 1 : 0; 	ret[5][0] = (c & (1<<5)) > 0 ? 1 : 0;
+	ret[6][0] = (c & (1<<6)) > 0 ? 1 : 0; 	ret[7][0] = (c & (1<<7)) > 0 ? 1 : 0;
 	return ret;
 }
 
