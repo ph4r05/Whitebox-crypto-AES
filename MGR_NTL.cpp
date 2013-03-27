@@ -148,7 +148,7 @@ int main(void) {
 
 	LinearAffineEq eqCheck;
 	eqCheck.setDimension(8);
-	eqCheck.verbosity=0;
+	eqCheck.verbosity=1;
 	eqCheck.randomizeXGuess=false;
 
 	bsetElem S2[256];
@@ -159,6 +159,10 @@ int main(void) {
 	for(a=0; a<256; a++){
 		cout << "+++++++++++++++++++++++++++++ @@[ " << a << "]" << endl;
 		for(b=0; b<256; b++){
+			/*if (b!=0x3a && b!=0x52 && b!=0x5c && b!=0xa5 && b!=0x6b && b!=0xa2 && b!=0x01){
+				continue;
+			}*/
+
 			time_t  tt;
 			struct tm * now = localtime(&tt);
 			cout << "........................... ##[ " << b << "]" << endl;

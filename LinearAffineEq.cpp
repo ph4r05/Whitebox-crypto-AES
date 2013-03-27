@@ -467,6 +467,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 							Ua.erase(x);
 							Na.insert(x);
 							baseFound=true;
+							break;
 						}
 					}
 
