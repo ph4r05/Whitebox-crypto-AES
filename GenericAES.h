@@ -318,7 +318,7 @@ public:
 	 *
 	 * @returns 0 on success, -num in case of num of failed mappings
 	 */
-	int testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, bool encryption=true);
+	int testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, bool encryption=true, bool output=true);
 
 	/**
 	 * Tests linearity of A1 relation: A1(x) ^ A1(y) == A1(x^y)

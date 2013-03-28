@@ -180,6 +180,8 @@ void dumpVector(long * a, size_t len);
 void dumpMatrix(NTL::mat_GF2E& a);
 void dumpMatrix(NTL::mat_GF2& a);
 void dumpMatrix(ostream& out, NTL::mat_GF2E& a);
+void dumpMatrix(ostream& out, NTL::mat_GF2& a, bool newLine);
+std::string dumpMatrix2str(NTL::mat_GF2& a, bool newLine);
 void dumpVector(ostream& out, NTL::vec_GF2E& a);
 void dumpVector(ostream& out, NTL::GF2E * a, size_t len);
 std::string dumpVector2str(NTL::vec_GF2E& a);

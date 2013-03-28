@@ -27,6 +27,7 @@ using namespace boost;
 
 LinearAffineEq::LinearAffineEq() {
 	verbosity=0;
+	verbosityAffine=0;
 	relationsCount=0;
 	size=256;
 	dim=8;
@@ -351,6 +352,154 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 	}
 
 	return 0;
+}
+
+int LinearAffineEq::findAffineEquivalences(bsetElem * S1t,   bsetElem * S1invt,
+		   	   	   	   	   	   	   	   	   bsetElem * S2t,   bsetElem * S2invt,
+		   	   	   	   	   	   	   	   	   affineEquivalencesList * list, bool inverseAffineConsts,
+		   	   	   	   	   	   	   	   	   int (*callback) (affineEquiv_t *, affineEquivalencesList *,
+		   	   	   	   	   	   	   	   			              boost::unordered_set<std::string> *, LinearAffineEq *, void *), void * usrData){
+	// allocate new Sbox memory - for affine parts
+	bsetElem * S1    = new bsetElem[size];
+	bsetElem * S2    = new bsetElem[size];
+	bsetElem * S1inv = new bsetElem[size];
+	bsetElem * S2inv = new bsetElem[size];
+
+	unordered_set<std::string> hashes;
+	unsigned long int total = 0;
+	bsetElem a,b,i;
+
+	for(a=0; a<size; a++){
+		if (verbosityAffine) cout << "+++++++++++++++++++++++++++++ @@[ " << a << "]" << endl;
+
+		for(b=0; b<size; b++){
+			if (verbosityAffine){
+				time_t  tt;
+				struct tm * now = localtime(&tt);
+				cout << "........................... ##[ " << b << "]" << endl;
+				cout << "Timestamp: " << std::dec
+						 << (now->tm_year + 1900) << '-' << (now->tm_mon + 1) << '-'
+						 << now->tm_mday << " "   << now->tm_hour << ":"
+						 << now->tm_min  << ":"   << now->tm_sec  << hex      << endl;
+			}
+
+			// timing start - measure time for one round
+			clock_t time_begin = clock();
+
+			// Build lookup tables with affine constants embedded in it
+			for(i=0; i<size; i++) {
+				S1[i]        = !inverseAffineConsts ? (S1t[i ^ a]) : (S1t[i ^ b]);
+				S2[i]        = !inverseAffineConsts ? (S2t[i] ^ b) : (S2t[i] ^ a);
+				S1inv[S1[i]] = i;
+				S2inv[S2[i]] = i;
+			}
+
+			linearEquivalencesList resultList;
+			int result = findLinearEquivalences(S1, S1inv, S2, S2inv, &resultList);
+			total += result;
+
+			if (verbosityAffine){
+				cout << "Done, result = " << result <<  " ; count= " << relationsCount <<  " listSize: " << resultList.size() <<  endl;
+				cout << "So far we have [" << total << "]" << endl;
+			}
+
+			// Check them now, convert to real affine lookup tables
+			smap L1, L2;
+			int ch = 0;
+			for(linearEquivalencesList::iterator it = resultList.begin(); it != resultList.end(); ++it){
+				linearEquiv_t & el = *it;
+
+				if (verbosityAffine){
+					cout << "Checking [" << (ch++) << "]" << endl;
+				}
+
+				bool same=true;
+				bool ok = true;
+				for(i=0; i<256; i++){
+					if (same && el.TbinvV[i] != el.TaV[i]) same=false;
+					bsetElem desired = S2[i];
+					bsetElem myVal = el.TbinvV[S1[el.TaV[i]]];
+
+					// final L1, L2 mapping with affine constants embedded
+					L1[i] = el.TaV[i]    ^ (!inverseAffineConsts ? a : b);
+					L2[i] = el.TbinvV[i] ^ (!inverseAffineConsts ? b : a);
+
+					if (desired != myVal){
+						ok = false;
+						if (verbosityAffine){
+							cout << " ! Error, mismatch S2["<<i<<"]=" << desired
+								 <<	" vs. B^{-1}[S1[A[i]]=" << myVal << endl;
+						}
+					}
+				}
+
+				if (verbosityAffine){
+					if (same) cout << "A1 == B^{-1}" << endl;
+					if (!ok)  cout << "BROKEN!!" << endl;
+				}
+
+				// Hashing relations - to determine uniqueness
+				std::string hashL1 = hashSmap(L1);
+				std::string hashL2 = hashSmap(L2);
+				std::string totalHash = hashL1;
+				totalHash.append(";").append(hashL2);
+				if (verbosityAffine){
+					cout << "Total hash: " << totalHash << endl;
+				}
+
+				// Check if same L1L2 relations were already discovered. yes? report it, no? insert to set
+				if (hashes.count(totalHash)>0){
+					if (verbosityAffine) cout << "Already in hash set, skipping" << endl;
+				} else {
+					hashes.insert(totalHash);
+				}
+
+				// Update resulting affine list, if any
+				affineEquiv_t lElem;
+				lElem.linPart = el;
+				lElem.L1 = L1;
+				lElem.L2 = L2;
+				lElem.a = !inverseAffineConsts ? a : b;
+				lElem.b = !inverseAffineConsts ? b : a;
+				lElem.checkPassed = ok;
+				lElem.totalHash = totalHash;
+
+				// if any callback defined
+				if (callback!=NULL){
+					int partResult = callback(&lElem, list, &hashes, this, usrData);
+					if (partResult==-1) return hashes.size();
+				}
+
+				if (list!=NULL){
+					list->push_back(lElem);
+				}
+			}
+
+			if (verbosityAffine){
+				cout << "So far unique affine relations: " << hashes.size() << endl;
+			}
+
+			// display elapsed time
+			if (verbosityAffine){
+				clock_t time_end = clock();
+				double elapsed_secs = double(time_end - time_begin) / CLOCKS_PER_SEC;
+				time_begin = time_end;
+				cout << "Time elapsed: " << dec << elapsed_secs << hex << endl;
+			}
+		}
+	}
+
+	delete[] S1;
+	delete[] S2;
+	delete[] S1inv;
+	delete[] S2inv;
+
+	if (verbosityAffine){
+		cout << "Total affine relations: " << total << endl;
+		cout << "Total unique affine relations: " << hashes.size() << endl;
+	}
+
+	return hashes.size();
 }
 
 int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,

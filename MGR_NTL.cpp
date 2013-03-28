@@ -44,6 +44,8 @@
 #include <ctime>
 #include "LinearAffineEq.h"
 
+// hardcoded elements
+// http://stackoverflow.com/questions/2236197/c-easiest-way-to-initialize-an-stl-vector-with-hardcoded-elements
 
 NTL_CLIENT
 using namespace std;
@@ -72,14 +74,106 @@ std::string hashLookupTable(vec_GF2E s){
 	return hashString(inputBuffer);
 }
 
-std::string hashSmap(const smap & map){
-	std::string inputBuffer = LinearAffineEq::dumpMapT(map, false);
-	return hashString(inputBuffer);
+//
+// Find affine relations correspondence for AES Sboxes
+//
+int AffCallbackCorrespondence(affineEquiv_t * el, affineEquivalencesList * lish, boost::unordered_set<std::string> * hashes, LinearAffineEq * eqCheck, void * usrData){
+	cout << "(We are in callback function now)" << endl;
+	std::string hashL1 = LinearAffineEq::hashSmap(el->L1);
+	std::string hashL2 = LinearAffineEq::hashSmap(el->L2);
+	std::string totalHash = hashL1;
+	totalHash.append(";").append(hashL2);
+
+	// try to determine form of the matrix
+	// In inversion case, S2 should be linear, try several options
+	std::string * lhash[2] = {&hashL1, &hashL2};
+	std::string L1str = dumpMatrix2str(el->linPart.Ta, false);
+	std::string L2str = dumpMatrix2str(el->linPart.Tbinv, false);
+
+	GenericAES defAES;
+	defAES.init(0x11B, 0x03);
+
+	int j, k, l;
+	mat_GF2 tmpMat1, tmpMat2, tmpMat3, tmpMat4;
+
+	// 5. S-BOX with affine mappings. At first obtain default form of affine transformation for normal AES
+	mat_GF2 tmpSboxAffMatrix(INIT_SIZE, AES_FIELD_DIM, AES_FIELD_DIM);		// T * Affine * Tinv
+	mat_GF2 tmpSboxAffConst(INIT_SIZE, AES_FIELD_DIM, 1);					// column vector
+	mat_GF2 tmpSboxAffMatrixDec(INIT_SIZE, AES_FIELD_DIM, AES_FIELD_DIM);	// T * AffineDec * Tinv
+	mat_GF2 tmpSboxAffConstDec(INIT_SIZE, AES_FIELD_DIM, 1);				// column dec vector
+	tmpSboxAffMatrix = defAES.getDefaultAffineMatrix();
+	tmpSboxAffConst = colVector(defAES.getDefaultAffineConst());
+	tmpSboxAffMatrixDec = defAES.getDefaultAffineMatrixDec();
+	tmpSboxAffConstDec = colVector(defAES.getDefaultAffineConstDec());
+
+	// squaring
+	int foundRelations=0;
+	for(k=1; k<256 && foundRelations<4; k++){
+		std::string tmpStr2;
+		tmpMat2 = defAES.makeMultAMatrix(k);
+		tmpStr2 = dumpMatrix2str(tmpMat2, false);
+
+		for(j=0; j<8 && foundRelations<4; j++){
+			smap mQM, mMQ, mAQMAinv, mAinvQMA, mAMQAinv, mAinvMQA;
+
+			std::string tmpStr1, tmpStr3, tmpStr4;
+			tmpMat1 = defAES.makeSquareMatrix(j);
+			tmpStr1 = dumpMatrix2str(tmpMat1, false);
+
+			mat_GF2 QM = tmpMat1 * tmpMat2;
+			mat_GF2 MQ = tmpMat2 * tmpMat1;
+			eqCheck->buildLookupTableAndCheck(QM, 0, mQM);
+			eqCheck->buildLookupTableAndCheck(MQ, 0, mMQ);
+
+			// Now generate transformation for L1
+			for(l=0; l<AES_FIELD_SIZE; l++){
+				GF2E tmpElem = GF2EFromLong(l, AES_FIELD_DIM);
+				GF2E transformedElem;
+				mat_GF2 resMatrix;
+
+				// mAQMAinv
+				resMatrix = tmpSboxAffMatrix*(QM * ((tmpSboxAffMatrixDec * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConstDec)) + tmpSboxAffConst;
+				colVector(transformedElem, resMatrix, 0);
+				mAQMAinv[l] = (bsetElem) getLong(transformedElem);
+
+				// mAMQAinv
+				resMatrix = tmpSboxAffMatrix*(MQ * ((tmpSboxAffMatrixDec * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConstDec)) + tmpSboxAffConst;
+				colVector(transformedElem, resMatrix, 0);
+				mAMQAinv[l] = (bsetElem) getLong(transformedElem);
+
+				// mAinvQMA
+				resMatrix = tmpSboxAffMatrixDec*(QM * ((tmpSboxAffMatrix * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConst)) + tmpSboxAffConstDec;
+				colVector(transformedElem, resMatrix, 0);
+				mAinvQMA[l] = (bsetElem) getLong(transformedElem);
+
+				// mAinvMQA
+				resMatrix = tmpSboxAffMatrixDec*(MQ * ((tmpSboxAffMatrix * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConst)) + tmpSboxAffConstDec;
+				colVector(transformedElem, resMatrix, 0);
+				mAinvMQA[l] = (bsetElem) getLong(transformedElem);
+			}
+
+			// affine relations testing
+			int m,n;
+			//mQM, mMQ, mAQMAinv, mAinvQMA, mAMQAinv, mAinvMQA
+			std::string mhash[6] = {
+					LinearAffineEq::hashSmap(mQM), LinearAffineEq::hashSmap(mMQ),
+					LinearAffineEq::hashSmap(mAQMAinv), LinearAffineEq::hashSmap(mAinvQMA),
+					LinearAffineEq::hashSmap(mAMQAinv), LinearAffineEq::hashSmap(mAinvMQA) };
+			for(m=0;m<2;m++){
+				bool found=false;
+				for(n=0;n<6;n++){
+					if (lhash[m]->compare(mhash[n])==0){
+						cout << "We have match! L"<<(m+1)<<" ~ idx="<<n<<" ; [a]=" << k << " ; Q^i=" << j << endl;
+						found=true;
+					}
+				}
+				foundRelations+=found? 1: 0;
+			}
+		}
+	}
+
+	return 0;
 }
-
-// hardcoded elements
-// http://stackoverflow.com/questions/2236197/c-easiest-way-to-initialize-an-stl-vector-with-hardcoded-elements
-
 
 int main(void) {
 	long i,j;
@@ -138,6 +232,8 @@ int main(void) {
  	cout << endl << "Exiting..." << endl;
 */
 
+	//dualAESTest();
+	//exit(3);
 
 	//
 	// Linear equivalence algorithm
@@ -149,13 +245,30 @@ int main(void) {
 	LinearAffineEq eqCheck;
 	eqCheck.setDimension(8);
 	eqCheck.verbosity=0;
+	eqCheck.verbosityAffine=1;
 	eqCheck.randomizeXGuess=false;
 
 	bsetElem S2[256];
 	bsetElem S2inv[256];
 	bsetElem S1[256];
 	bsetElem S1inv[256];
+	bool inverseSbox = true;
+	for(i=0; i<256; i++) {
+		S1[i] = (!inverseSbox) ? defAES.sboxAffine[i] : defAES.sboxAffineInv[i];
+		S2[i] = (!inverseSbox) ? defAES.sboxAffine[i] : defAES.sboxAffineInv[i];
+		S1inv[S1[i]] = i;
+		S2inv[S2[i]] = i;
+	}
 
+	affineEquivalencesList list;
+	eqCheck.findAffineEquivalences(S1, S1inv, S2, S2inv, &list, true, &AffCallbackCorrespondence, NULL);
+
+	//
+	// Old Affine correspondence finding code below...
+	// TODO: refactor somehow
+	//
+
+	/*
 	for(a=0; a<256; a++){
 		cout << "+++++++++++++++++++++++++++++ @@[ " << a << "]" << endl;
 		for(b=0; b<256; b++){
@@ -164,24 +277,21 @@ int main(void) {
 			struct tm * now = localtime(&tt);
 			cout << "........................... ##[ " << b << "]" << endl;
 			cout << "Timestamp: " << std::dec
-					 << (now->tm_year + 1900) << '-'
-			         << (now->tm_mon + 1) << '-'
-			         << now->tm_mday << " "
-			         << now->tm_hour << ":"
-			         << now->tm_min  << ":"
-			         << now->tm_sec  << hex
-			         << endl;
-
+					 << (now->tm_year + 1900) << '-' << (now->tm_mon + 1) << '-'
+			         << now->tm_mday << " "   << now->tm_hour << ":"
+			         << now->tm_min  << ":"   << now->tm_sec  << hex      << endl;
 
 			// timing start
 			clock_t time_begin = clock();
 
 			for(i=0; i<256; i++) {
-				//S1[i]      = defAES.sboxAffine[i ^ a];
-				//S2[i]    = defAES.sboxAffine[i] ^ b;
-
-				S1[i]      = defAES.sboxAffineInv[i ^ b];
-				S2[i]      = defAES.sboxAffineInv[i] ^ a;
+				if (!inverseSbox){
+					S1[i] = defAES.sboxAffine[i ^ a];
+					S2[i] = defAES.sboxAffine[i] ^ b;
+				} else {
+					S1[i] = defAES.sboxAffineInv[i ^ b];
+					S2[i] = defAES.sboxAffineInv[i] ^ a;
+				}
 
 				S1inv[S1[i]] = i;
 				S2inv[S2[i]] = i;
@@ -208,8 +318,13 @@ int main(void) {
 					bsetElem desired = S2[i];
 					bsetElem myVal = el.TbinvV[S1[el.TaV[i]]];
 
-					L1[i] = el.TaV[i] ^ a;
-					L2[i] = el.TbinvV[i] ^ b;
+					if (!inverseSbox){
+						L1[i] = el.TaV[i] ^ a;
+						L2[i] = el.TbinvV[i] ^ b;
+					} else {
+						L1[i] = el.TaV[i] ^ b;
+						L2[i] = el.TbinvV[i] ^ a;
+					}
 
 					if (desired != myVal){
 						ok = false;
@@ -222,8 +337,8 @@ int main(void) {
 				if (!ok)  cout << "BROKEN!!" << endl;
 
 				// hash it
-				std::string hashL1 = hashSmap(L1);
-				std::string hashL2 = hashSmap(L2);
+				std::string hashL1 = LinearAffineEq::hashSmap(L1);
+				std::string hashL2 = LinearAffineEq::hashSmap(L2);
 				std::string totalHash = hashL1;
 				totalHash.append(";").append(hashL2);
 
@@ -234,6 +349,93 @@ int main(void) {
 				} else {
 					hashes.insert(totalHash);
 				}
+
+				// try to determine form of the matrix
+				// In inversion case, S2 should be linear, try several options
+				std::string * lhash[2] = {&hashL1, &hashL2};
+				if (inverseSbox){
+					std::string L1str = dumpMatrix2str(el.Ta, false);
+					std::string L2str = dumpMatrix2str(el.Tbinv, false);
+
+					int j, k, l;
+					mat_GF2 tmpMat1, tmpMat2, tmpMat3, tmpMat4;
+
+					// 5. S-BOX with affine mappings. At first obtain default form of affine transformation for normal AES
+					mat_GF2 tmpSboxAffMatrix(INIT_SIZE, AES_FIELD_DIM, AES_FIELD_DIM);		// T * Affine * Tinv
+					mat_GF2 tmpSboxAffConst(INIT_SIZE, AES_FIELD_DIM, 1);					// column vector
+					mat_GF2 tmpSboxAffMatrixDec(INIT_SIZE, AES_FIELD_DIM, AES_FIELD_DIM);	// T * AffineDec * Tinv
+					mat_GF2 tmpSboxAffConstDec(INIT_SIZE, AES_FIELD_DIM, 1);				// column dec vector
+					tmpSboxAffMatrix = defAES.getDefaultAffineMatrix();
+					tmpSboxAffConst = colVector(defAES.getDefaultAffineConst());
+					tmpSboxAffMatrixDec = defAES.getDefaultAffineMatrixDec();
+					tmpSboxAffConstDec = colVector(defAES.getDefaultAffineConstDec());
+
+					// squaring
+					int foundRelations=0;
+					for(k=1; k<256 && foundRelations<4; k++){
+						std::string tmpStr2;
+						tmpMat2 = defAES.makeMultAMatrix(k);
+						tmpStr2 = dumpMatrix2str(tmpMat2, false);
+
+						for(j=0; j<8 && foundRelations<4; j++){
+							smap mQM, mMQ, mAQMAinv, mAinvQMA, mAMQAinv, mAinvMQA;
+
+							std::string tmpStr1, tmpStr3, tmpStr4;
+							tmpMat1 = defAES.makeSquareMatrix(j);
+							tmpStr1 = dumpMatrix2str(tmpMat1, false);
+
+							mat_GF2 QM = tmpMat1 * tmpMat2;
+							mat_GF2 MQ = tmpMat2 * tmpMat1;
+							eqCheck.buildLookupTableAndCheck(QM, 0, mQM);
+							eqCheck.buildLookupTableAndCheck(MQ, 0, mMQ);
+
+							// Now generate transformation for L1
+							for(l=0; l<AES_FIELD_SIZE; l++){
+								GF2E tmpElem = GF2EFromLong(l, AES_FIELD_DIM);
+								GF2E transformedElem;
+								mat_GF2 resMatrix;
+
+								// mAQMAinv
+								resMatrix = tmpSboxAffMatrix*(QM * ((tmpSboxAffMatrixDec * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConstDec)) + tmpSboxAffConst;
+								colVector(transformedElem, resMatrix, 0);
+								mAQMAinv[l] = (bsetElem) getLong(transformedElem);
+
+								// mAMQAinv
+								resMatrix = tmpSboxAffMatrix*(MQ * ((tmpSboxAffMatrixDec * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConstDec)) + tmpSboxAffConst;
+								colVector(transformedElem, resMatrix, 0);
+								mAMQAinv[l] = (bsetElem) getLong(transformedElem);
+
+								// mAinvQMA
+								resMatrix = tmpSboxAffMatrixDec*(QM * ((tmpSboxAffMatrix * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConst)) + tmpSboxAffConstDec;
+								colVector(transformedElem, resMatrix, 0);
+								mAinvQMA[l] = (bsetElem) getLong(transformedElem);
+
+								// mAinvMQA
+								resMatrix = tmpSboxAffMatrixDec*(MQ * ((tmpSboxAffMatrix * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConst)) + tmpSboxAffConstDec;
+								colVector(transformedElem, resMatrix, 0);
+								mAinvMQA[l] = (bsetElem) getLong(transformedElem);
+							}
+
+							// affine relations testing
+							int m,n;
+							//mQM, mMQ, mAQMAinv, mAinvQMA, mAMQAinv, mAinvMQA
+							std::string mhash[6] = {
+									LinearAffineEq::hashSmap(mQM), LinearAffineEq::hashSmap(mMQ),
+									LinearAffineEq::hashSmap(mAQMAinv), LinearAffineEq::hashSmap(mAinvQMA),
+									LinearAffineEq::hashSmap(mAMQAinv), LinearAffineEq::hashSmap(mAinvMQA) };
+							for(m=0;m<2;m++){
+								bool found=false;
+								for(n=0;n<6;n++){
+									if (lhash[m]->compare(mhash[n])==0){
+										cout << "We have match! L"<<(m+1)<<" ~ idx="<<n<<" ; [a]=" << k << " ; Q^i=" << j << endl;
+										found=true;
+									}
+								}
+								foundRelations+=found? 1: 0;
+							}
+						}
+					}
+				}
 			}
 
 			cout << "So far unique affine relations: " << hashes.size() << endl;
@@ -243,11 +445,15 @@ int main(void) {
 			double elapsed_secs = double(time_end - time_begin) / CLOCKS_PER_SEC;
 			time_begin = time_end;
 			cout << "Time elapsed: " << dec << elapsed_secs << hex << endl;
+
+			// TEMPORARY
+			//return 0;
 		}
 	}
 
 	cout << "Total affine relations: " << total << endl;
 	cout << "Total unique affine relations: " << hashes.size() << endl;
+	*/
 }
 
 int A1A2relationsGenerator(void){
@@ -496,10 +702,16 @@ int dualAESTest(void){
 			vec_GF2E A1;
 			vec_GF2E A2;
 			dualAES.generateA1A2Relations(A1, A2, ii, qq);
-			problems = dualAES.testA1A2Relations(A1, A2);
+			problems = dualAES.testA1A2Relations(A1, A2, true, false);
 
-			if (problems>0){
-				cout << "Problem with relations ii="<<ii<<"; qq="<<qq<<"; problems=" << problems << endl;
+			if (problems!=0){
+				cout << "Problem with ENC relations ii="<<ii<<"; qq="<<qq<<"; problems=" << problems << endl;
+				probAll+=1;
+			}
+
+			problems = dualAES.testA1A2Relations(A2, A1, false, false);
+			if (problems!=0){
+				cout << "Problem with DEC relations ii="<<ii<<"; qq="<<qq<<"; problems=" << problems << endl;
 				probAll+=1;
 			}
 		}

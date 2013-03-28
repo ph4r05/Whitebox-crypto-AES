@@ -52,11 +52,17 @@ typedef struct _linearEquiv_t {
 typedef deque<linearEquiv_t> linearEquivalencesList;
 
 typedef struct _affineEquiv_t {
-	mat_GF2 Ta;
-	mat_GF2 Tb;
-	GF2X a;
-	GF2X b;
+	linearEquiv_t linPart;  // results from linear equivalence algorithm
+	bsetElem a;				// affine constant a
+	bsetElem b;				// affine constant b
+	smap L1;				// actual affine mapping L1
+	smap L2;				// actual affine mapping L2
+	bool checkPassed;		// was final check successfull?
+	std::string totalHash;	// md5(L1||L2)
 } affineEquiv_t;
+
+typedef deque<affineEquiv_t> affineEquivalencesList;
+
 
 // Recursive stack structure - state stored in one virtual
 // recursive call, corresponds to guessing A(x) value part of code.
@@ -85,6 +91,10 @@ public:
 	static void dumpSet(const bset s);
 	static std::string dumpMapT(const smap& mp, bool newline);
 	static std::string dumpSetT(const bset s);
+	static inline std::string hashSmap(const smap & map){
+		std::string inputBuffer = LinearAffineEq::dumpMapT(map, false);
+		return hashString(inputBuffer);
+	}
 
 	// extract linearly independent vectors from input map - keys
 	bset extractLinearlyIndependent(const smap& mp);
@@ -100,6 +110,25 @@ public:
 							   bsetElem * S2,   bsetElem * S2inv,
 							   linearEquivalencesList * list);
 
+	/**
+	 * Affine equivalence algorithm - naive one, just using all possible affine constants with linear equivalences
+	 */
+	int findAffineEquivalences(bsetElem * S1,   bsetElem * S1inv,
+			   	   	   	   	   bsetElem * S2,   bsetElem * S2inv,
+			   	   	   	   	   affineEquivalencesList * list, bool inverseAffineConsts=false,
+			   	   	   	   	   int (*callback) (affineEquiv_t *, affineEquivalencesList *, boost::unordered_set<std::string> *, LinearAffineEq *, void *) = NULL,
+			   	   	   	   	   void * usrData = NULL);
+
+	/**
+	 * Builds lookup table for transformation given as matrix multiplication and compares with
+	 * already obtained mapping values in mapA.
+	 *
+	 * Computes affine transformation: Ta * x + cst
+	 *
+	 * If everything is OK, 0 is returned, if at least one value mismatches, negative number is returned.
+	 */
+	int buildLookupTableAndCheck(mat_GF2 & Ta, bsetElem cst, smap & mapA);
+
 	inline void setDimension(unsigned int dim){
 		this->dim  = dim;
 		this->size = (int) pow(2.0, (double)dim);
@@ -108,6 +137,7 @@ public:
 	inline unsigned int getDim(){ return this->dim; }
 	inline unsigned int getSize(){ return this->size; }
 	unsigned int verbosity;
+	unsigned int verbosityAffine;
 	bool randomizeXGuess;
 
 
@@ -133,16 +163,6 @@ protected:
 							  mat_GF2 & Ta,      mat_GF2 & Tb,
 							  mat_GF2 & Tbinv,   smap & mapBinv,
 							  bool AisA);
-
-	/**
-	 * Builds lookup table for transformation given as matrix multiplication and compares with
-	 * already obtained mapping values in mapA.
-	 *
-	 * Computes affine transformation: Ta * x + cst
-	 *
-	 * If everything is OK, 0 is returned, if at least one value mismatches, negative number is returned.
-	 */
-	int buildLookupTableAndCheck(mat_GF2 & Ta, bsetElem cst, smap & mapA);
 };
 
 

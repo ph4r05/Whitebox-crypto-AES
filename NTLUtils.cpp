@@ -75,15 +75,29 @@ void dumpMatrix(NTL::mat_GF2E& a){
 	cout << endl;
 }
 
-void dumpMatrix(NTL::mat_GF2& a){
+void dumpMatrix(ostream& out, NTL::mat_GF2& a, bool newLine){
 	int i,j, n = a.NumRows(), m=a.NumCols();
 	for (i=0; i<n; i++){
 		for(j=0; j<m; j++){
-			cout << " " << a.get(i,j) << " ";
+			if (newLine) out << " ";
+			out << a.get(i,j);
+			if (newLine) out << " ";
+			else out << ", ";
 		}
-		cout << endl;
+		if (newLine) out << endl;
+		else out << " | ";
 	}
-	cout << endl;
+	if (newLine) out << endl;
+}
+
+void dumpMatrix(NTL::mat_GF2& a){
+	dumpMatrix(cout, a, true);
+}
+
+std::string dumpMatrix2str(NTL::mat_GF2& a, bool newLine){
+	std::ostringstream out;
+	dumpMatrix(out, a, newLine);
+	return out.str();
 }
 
 /**

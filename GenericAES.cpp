@@ -587,7 +587,9 @@ void GenericAES::generateA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, int a, int q)
 	A1.put(0,GF2E::zero());
 	for(i=0;i<AES_FIELD_SIZE;i++){
 		GF2E tmpElem = g[i];
-		mat_GF2 resMatrix = Amat * colVector(tmpElem, AES_FIELD_DIM);
+		mat_GF2 resMatrix;
+		resMatrix = Amat * colVector(tmpElem, AES_FIELD_DIM);
+
 		colVector(tmpElem, resMatrix, 0);
 		A1.put(getLong(g[i]), tmpElem);
 	}
@@ -610,7 +612,7 @@ void GenericAES::generateA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, int a, int q)
 		GF2E tmpElem = GF2EFromLong(i, AES_FIELD_DIM);
 
 		// A( Q^{8-i}*[a]*A^{-1}(tmpElem) )
-		mat_GF2 resMatrix = tmpSboxAffMatrix*(QiaM * ((tmpSboxAffMatrixDec * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConstDec)) + tmpSboxAffConst;
+		mat_GF2 resMatrix=tmpSboxAffMatrix*(QiaM * ((tmpSboxAffMatrixDec * colVector(tmpElem, AES_FIELD_DIM)) + tmpSboxAffConstDec)) + tmpSboxAffConst;
 		colVector(tmpElem, resMatrix, 0);
 		A2.put(i, tmpElem);
 	}
@@ -661,17 +663,19 @@ mat_GF2 GenericAES::makeSquareMatrix(int q){
 	return ret;
 }
 
-int GenericAES::testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, bool encryption){
+int GenericAES::testA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, bool encryption, bool output){
 	int i,f=0;
 	restoreModulus();
 	for(i=0; i<AES_FIELD_SIZE; i++){
 		long desiredResult = encryption ? sboxAffine[i] : sboxAffineInv[i];
 		long afterA1       = getLong(A1.get(i));
-		long afterSb       = encryption ? sboxAffine[afterA1] : sboxAffineInv[i];
+		long afterSb       = encryption ? sboxAffine[afterA1] : sboxAffineInv[afterA1];
 		long afterA2       = getLong(A2.get(afterSb));
 		if (desiredResult != afterA2){
-			cout << "Failed A1A2: field elem; S("<<CHEX(i)<<") = " << CHEX(desiredResult) << "; (A2 * S * A1)("<<CHEX(i)<<")=" << CHEX(afterA2) << "; ";
-			cout << "a1: " << CHEX(afterA1) << "; Sb: " << CHEX(afterSb) << "; a2: " << CHEX(afterA2) << endl;
+			if (output){
+				cout << "Failed A1A2: field elem; S("<<CHEX(i)<<") = " << CHEX(desiredResult) << "; (A2 * S * A1)("<<CHEX(i)<<")=" << CHEX(afterA2) << "; ";
+				cout << "a1: " << CHEX(afterA1) << "; Sb: " << CHEX(afterSb) << "; a2: " << CHEX(afterA2) << endl;
+			}
 			f++;
 		}
 	}
