@@ -902,7 +902,7 @@ Testing backward decryption:
 
 #
 # Finding affine equivalences between
-# Sinv(x + a) ~~ Sinv(x) + b
+# S(x + a) ~~ S(x) + b
 #
 # new iteration of a value (a=3):
 # +++++++++++++++++++++++++++++ @@[ 3]

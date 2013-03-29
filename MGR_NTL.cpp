@@ -459,7 +459,7 @@ int AESAffineRelationsVerify(bool inverseSbox){
 	     << "# Finding affine equivalences between" << endl;
 
 	if (inverseSbox) cout << "# Sinv(x + b) ~~ Sinv(x) + a" << endl;
-	else             cout << "# Sinv(x + a) ~~ Sinv(x) + b" << endl;
+	else             cout << "# S(x + a) ~~ S(x) + b" << endl;
 
 	cout
 	     << "#" << endl
