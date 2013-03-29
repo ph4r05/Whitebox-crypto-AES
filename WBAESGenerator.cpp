@@ -256,7 +256,12 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 
 		// generate A1 A2 relations
 		this->AESCipher[i].generateA1A2Relations(genA1[i], genA2[i], genA[i], genI[i]);
-		if (this->AESCipher[i].testA1A2Relations(genA1[i], genA2[i]) != 0) cout << "Error in A1A2 generator" << endl;
+		if (encrypt){
+			if (this->AESCipher[i].testA1A2Relations(genA1[i], genA2[i]) != 0) cout << "Error in A1A2 generator" << endl;
+		} else {
+			if (this->AESCipher[i].testA1A2Relations(genA2[i], genA1[i], false) != 0) cout << "Error in A1A2 generator" << endl;
+		}
+
 		if (this->AESCipher[i].testA1XorLinearity(genA1[i])!=0) cout << "Error in A1 linearity!" << endl;
 	}
 
@@ -408,13 +413,17 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 
 						GF2E tmpKey = vecRoundKey[r][i][16*r + idxTranspose(shiftRowsOp[ j*4 + i ])];
 						tmpGF2E    += genA1[4*r+i][getLong(tmpKey)];
-					} else if(r==0) {
-						// Decryption & first round => add k_10 to state.
-						// Same logic applies here
-						// AddRoundKey(State, k_10)  | -> InvShiftRows(State)
-						// InvShiftRows(State)       | -> AddRoundKey(State, InvShiftRows(k_10))
-						tmpGF2E += vecRoundKey[r][i][16*N_ROUNDS + idxTranspose(shiftRowsOp[ j*4 + i ])];
+					} else {
+						if(r==0) {
+							// Decryption & first round => add k_10 to state.
+							// Same logic applies here
+							// AddRoundKey(State, k_10)  | -> InvShiftRows(State)
+							// InvShiftRows(State)       | -> AddRoundKey(State, InvShiftRows(k_10))
+							tmpGF2E += vecRoundKey[r][i][16*N_ROUNDS + idxTranspose(shiftRowsOp[ j*4 + i ])];
+							tmpGF2E = genA2[4*r+i][getLong(tmpGF2E)];
+						}
 					}
+
 
 					// SBox transformation with dedicated AES for this round and section
 					// Encryption: ByteSub
@@ -424,9 +433,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 							: this->AESCipher[r*4 + i].ByteSubInv(tmpGF2E);
 
 					// Dual AES with A1 A2 relations, after Sbox apply A2 relation
-					if (encrypt){
-						tmpE = genA2[4*r+i][getLong(tmpE)];
-					}
+					tmpE = encrypt ? genA2[4*r+i][getLong(tmpE)] : genA1[4*r+i][getLong(tmpE)];
 
 					// Decryption case:
 					// T(x) = Sbox(x) + k
@@ -465,41 +472,62 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					// Multiply with MC matrix from our AES dedicated for this round, only in 1..9 rounds (not in last round)
 					if (encrypt){
 						mcres = r<(N_ROUNDS-1) ? this->AESCipher[r*4 + i].mixColMat * zj : zj;
-						// Encryption:
-						// Dual AES, apply A1 for next round here.
-						//
-						// We have one 4x1 GF2E matrix. In each next j-iteration we will have
-						// different 4x1 matrices, XORed with each other afterwards.
-						// XOR is performed by rows, thus all elements in one row are added together,
-						// so they have to have same dual AES encodings => we have to apply
-						// different transformation on each element.
-						//
-						// Every resulting element after XOR is passed to different T2 boxes.
-						//
-						//  Cur. round |  Next round |              |
-						// 00 01 02 03 | 00 01 02 03 | AES encoding | 00 01 02 03
-						// 05 06 07 04 | 06 07 04 05 | in next      | 03 00 01 02
-						// 10 11 08 09 | 08 09 10 11 | round        | 02 03 00 01
-						// 15 12 13 14 | 14 15 12 13 |              | 01 02 03 00
-						//
-						// One i iteration corresponds to one column above. One i=0 iteration should look like this:
-						// Every A in next diagram is A_I = A^1_{r+1, I} - simplified syntax
-						//
-						// | A_0 (02 T(x)) |   | A_0 (03 T(x)) |   | A_0 (01 T(x)) |   | A_0 (01 T(x)) |
-						// | A_3 (01 T(x)) | + | A_3 (02 T(x)) | + | A_3 (03 T(x)) | + | A_3 (01 T(x)) |
-						// | A_2 (02 T(x)) |   | A_2 (01 T(x)) |   | A_2 (02 T(x)) |   | A_2 (03 T(x)) |
-						// | A_1 (03 T(x)) |   | A_1 (01 T(x)) |   | A_1 (01 T(x)) |   | A_1 (02 T(x)) |
-						//
-						int tmpi;
-						for(tmpi=0; tmpi<4; tmpi++){
+					} else {
+						mcres = r<(N_ROUNDS-1) ? this->AESCipher[r*4 + i].mixColInvMat * zj : zj;
+					}
+					// Encryption:
+					// Dual AES, apply A1 for next round here.
+					//
+					// We have one 4x1 GF2E matrix. In each next j-iteration we will have
+					// different 4x1 matrices, XORed with each other afterwards.
+					// XOR is performed by rows, thus all elements in one row are added together,
+					// so they have to have same dual AES encodings => we have to apply
+					// different transformation on each element.
+					//
+					// Every resulting element after XOR is passed to different T2 boxes.
+					//
+					//  Cur. round |  Next round |              |
+					// 00 01 02 03 | 00 01 02 03 | AES encoding | 00 01 02 03
+					// 05 06 07 04 | 06 07 04 05 | in next      | 03 00 01 02
+					// 10 11 08 09 | 08 09 10 11 | round        | 02 03 00 01
+					// 15 12 13 14 | 14 15 12 13 |              | 01 02 03 00
+					//
+					// One i iteration corresponds to one column above. One i=0 iteration should look like this:
+					// Every A in next diagram is A_I = A^1_{r+1, I} - simplified syntax
+					//
+					// | A_0 (02 T(x)) |   | A_0 (03 T(x)) |   | A_0 (01 T(x)) |   | A_0 (01 T(x)) |
+					// | A_3 (01 T(x)) | + | A_3 (02 T(x)) | + | A_3 (03 T(x)) | + | A_3 (01 T(x)) |
+					// | A_2 (02 T(x)) |   | A_2 (01 T(x)) |   | A_2 (02 T(x)) |   | A_2 (03 T(x)) |
+					// | A_1 (03 T(x)) |   | A_1 (01 T(x)) |   | A_1 (01 T(x)) |   | A_1 (02 T(x)) |
+					//
+					int tmpi;
+					for(tmpi=0; tmpi<4; tmpi++){
+						if (encrypt){
 							this->AESCipher[ 4* r     + i                 ].applyTinv(mcres[tmpi]);
 							this->AESCipher[(4*(r+1)) + POS_MOD(i-tmpi, 4)].applyT(   mcres[tmpi]);
 							applyLookupTable(genA1[(4*(r+1)) + POS_MOD(i-tmpi, 4)],   mcres[tmpi]);
 							this->AESCipher[(4*(r+1)) + POS_MOD(i-tmpi, 4)].applyTinv(mcres[tmpi]);
 							this->AESCipher[ 4* r     + i                 ].applyT(   mcres[tmpi]);
+						} else {
+							this->AESCipher[ 4* r     + i                 ].applyTinv(mcres[tmpi]);
+							this->AESCipher[(4*(r+1)) + POS_MOD(i+tmpi, 4)].applyT(   mcres[tmpi]);
+							applyLookupTable(genA2[(4*(r+1)) + POS_MOD(i+tmpi, 4)],   mcres[tmpi]);
+
+							//
+							// Compensate affine part of A2 relation
+							//
+							// A2 is not linear in decryption case, but affine.
+							// We have here 4 elements (entering XOR), so from 3 of them
+							// we have to subtract affine constant = A2[0].
+							// Af(a1+a2+a3+a4) = A*a1 + A*a2 + A*a3 + A*a4 + c
+							//                 = Af(a1) + Af(a2)+Af(0) + Af(a3)+Af(0) + Af(a4)+Af(0)
+							if (j!=0) {
+								mcres[tmpi][0] += genA2[(4*(r+1)) + POS_MOD(i+tmpi, 4)][0];
+							}
+
+							this->AESCipher[(4*(r+1)) + POS_MOD(i+tmpi, 4)].applyTinv(mcres[tmpi]);
+							this->AESCipher[ 4* r     + i                 ].applyT(   mcres[tmpi]);
 						}
-					} else {
-						mcres = r<(N_ROUNDS-1) ? this->AESCipher[r*4 + i].mixColInvMat * zj : zj;
 					}
 
 					// Apply 32x32 Mixing bijection, mPreMB is initialized to mat_GF2 with 32x1 dimensions,

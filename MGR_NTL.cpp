@@ -201,8 +201,9 @@ int main(void) {
 	//generator.useIO08x08Identity=true;
 	//generator.useMB08x08Identity=true;
 	///generator.useMB32x32Identity=true;
-	//int errors = generator.testWithVectors(true, genAES);
-	//cout << "Testing done, errors: " << errors << endl;
+	int errors = generator.testWithVectors(true, genAES);
+	cout << "Testing done, errors: " << errors << endl;
+	exit(3);
 
 /*
 	cout << "===Done===" << endl << "Going to generate WBAES..." << endl;
