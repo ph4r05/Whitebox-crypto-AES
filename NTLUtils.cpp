@@ -205,8 +205,8 @@ std::string hashString(std::string inputBuffer){
 	MD5Final(&mdContext);
 
 	// hexcoding
-	ostringstream ss;
-	int i=0; for(i=0; i<MD5_DIGEST_LENGTH; i++) ss << CHEX(mdContext.digest[i]);
+	ostringstream ss; ss << "0x";
+	int i=0; for(i=0; i<MD5_DIGEST_LENGTH; i++) ss << setw(2) << setfill('0') << hex << ((unsigned long int)mdContext.digest[i]);
 	inputBuffer = ss.str();
 	return inputBuffer;
 }

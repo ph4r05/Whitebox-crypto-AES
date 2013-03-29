@@ -37,7 +37,6 @@ int main(void) {
 	WBAESGenerator generator;
 	WBAES genAES;
 
-
 	//generator.useDualAESIdentity=true;
 	//generator.useIO04x04Identity=true;
 	//generator.useIO08x08Identity=true;
@@ -54,7 +53,7 @@ int main(void) {
 	//A1A2relationsGenerator();
 	//exit(2);
 
-	AESAffineRelationsVerify(false);
+	AESAffineRelationsVerify(true);
 	exit(3);
 
 	//MBgen();
@@ -465,6 +464,7 @@ int AESAffineRelationsVerify(bool inverseSbox){
 	     << "#" << endl
 		 << "# new iteration of a value (a=3):"  << endl
 		 << "# +++++++++++++++++++++++++++++ @@[ 3]"  << endl
+		 << "# new iteration of a value (b=8):"  << endl
 		 << "# ........................... ##[ 8]"  << endl
 		 << "#"  << endl
 		 << "# Idx to matrix correspondence:"  << endl
@@ -593,9 +593,18 @@ int AffCallbackCorrespondence(affineEquiv_t * el, affineEquivalencesList * lish,
 			for (auto it = its.first; it != its.second; ++it) {
 				cout << "We have match! L"<<(n+1)
 						<<" ~ idx="<<(it->second.type)
-						<<" ; [a]="<<(it->second.multi)
+						<<" ; [a]="<< setw(2) << (it->second.multi)
 						<<" ; Q^i="<<(it->second.square)
-						<<" ; hash=" << it->first << endl;
+						<<" ; L1 const=" << (el->a)
+						<<" ; L2 const=" << (el->b) << endl;
+
+				if (el->a==0 && el->b==0){
+					cout << "L1 matrix: " << endl;
+					dumpMatrix(el->linPart.Ta);
+
+					cout << "L2 matrix: " << endl;
+					dumpMatrix(el->linPart.Tbinv);
+				}
 			}
 		}
 	}
