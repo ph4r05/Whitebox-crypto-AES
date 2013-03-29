@@ -210,3 +210,10 @@ std::string hashString(std::string inputBuffer){
 	inputBuffer = ss.str();
 	return inputBuffer;
 }
+
+// hashes lookup table using MD5 hash
+std::string hashLookupTable(vec_GF2E s){
+	std::string inputBuffer = dumpVector2str(s);
+	return hashString(inputBuffer);
+}
+

@@ -226,6 +226,9 @@ int initMatrix(mat_GF2& M, long *data);
  */
 std::string hashString(std::string inputBuffer);
 
+// hashes lookup table using MD5 hash
+std::string hashLookupTable(vec_GF2E s);
+
 template <class T> class vector_inserter{
 public:
     NTL::Vec<T>& v;

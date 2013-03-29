@@ -27,11 +27,11 @@ using namespace boost;
 
 LinearAffineEq::LinearAffineEq() {
 	verbosity=0;
-	verbosityAffine=0;
+	verbosityAffine=1;
 	relationsCount=0;
 	size=256;
 	dim=8;
-	randomizeXGuess=true;
+	randomizeXGuess=false;
 }
 
 LinearAffineEq::~LinearAffineEq() {
@@ -355,10 +355,14 @@ int LinearAffineEq::checkInvertibleLinear(const bset & Ua,   const bset & Ub,
 }
 
 int LinearAffineEq::findAffineEquivalences(bsetElem * S1t,   bsetElem * S1invt,
-		   	   	   	   	   	   	   	   	   bsetElem * S2t,   bsetElem * S2invt,
-		   	   	   	   	   	   	   	   	   affineEquivalencesList * list, bool inverseAffineConsts,
-		   	   	   	   	   	   	   	   	   int (*callback) (affineEquiv_t *, affineEquivalencesList *,
-		   	   	   	   	   	   	   	   			              boost::unordered_set<std::string> *, LinearAffineEq *, void *), void * usrData){
+                                           bsetElem * S2t,   bsetElem * S2invt,
+                                           affineEquivalencesList * list, bool inverseAffineConsts,
+                                           int (*callback) (affineEquiv_t *,
+                                                            affineEquivalencesList *,
+                                                            boost::unordered_set<std::string> *,
+                                                            LinearAffineEq *,
+                                                            void *),
+                                           void * usrData){
 	// allocate new Sbox memory - for affine parts
 	bsetElem * S1    = new bsetElem[size];
 	bsetElem * S2    = new bsetElem[size];
