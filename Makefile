@@ -1,6 +1,6 @@
 CXXFLAGS =	-O0 -g3 -Wall -fmessage-length=0 -L -lntl -std=c++0x 
 
-OBJS = md5.o GenericAES.o NTLUtils.o MixingBijections.o WBAES.o WBAESGenerator.o LinearAffineEq.o 
+OBJS = md5.o GenericAES.o NTLUtils.o MixingBijections.o WBAES.o WBAESGenerator.o LinearAffineEq.o BGEAttack.o
 
 LIBS = -lntl -L/opt/local/lib/ -lboost_iostreams -lboost_serialization -lboost_program_options
 

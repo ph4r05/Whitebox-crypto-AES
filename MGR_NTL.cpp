@@ -19,6 +19,7 @@ using namespace NTL;
 using namespace boost;
 using namespace wbacr;
 using namespace wbacr::laeqv;
+using namespace wbacr::attack;
 
 #define WBAES_BOOTS_SERIALIZATION 1
 #define GENERIC_AES_DEBUG 1
@@ -37,15 +38,44 @@ int main(void) {
 	WBAESGenerator generator;
 	WBAES genAES;
 
+	BGEAttack atk;
+
+	cout << "Starting an attack! Obj: " << endl;
+	atk.run();
+	exit(3);
+
 	//generator.useDualAESIdentity=true;
 	//generator.useIO04x04Identity=true;
 	//generator.useIO08x08Identity=true;
 	//generator.useMB08x08Identity=true;
 	///generator.useMB32x32Identity=true;
-	//int errors = generator.testWithVectors(true, genAES);
+	int errors = generator.testWithVectors(true, genAES);
 	//cout << "Testing done, errors: " << errors << endl;
 	//exit(3);
 
+	mat_GF2 m = defAES.makeMultAMatrix(0x44);
+	mat_GF2 minv = inv(m);
+
+	mat_GF2 t1 = defAES.makeSquareMatrix(0x1);
+	//dumpMatrix(t1);
+
+	mat_GF2 t1inv = inv(t1);
+	//dumpMatrix(t1inv);
+
+	mat_GF2 t2 = defAES.makeSquareMatrix(7);
+	//dumpMatrix(t2);
+
+	mat_GF2 res = m*t1;
+	dumpMatrix(res);
+
+	res = t1inv*minv;
+	dumpMatrix(res);
+
+	res = m*t1*t1inv*minv;
+	dumpMatrix(res);
+
+
+	exit(4);
 
 	//dualAESTest();
 	//exit(3);

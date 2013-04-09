@@ -36,6 +36,7 @@
 #include "WBAESGenerator.h"
 #include "md5.h"
 #include "LinearAffineEq.h"
+#include "BGEAttack.h"
 
 #include <boost/unordered_set.hpp>
 #include <boost/unordered_map.hpp>
