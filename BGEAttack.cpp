@@ -336,6 +336,28 @@ void BGEAttack::run(void) {
 
 			Qaffine->Q[r][i].initHash();
 			cout << "Q~ recovered; hash=" << Qaffine->Q[r][i].hash << endl;
+
+			// Now we can reduce P, Q are non-linear & matching state to P,Q are affine and matching
+			// P^{r+1}_{i,j}  = Q^r_{i,j} (they are matching)
+			// P~^{r+1}_{i,j} = Q~^r_{i,j} (they are matching, also holds for new affine mappings)
+			//
+			// Reduction:
+			// Q~^{-1}(Q(x)) = L^{-1}(x) \oplus L^{-1}(Q^{-1}('00'))  .... what is affine (last term is constant)
+			//
+			// Thus it is enough to apply Q~^{-1} to the end of R-box,
+			// To preserve matching relation, we also apply Q~ before T2 boxes,
+			// Before it was: MixCol -> Q           -> |new round|       -> Q^{-1} -> T2box
+			// Now it will be MixCol -> Q -> Q~{-1} -> |new round| Q~    -> Q^{-1} -> T2box
+			// It is easy to see that it matches...
+			//
+			// Thus P^{r+1} conversion to affine matching: P^{r+1}(Q~(x)) =
+			// = Q^{-1}(Q~(x)) = Q^{-1}( Q(L( x   \oplus L^{-1}(Q^{-1}('00')))))
+			//                 =           L( x   \oplus L^{-1}(Q^{-1}('00')))
+			//                 =           L( x ) \oplus        Q^{-1}('00')      ==> affine
+
+			// TODO: apply above description and reduce to affine matching transformations
+			// Q will be on this->wbaes.eXTab[r][i%4][5][0..7][0..256]
+			// P will be on this->wbaes.dTab2[r][shiftInvRows(i) -- as with L^{-1} matching][0..256]
 		}
 
 		cout << "PSI recovered for all sets in given round" << endl;
