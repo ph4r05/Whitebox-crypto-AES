@@ -104,7 +104,7 @@ typedef W32b AES_TB_TYPE2[256];
 // Input is 1 byte (2x BITS4), output is 32bit wide
 typedef W32b AES_TB_TYPE3[256];
  
-// 8 XOR tables for XORing 2x32bit input to obtain 32bit output 
+// 8 XOR tables for XORing 32x32bit input to obtain 32bit output
 typedef XTB    W32XTB[8];
 
 // 32bit wide XOR, o1,o2 are of type W32b, xtb is of type W32XTB. 

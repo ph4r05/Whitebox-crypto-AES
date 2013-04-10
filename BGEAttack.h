@@ -124,6 +124,7 @@ public:
 
 	// just identity on 16 elements - used when shift rows operation ignored
 	static int shiftIdentity[16];
+	static int shiftT2[16];
 };
 
 } /* namespace attack */

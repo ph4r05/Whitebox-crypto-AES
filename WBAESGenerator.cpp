@@ -662,14 +662,9 @@ int WBAESGenerator::generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject
 	}
 }
 
-
 int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
-
 	// generate table implementation for given key
-	int i, err=0;
-
 	CODING8X8_TABLE coding[16];
-	W128b plain, cipher, state;
 	generateIO128Coding(coding, true);
 
 	if (coutOutput){
@@ -679,6 +674,13 @@ int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
 
 	generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, coding, true);
 	generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, coding, false);
+
+	return this->testComputedVectors(coutOutput, genAES, coding);
+}
+
+int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES &genAES, CODING8X8_TABLE * iocoding){
+	int i, err=0;
+	W128b plain, cipher, state;
 
 	// see [http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf]
 	if (coutOutput){

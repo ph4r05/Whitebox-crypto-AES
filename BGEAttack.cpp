@@ -30,6 +30,13 @@ using namespace std;
 using namespace NTL;
 
 int BGEAttack::shiftIdentity[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+int BGEAttack::shiftT2[16] =
+		{0,  4,  8, 12,
+	    13,  1,  5,  9,
+	    10, 14,  2,  6,
+	     7, 11, 15,  3
+		};
+
 
 std::string composeFunction(GF256_func_t f, GF256_func_t g){
 	unsigned int x;	// warning, if is type BYTE, then it will overflow and loop forever
@@ -46,6 +53,9 @@ std::string composeFunction(GF256_func_t f, GF256_func_t g){
 	return hashFunction(nf.f);
 }
 
+// Rbox operation - one round of AES. State is indexed by rows
+// First row: 0 1 2 3; It is processed by columns, first column is computed from
+// state array indexes: 0,4,8,12; second from 1,5,9,13, and so on...
 void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift){
 	int i=0;
 	W32b ires[N_BYTES];				// intermediate result for T-boxes
@@ -169,8 +179,6 @@ void BGEAttack::recoverPsi(Sset_t & S){
 }
 
 void BGEAttack::run(void) {
-	cout << "Started with attack" << endl;
-
 	GenericAES defAES;
 	defAES.init(0x11B, 0x03);
 
@@ -178,10 +186,13 @@ void BGEAttack::run(void) {
 	CODING8X8_TABLE coding[16];
 	W128b state;
 	cout << "Generating AES..." << endl;
+	bool encrypt = true;
+	generator.useDualAESARelationsIdentity=true;	// this attack works only on basic form
+	generator.useDualAESIdentity=true;
 	generator.generateIO128Coding(coding, true);
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, true);  cout << "AES ENC generated" << endl;
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
-
+	//generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
+	int (&nextTbox)[N_BYTES]     = encrypt ? (generator.shiftRowsLBijection) : (generator.shiftRowsLBijectionInv);
 
 	//
 	//
@@ -191,6 +202,11 @@ void BGEAttack::run(void) {
 
 	// Recover affine parts of Q for round r=0
 	int r = 0;
+	int row=0;
+	int x = 0;
+	int i = 0;
+	int j = 0;
+	int c1;
 
 	// At first compute base function f_{00}, we will need it for computing all next functions,
 	// to be exact, its inverse, f^{-1}_{00}
@@ -200,14 +216,12 @@ void BGEAttack::run(void) {
 	cout << "Memory allocated; Sr=" << dec << (sizeof(SsetPerRound_t)*10) << "; Qaffine=" << dec << sizeof(Qaffine_t) << endl;
 	cout << "Memory allocated totally: " << (((sizeof(SsetPerRound_t)*10) + sizeof(Qaffine_t)) / 1024.0 / 1024.0) << " MB" << endl;
 
-	for(r=0; r<9; r++){
-		int row=0;
-		int col=0;
-		int x = 0;
-		int i = 0;
-		int j = 0;
-		int c1;
+	// WBAES changed to state with affine matching bijections at round boundaries.
+	cout << "Going to test WBAES before modifying tables" << endl;
+	generator.testComputedVectors(true, this->wbaes, coding);
 
+	cout << "Starting attack phase 1 ..." << endl;
+	for(r=0; r<9; r++){
 		// Init f_00 function in Sr
 		for(i=0; i<AES_BYTES; i++){
 			Sr[r].S[i%4][i/4].f_00.c1 = 0;
@@ -291,8 +305,12 @@ void BGEAttack::run(void) {
 			for(j=0; j<GF256; j++){
 				Sr[r].S[i%4][i/4].fctions[j].initHash();
 				std::string & hash = Sr[r].S[i%4][i/4].fctions[j].hash;
+
+				// By iterating c1 over GF256 we constructed vector space, with 256 elements, thus every
+				// should be different. We are checking, whether this assumption is OK and vector space is correct.
 				if (Sr[r].S[i%4][i/4].fmap.count(hash)!=0){
 					cerr << "Sr["<<r<<"].["<<(i%4)<<"]["<<(i/4)<<"] set already contains hash[" << hash << "]; for j=" << j << std::endl;
+					assert(Sr[r].S[i%4][i/4].fmap.count(hash)!=0);
 				}
 
 				Sr[r].S[i%4][i/4].fmap.insert(fctionMap_elem_t(hash, j));
@@ -326,42 +344,81 @@ void BGEAttack::run(void) {
 			// (1., 2.) ==>f('00') = Q~(PSI(f)) ==>
 			// Q~: x is PSI(f) for some f (we have 256 of them)
 			// Q~: y is f('00')  --- || ---
+
 			for(j=0; j<GF256; j++){
 				    x = curS.psi[j];
 				int y = curS.fctions[j].f[0];
 
 				Qaffine->Q[r][i].f[x]    = y;
 				Qaffine->Q[r][i].finv[y] = x;
+
+				cout << "Q["<<r<<"]["<<i<<"].f["<<x<<"] = " << y << endl;
 			}
 
 			Qaffine->Q[r][i].initHash();
 			cout << "Q~ recovered; hash=" << Qaffine->Q[r][i].hash << endl;
-
-			// Now we can reduce P, Q are non-linear & matching state to P,Q are affine and matching
-			// P^{r+1}_{i,j}  = Q^r_{i,j} (they are matching)
-			// P~^{r+1}_{i,j} = Q~^r_{i,j} (they are matching, also holds for new affine mappings)
-			//
-			// Reduction:
-			// Q~^{-1}(Q(x)) = L^{-1}(x) \oplus L^{-1}(Q^{-1}('00'))  .... what is affine (last term is constant)
-			//
-			// Thus it is enough to apply Q~^{-1} to the end of R-box,
-			// To preserve matching relation, we also apply Q~ before T2 boxes,
-			// Before it was: MixCol -> Q           -> |new round|       -> Q^{-1} -> T2box
-			// Now it will be MixCol -> Q -> Q~{-1} -> |new round| Q~    -> Q^{-1} -> T2box
-			// It is easy to see that it matches...
-			//
-			// Thus P^{r+1} conversion to affine matching: P^{r+1}(Q~(x)) =
-			// = Q^{-1}(Q~(x)) = Q^{-1}( Q(L( x   \oplus L^{-1}(Q^{-1}('00')))))
-			//                 =           L( x   \oplus L^{-1}(Q^{-1}('00')))
-			//                 =           L( x ) \oplus        Q^{-1}('00')      ==> affine
-
-			// TODO: apply above description and reduce to affine matching transformations
-			// Q will be on this->wbaes.eXTab[r][i%4][5][0..7][0..256]
-			// P will be on this->wbaes.dTab2[r][shiftInvRows(i) -- as with L^{-1} matching][0..256]
 		}
 
 		cout << "PSI recovered for all sets in given round" << endl;
 	}
+
+	// Now we can reduce P, Q are non-linear & matching state to P,Q are affine and matching
+	// P^{r+1}_{i,j}  = Q^r_{i,j} (they are matching)
+	// P~^{r+1}_{i,j} = Q~^r_{i,j} (they are matching, also holds for new affine mappings)
+	//
+	// Reduction:
+	// Q~^{-1}(Q(x)) = L^{-1}(x) \oplus L^{-1}(Q^{-1}('00'))  .... what is affine (last term is constant)
+	//
+	// Thus it is enough to apply Q~^{-1} to the end of R-box,
+	// To preserve matching relation, we also apply Q~ before T2 boxes,
+	// Before it was: MixCol -> Q           -> |new round|       -> Q^{-1} -> T2box
+	// Now it will be MixCol -> Q -> Q~{-1} -> |new round| Q~    -> Q^{-1} -> T2box
+	// It is easy to see that it matches...
+	//
+	// Thus P^{r+1} conversion to affine matching: P^{r+1}(Q~(x)) =
+	// = Q^{-1}(Q~(x)) = Q^{-1}( Q(L( x   \oplus L^{-1}(Q^{-1}('00')))))
+	//                 =           L( x   \oplus L^{-1}(Q^{-1}('00')))
+	//                 =           L( x ) \oplus        Q^{-1}('00')      ==> affine
+
+	// Applying above description and reduce to affine matching transformations
+	// Q will be on this->wbaes.eXTab[r][i%4][5][0..7][0..256]
+	// P will be on this->wbaes.eTab2[r][shiftInvRows(i) -- as with L^{-1} matching][0..256]
+	cout << "Going to transform AES input/output matching bijection to affine" << endl;
+	for(r=0; r<9; r++){
+		for(i=0; i<AES_BYTES; i++){
+			// Choice of indexes for eTab2 explained below:
+			// Since we are interested in output encoding, we don't really care about input to Rbox (shiftrows is ignored).
+			// We have Q[r][i \ in [1..16]] which corresponds to state array indexed by rows.
+			// In WBAES implementation, shift rows will follow, thus first 4 T2boxes will be feeded by indexes of state array:
+			// state[0,7,10,13]; next 4 T2 boxes will be feeded by state[4,1,14,11]
+			// The point is that nextTbox \ocirc shiftRows (during evaluation) = identity
+			//AES_TB_TYPE2 & curT2 = this->wbaes.eTab2[r+1][shiftT2[i]];	     // T2 table in next round connected to particular HILO(xtb1, xtb2)
+			AES_TB_TYPE2 & curT2 = this->wbaes.eTab2[r+1][shiftT2[i]];	     // T2 table in next round connected to particular HILO(xtb1, xtb2)
+			XTB & xtb1           = this->wbaes.eXTab[r][i%4][5][2*(i/4)+0];	 // 3.rd index - XOR table number 5, last in round
+			XTB & xtb2           = this->wbaes.eXTab[r][i%4][5][2*(i/4)+1];
+
+			AES_TB_TYPE2 tmpT2;
+			memcpy(tmpT2, curT2, sizeof(AES_TB_TYPE2));
+			for(x=0; x<GF256; x++){
+				assert(tmpT2[x].l==curT2[x].l);
+				assert(Qaffine->Q[r][i].finv[Qaffine->Q[r][i].f[x]]==x);
+				assert(Qaffine->Q[r][i].f[Qaffine->Q[r][i].finv[x]]==x);
+
+				// XOR table modify - at the output of Rbox
+				//BYTE newXtbX = HILO(xtb1[x], xtb2[x]) ^ ((r+3)*i);		// debug, testing connection between XTB & T2
+				BYTE newXtbX = Qaffine->Q[r][i].f[HILO(xtb1[x], xtb2[x])];
+				xtb1[x] = HI(newXtbX);
+				xtb2[x] = LO(newXtbX);
+
+				//curT2[x].l = tmpT2[x^((r+3)*i)].l;						// debug, testing connection between XTB & T2
+				curT2[x].l = tmpT2[   Qaffine->Q[r][i].finv[x]   ].l;
+			}
+		}
+	}
+
+	// WBAES changed to state with affine matching bijections at round boundaries.
+	cout << "Going to test WBAES after modifying tables" << endl;
+	generator.testComputedVectors(true, this->wbaes, coding);
 
 	delete[] Sr;
 	delete Qaffine;

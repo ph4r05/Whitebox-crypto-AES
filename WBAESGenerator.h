@@ -437,6 +437,7 @@ public:
  	
 	// test whitebox implementation with test vectors
 	int testWithVectors(bool coutOutput, WBAES &genAES);
+	int testComputedVectors(bool coutOutput, WBAES &genAES, CODING8X8_TABLE * iocoding);
 
 	inline void BYTEArr_to_vec_GF2E(const BYTE * arr, size_t len, NTL::vec_GF2E& dst){
 		charArr_to_vec_GF2E(arr, len, dst);
