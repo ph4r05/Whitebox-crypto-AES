@@ -10,7 +10,7 @@
 #ifndef MIXINGBIJECTIONS_H_
 #define MIXINGBIJECTIONS_H_
 
-
+#include "base.h"
 #include <NTL/GF2.h>
 #include <NTL/GF2X.h>
 #include <NTL/vec_GF2.h>

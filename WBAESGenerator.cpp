@@ -225,6 +225,19 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	CODING        (&codingMap_edXOR1)[N_ROUNDS][N_SECTIONS][24]         = encrypt ? codingMap.eXOR1 : codingMap.dXOR1;
 	CODING        (&codingMap_edXOR2)[N_ROUNDS][N_SECTIONS][24]         = encrypt ? codingMap.eXOR2 : codingMap.dXOR2;
 
+#ifdef AES_BGE_ATTACK
+	// If there are 8x8 output bijections, just generate identities
+	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (genAES.eOutputBijection) : (genAES.dOutputBijection);
+	for(r=0;r<N_ROUNDS;r++){
+		for(i=0;i<N_BYTES;i++){
+			for(k=0;k<GF256;k++){
+				edOutputBijection[r][i][k]=k;
+			}
+		}
+	}
+#endif
+
+
 	// A1, A2 relations
 	int genA[N_ROUNDS * N_SECTIONS];						// constant a for A1A2 relations
 	int genI[N_ROUNDS * N_SECTIONS];						// exponent for A1A2 relations
@@ -680,7 +693,6 @@ int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
 
 int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES &genAES, CODING8X8_TABLE * iocoding){
 	int i, err=0;
-	W128b plain, cipher, state;
 
 	// see [http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf]
 	if (coutOutput){
@@ -688,6 +700,7 @@ int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES &genAES, CODING8X
 	}
 
 	for(i=0; i<AES_TESTVECTORS; i++){
+		W128b plain, cipher, state;
 		arr_to_W128b(GenericAES::testVect128_plain[i], 0, plain);
 		arr_to_W128b(GenericAES::testVect128_plain[i], 0, state);
 		arr_to_W128b(GenericAES::testVect128_cipher[i], 0, cipher);

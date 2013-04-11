@@ -77,6 +77,9 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->eXTab) 	   : (this->dXTab);
 	AES_TB_TYPE2 (&edTab2)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->eTab2) 	   : (this->dTab2);
 	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->eTab3) 	   : (this->dTab3);
+#ifdef AES_BGE_ATTACK
+	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (this->eOutputBijection) : (this->dOutputBijection);
+#endif
 
 	for(r=0; r<N_ROUNDS; r++){
 		// Perform rest of the operations on 4 tuples.
@@ -144,6 +147,16 @@ void WBAES::encdec(W128b& state, bool encrypt){
 			state.B[i/4+ 8] = r<(N_ROUNDS-1) ? ires[i].B[2] : ires[i+2].B[0];
 			state.B[i/4+12] = r<(N_ROUNDS-1) ? ires[i].B[3] : ires[i+3].B[0];
 		}
+
+#ifdef AES_BGE_ATTACK
+		// If we are performing attack, we modified output bijection for 1 byte from 2 concatenated 4x4 bijections to one 8x8
+		for(i=0; i<N_BYTES; i+=4){
+			state.B[i/4+ 0] = edOutputBijection[r][i/4+ 0][state.B[i/4+ 0]];
+			state.B[i/4+ 4] = edOutputBijection[r][i/4+ 4][state.B[i/4+ 4]];
+			state.B[i/4+ 8] = edOutputBijection[r][i/4+ 8][state.B[i/4+ 8]];
+			state.B[i/4+12] = edOutputBijection[r][i/4+12][state.B[i/4+12]];
+		}
+#endif
 
 		if (dumpEachRound){
 			cout << "EndOfRound[" << r << "] dump: " << endl;

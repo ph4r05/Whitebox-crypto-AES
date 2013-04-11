@@ -29,6 +29,7 @@
 #include <NTL/vec_long.h>
 #include <NTL/new.h>
 #include <math.h>
+#include "base.h"
 #include "NTLUtils.h"
 #define AES_FIELD_SIZE 256
 #define AES_FIELD_DIM 8

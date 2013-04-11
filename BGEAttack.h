@@ -7,6 +7,7 @@
 
 #ifndef BGEATTACK_H_
 #define BGEATTACK_H_
+#include "base.h"
 #include "NTLUtils.h"
 #include "MixingBijections.h"
 #include "LinearAffineEq.h"
@@ -16,11 +17,6 @@
 
 namespace wbacr {
 namespace attack {
-
-#define GF256 256
-
-// unary function over GF256 (1D lookup table)
-typedef BYTE GF256_func_t[256];
 
 // Function map hash -> function idx
 typedef boost::unordered_map<std::string, int>fctionMap_t;

@@ -9,6 +9,7 @@
 
 #ifndef WBAES_H_
 #define WBAES_H_
+#include "base.h"
 #include "NTLUtils.h"
 #include <iomanip>
 
@@ -66,6 +67,7 @@
 #define N_SECTIONS      4       // 4 independent groups in one round
 #define N_XOR_GROUPS    6       // 3 XOR tables to combine MIX Col, 3 XOR tables to combine MB
 #define N_BYTES         16      // 16 bytes in one round
+#define GF256 			256		// GF(2^8) size
 
 //
 // EXTENDED DATA TYPES
@@ -74,6 +76,9 @@ typedef unsigned char BYTE;
 typedef unsigned long DWORD;       
 typedef BYTE          BITS4;                // FORM OF BITS4 is 0000xxxx, ONLY LOWER 4 BITS ARE USED
 typedef BYTE    MCSTRIP[4];                 // partitional strip obtained by multiplication with MC            
+
+// unary function over GF256 (1D lookup table)
+typedef BYTE GF256_func_t[256];
 
 typedef union _W32B{
     BYTE B[4];
@@ -267,6 +272,28 @@ public:
 
     // Type III tables
     AES_TB_TYPE3 dTab3[N_ROUNDS][N_BYTES];
+
+#ifdef AES_BGE_ATTACK
+    	// In case of BGE attack on WBAES we have to add 8x8 bit bijection on the end of the round
+    	// but in default implementation there are XOR tables on the end of the round. So result from
+    	// round is extracted by XOR tables.
+    	//
+    	// XOR tables have each 4bit output, thus 1 byte is encoded with 2 concatenated 4x4 random bijections.
+    	// We are not able to encode 8x8 bijection on the output of the round with 2 concatenated 4x4 bijections
+    	// because there is less combinations possible and in some situations there would be conflicts like:
+    	//
+    	// 1. round:
+    	//  xtb1[a]=0x06; xtb2[ff]=0x02; HILO=0x62; trans(hilo)=0x56; XTB1-->0x05; ; XTB2-->0x06;   Reversal process; hiloagain: 56; inv: 0x62
+    	//  xtb1[b]=0x04; xtb2[ff]=0x02; HILO=0x42; trans(hilo)=0x5f; XTB1-->0x05; ; XTB2-->0x0f;   Reversal process; hiloagain: 5f; inv: 0x42
+    	//   thus after applying transf. xtb1[0x0a] = 5, xtb2[0x0b]=5
+    	//
+    	// 2. round:
+    	//  xtb1[a]=0x06; xtb2[b]=0x06; HILO=0x66; trans(hilo)=0x52; XTB1-->0x05; ; XTB2-->0x02;   Reversal process; hiloagain: 52; inv: 0x66
+    	//  xtb1[b]=0x04; xtb2[b]=0x06; HILO=0x46; trans(hilo)=0x0a; XTB1-->0x00; ; XTB2-->0x0a;   Reversal process; hiloagain: a; inv: 0x46
+    	//   thus after applying transf. xtb1[0x0b] = 0 (conflict), xtb2[0x0b]=6
+    	GF256_func_t eOutputBijection[N_ROUNDS][N_BYTES];
+    	GF256_func_t dOutputBijection[N_ROUNDS][N_BYTES];
+#endif
 
     bool dumpEachRound;
 };

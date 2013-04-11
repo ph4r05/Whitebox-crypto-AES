@@ -10,6 +10,7 @@
 #ifndef WBAESGENERATOR_H_
 #define WBAESGENERATOR_H_
 
+#include "base.h"
 #include <assert.h>
 #include <string.h>
 

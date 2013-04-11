@@ -65,6 +65,9 @@ void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift){
 	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->wbaes.eXTab) 	   : (this->wbaes.dXTab);
 	AES_TB_TYPE2 (&edTab2)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes.eTab2) 	   : (this->wbaes.dTab2);
 	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes.eTab3) 	   : (this->wbaes.dTab3);
+#ifdef AES_BGE_ATTACK
+	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (this->wbaes.eOutputBijection) : (this->wbaes.dOutputBijection);
+#endif
 
 	// Perform rest of the operations on 4 tuples.
 	for(i=0; i<N_BYTES; i+=4){
@@ -116,6 +119,16 @@ void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift){
 		state.B[i/4+ 8] = r<(N_ROUNDS-1) ? ires[i].B[2] : ires[i+2].B[0];
 		state.B[i/4+12] = r<(N_ROUNDS-1) ? ires[i].B[3] : ires[i+3].B[0];
 	}
+
+#ifdef AES_BGE_ATTACK
+	// If we are performing attack, we modified output bijection for 1 byte from 2 concatenated 4x4 bijections to one 8x8
+	for(i=0; i<N_BYTES; i+=4){
+		state.B[i/4+ 0] = edOutputBijection[r][i/4+ 0][state.B[i/4+ 0]];
+		state.B[i/4+ 4] = edOutputBijection[r][i/4+ 4][state.B[i/4+ 4]];
+		state.B[i/4+ 8] = edOutputBijection[r][i/4+ 8][state.B[i/4+ 8]];
+		state.B[i/4+12] = edOutputBijection[r][i/4+12][state.B[i/4+12]];
+	}
+#endif
 }
 
 void BGEAttack::recoverPsi(Sset_t & S){
@@ -182,6 +195,11 @@ void BGEAttack::run(void) {
 	GenericAES defAES;
 	defAES.init(0x11B, 0x03);
 
+#ifndef AES_BGE_ATTACK
+	cerr << "Cannot proceed with attack if \"AES_BGE_ATTACK\" is not defined, we are missing required additions"<<endl;
+	exit(1);
+#endif
+
 	WBAESGenerator generator;
 	CODING8X8_TABLE coding[16];
 	W128b state;
@@ -191,8 +209,12 @@ void BGEAttack::run(void) {
 	generator.useDualAESIdentity=true;
 	generator.generateIO128Coding(coding, true);
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, true);  cout << "AES ENC generated" << endl;
-	//generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
 	int (&nextTbox)[N_BYTES]     = encrypt ? (generator.shiftRowsLBijection) : (generator.shiftRowsLBijectionInv);
+
+	// WBAES changed to state with affine matching bijections at round boundaries.
+	cout << "Going to test WBAES before modifying tables" << endl;
+	generator.testComputedVectors(true, this->wbaes, coding);
 
 	//
 	//
@@ -210,15 +232,11 @@ void BGEAttack::run(void) {
 
 	// At first compute base function f_{00}, we will need it for computing all next functions,
 	// to be exact, its inverse, f^{-1}_{00}
-	cout << "Allocating memory for attack" << endl;
+	cout << "Allocating memory for the attack" << endl;
 	SsetPerRound_t * Sr = new SsetPerRound_t[10];
 	Qaffine_t * Qaffine = new Qaffine_t;
 	cout << "Memory allocated; Sr=" << dec << (sizeof(SsetPerRound_t)*10) << "; Qaffine=" << dec << sizeof(Qaffine_t) << endl;
 	cout << "Memory allocated totally: " << (((sizeof(SsetPerRound_t)*10) + sizeof(Qaffine_t)) / 1024.0 / 1024.0) << " MB" << endl;
-
-	// WBAES changed to state with affine matching bijections at round boundaries.
-	cout << "Going to test WBAES before modifying tables" << endl;
-	generator.testComputedVectors(true, this->wbaes, coding);
 
 	cout << "Starting attack phase 1 ..." << endl;
 	for(r=0; r<9; r++){
@@ -344,15 +362,25 @@ void BGEAttack::run(void) {
 			// (1., 2.) ==>f('00') = Q~(PSI(f)) ==>
 			// Q~: x is PSI(f) for some f (we have 256 of them)
 			// Q~: y is f('00')  --- || ---
-
+			boost::unordered_set<BYTE> keySet;
+			boost::unordered_set<BYTE> valSet;
 			for(j=0; j<GF256; j++){
 				    x = curS.psi[j];
 				int y = curS.fctions[j].f[0];
 
+				// correctness
+				if (keySet.count(x)>0){
+					cerr << "Key x=["<<x<<"] already defined in Q["<<r<<"]["<<i<<"].f["<<x<<"]"<< endl;
+				}
+				if (valSet.count(y)>0){
+					cerr << "Val y=["<<y<<"] already defined in Q["<<r<<"]["<<i<<"].f["<<x<<"]"<< endl;
+				}
+
 				Qaffine->Q[r][i].f[x]    = y;
 				Qaffine->Q[r][i].finv[y] = x;
-
-				cout << "Q["<<r<<"]["<<i<<"].f["<<x<<"] = " << y << endl;
+				keySet.insert(x);
+				valSet.insert(y);
+				//cout << "Q["<<r<<"]["<<i<<"].f["<<x<<"] = " << y << endl;
 			}
 
 			Qaffine->Q[r][i].initHash();
@@ -381,10 +409,10 @@ void BGEAttack::run(void) {
 	//                 =           L( x ) \oplus        Q^{-1}('00')      ==> affine
 
 	// Applying above description and reduce to affine matching transformations
-	// Q will be on this->wbaes.eXTab[r][i%4][5][0..7][0..256]
-	// P will be on this->wbaes.eTab2[r][shiftInvRows(i) -- as with L^{-1} matching][0..256]
+	// Q will be on transfered to AES output bijection layer - additional one
+	// P will be on this->wbaes.eTab2[r][?][0..256]
 	cout << "Going to transform AES input/output matching bijection to affine" << endl;
-	for(r=0; r<9; r++){
+	for(r=0; r<N_ROUNDS-1; r++){
 		for(i=0; i<AES_BYTES; i++){
 			// Choice of indexes for eTab2 explained below:
 			// Since we are interested in output encoding, we don't really care about input to Rbox (shiftrows is ignored).
@@ -392,26 +420,59 @@ void BGEAttack::run(void) {
 			// In WBAES implementation, shift rows will follow, thus first 4 T2boxes will be feeded by indexes of state array:
 			// state[0,7,10,13]; next 4 T2 boxes will be feeded by state[4,1,14,11]
 			// The point is that nextTbox \ocirc shiftRows (during evaluation) = identity
-			//AES_TB_TYPE2 & curT2 = this->wbaes.eTab2[r+1][shiftT2[i]];	     // T2 table in next round connected to particular HILO(xtb1, xtb2)
-			AES_TB_TYPE2 & curT2 = this->wbaes.eTab2[r+1][shiftT2[i]];	     // T2 table in next round connected to particular HILO(xtb1, xtb2)
-			XTB & xtb1           = this->wbaes.eXTab[r][i%4][5][2*(i/4)+0];	 // 3.rd index - XOR table number 5, last in round
-			XTB & xtb2           = this->wbaes.eXTab[r][i%4][5][2*(i/4)+1];
+			AES_TB_TYPE2 & curT2     = this->wbaes.eTab2[(r+1)][shiftT2[i]];     // T2 table in next round connected to particular HILO(xtb1, xtb2)
+			XTB & curXtb1            = this->wbaes.eXTab[r][i%4][5][2*(i/4)+0];  // 3.rd index - XOR table number 5, last in round
+			XTB & curXtb2            = this->wbaes.eXTab[r][i%4][5][2*(i/4)+1];
+			GF256_func_t & outBiject = this->wbaes.eOutputBijection[r][i];
 
+			// Copy original values of tables to be consistent in changes, not to change value that will be
+			// needed in future in original form (before application of transformation)
 			AES_TB_TYPE2 tmpT2;
 			memcpy(tmpT2, curT2, sizeof(AES_TB_TYPE2));
+
+			// Debug bijection for testing networking
+			//BIJECT8X8 tmpF;
+			//BIJECT8X8 tmpFinv;
+			//generator.generate8X8Bijection(&tmpF, &tmpFinv, false);
+
+			// which bijection to use? For debug we can use random one, or computed Q
+			GF256_func_t & bijectionF    = Qaffine->Q[r][i].f;    //tmpFinv;
+			GF256_func_t & bijectionFinv = Qaffine->Q[r][i].finv; //tmpF;
+
+			// Set of really paranoid asserts, before any change in WBAES
 			for(x=0; x<GF256; x++){
 				assert(tmpT2[x].l==curT2[x].l);
-				assert(Qaffine->Q[r][i].finv[Qaffine->Q[r][i].f[x]]==x);
-				assert(Qaffine->Q[r][i].f[Qaffine->Q[r][i].finv[x]]==x);
+				assert(bijectionFinv[bijectionF[x]] == x);
+				assert(bijectionF[bijectionFinv[x]] == x);
+			}
 
-				// XOR table modify - at the output of Rbox
-				//BYTE newXtbX = HILO(xtb1[x], xtb2[x]) ^ ((r+3)*i);		// debug, testing connection between XTB & T2
-				BYTE newXtbX = Qaffine->Q[r][i].f[HILO(xtb1[x], xtb2[x])];
-				xtb1[x] = HI(newXtbX);
-				xtb2[x] = LO(newXtbX);
+			//
+			// Remember already seen values from XOR Boxes.
+			//
+			// Changing XOR tables is a bit tricky in implementation, because they are 8->4 bit functions.
+			// Thus if we want to apply 8bit transformation on output on 2 XOR boxes, we have to concatenate
+			// result of 2 XOR boxes together and apply transformation, but...
+			//   1. For sure we have x!=y s.t.: XTB[X] == XTB[Y], thus XTB is not injective (cannot be) - probem with inverse in T2.
+			//   2. App. transf. on (XTB1[x] || XTB2[x]) is wrong, since iterating by x does not have to exhaust whole 2^8 values
+			// Here may be cases where x!=y : (XTB1[x] || XTB2[y]) \notin {(XTB1[x] || XTB2[x]); x  \in 0..255}
+			// this will cause problem after applying bijection, not all values are covered, thus if we in T2 box apply inverse
+			// it is wrong. For this reason we need following set to remember already mapped values and iterate in 2 nested for loops.
+			//
+			// Main reason for this is: HILO(xtb1, xtb2) is of type 16->8
+			//
+			// We also have to realize that if we want to add 8x8 bijection at the output of AES round, which is constructed
+			// as concatenation of 4x4 bijections, we cannot do it with just modifying XOR tables since they cant express encoding
+			// 1 byte with 8x8 bijection - look on WBAES.h for more details & further explanation.
+			//
+			int y=0;
+			for(y=0; y<GF256; y++){
+				for(x=0; x<GF256; x++){
+					BYTE newXtbX = HILO(curXtb1[x], curXtb2[y]);
+					outBiject[newXtbX] = bijectionFinv[newXtbX];	// this will be repeated 256 times, but with same value, so OK
+				}
 
-				//curT2[x].l = tmpT2[x^((r+3)*i)].l;						// debug, testing connection between XTB & T2
-				curT2[x].l = tmpT2[   Qaffine->Q[r][i].finv[x]   ].l;
+				// For updating T2 boxes we only need 1 for loop iterating over field since function is 8->8
+				curT2[y].l = tmpT2[bijectionF[y]].l;
 			}
 		}
 	}

@@ -17,6 +17,7 @@
 #include <NTL/vec_long.h>
 #include <math.h>
 #include <vector>
+#include "base.h"
 #include "NTLUtils.h"
 #include "MixingBijections.h"
 

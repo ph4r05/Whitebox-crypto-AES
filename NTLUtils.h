@@ -11,6 +11,7 @@
 #define NTLUTILS_H_
 
 // NTL dependencies
+#include "base.h"
 #include <NTL/vector.h>
 #include <NTL/GF2.h>
 #include <NTL/GF2X.h>

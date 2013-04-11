@@ -10,6 +10,7 @@
 
 //#include <stdio.h>
 //#include <stdlib.h>
+#include "base.h"
 #include <iostream>
 #include <fstream>
 #include <iomanip>
