@@ -78,6 +78,14 @@ inline NTL::mat_GF2 colVector(const T c){
 	return ret;
 }
 
+template<typename T>
+inline void colVector(const T c, NTL::mat_GF2 & src, int col){
+	src[0][col] = (c & (1<<0)) > 0 ? 1 : 0; 	src[1][col] = (c & (1<<1)) > 0 ? 1 : 0;
+	src[2][col] = (c & (1<<2)) > 0 ? 1 : 0; 	src[3][col] = (c & (1<<3)) > 0 ? 1 : 0;
+	src[4][col] = (c & (1<<4)) > 0 ? 1 : 0; 	src[5][col] = (c & (1<<5)) > 0 ? 1 : 0;
+	src[6][col] = (c & (1<<6)) > 0 ? 1 : 0; 	src[7][col] = (c & (1<<7)) > 0 ? 1 : 0;
+}
+
 inline NTL::mat_GF2 colVector(const NTL::vec_GF2& v){
 	int i=0, ln = v.length();
 	NTL::mat_GF2 ret(INIT_SIZE, ln, 1);

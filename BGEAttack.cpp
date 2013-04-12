@@ -274,7 +274,9 @@ int BGEAttack::deriveBset(Bset & bset, GenericAES & aes, bool permissive){
 
 NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2X_t m){
 	// This is recursive function, so if size is 2, return result directly
-	if (m.n==2){
+	if (m.n==1){
+		return m.x[0][0];	// should never reach this point, but lets be defensive
+	} else if (m.n==2){
 		return (m.x[0][0] * m.x[1][1]) + (m.x[0][1] * m.x[1][0]);
 	}
 
@@ -283,10 +285,10 @@ NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2X_t m){
 	mat_GF2X_t nm;
 	nm.n = m.n-1;
 	for(int k=0; k<m.n; k++){
-		// optimization, multiplicaiton by zero - save recursion steps
+		// optimization, multiplication by zero - save recursion steps
 		if (m.x[0][k]==GF2X::zero()) continue;
 
-		// create submatrix, we expand everytime by first row
+		// create submatrix, we expand every time by first row
 		for(int i=1; i<m.n; i++){
 			for(int j=0,col=0; j<m.n; j++){
 				if (j==k) continue;
@@ -307,7 +309,9 @@ NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2 m){
 
 	// Transform to GF2X matrix with variable on main diagonal
 	NTL::GF2X var = GF2XFromLong(2, 9);
-	assert(m.NumCols()==n && n==8);	 // is square matrix?
+	assert(m.NumCols()==n);	 		  // we can do this only for square matrix
+	if (n==1) return (m[0][0] + var); // such a degenerate case
+
 	for(int i=0; i<n; i++){
 		for(int j=0; j<n; j++){
 			NTL::GF2X cur = GF2XFromLong(m[i][j] == NTL::GF2::zero() ? 0:1, 9);
@@ -317,6 +321,85 @@ NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2 m){
 
 	return characteristicPolynomial(subMatrix);
 
+}
+
+ int BGEAttack::proposition1(affineEquiv_t & ret, int r, int col, int syi, int syj, int sx){
+	GF256_func_t yi, yj, yj_inv;        // pre-computed functions
+
+	W128b state;
+	for(int x=0; x<=0xff; x++){
+		memset(&state, 0, sizeof(state));		// put 0 everywhere
+		state.B[0+4*sx]=x;   state.B[1+4*sx]=x; // init with x values for y_0 in each column
+		state.B[2+4*sx]=x;   state.B[3+4*sx]=x; // recall that state array is indexed by rows.
+
+		this->Rbox(state, true, r, true);		// perform R box computation on input & output values
+		yi[x]         = state.B[col + 4*syi];   //yi_inv[yi[x]] = x;
+		yj[x]         = state.B[col + 4*syj];
+		yj_inv[yj[x]] = x;
+	}
+
+	// We are looking for relation in a form:
+	// yi(x, 00, 00, 00) ^ c = L(yj(x, 00, 00, 00))
+	//
+	//
+	// Thus we are iterating by affine constant
+	int c;
+	for(c=0; c<0xff; c++){
+		// We are looking for linear relation between yi+c and yj. Thus just get values for L(e1), ..., L(e8)
+		affineEquiv_t L;
+		L.c = c;
+		L.L.SetDims(8,8);         // mat_GF2 must be initialized to certain size before use
+		L.Linv.SetDims(8,8);      // mat_GF2 must be initialized to certain size before use
+		L.Lm[0] = 0;			  // must always hold for linear mapping
+
+		// Problem is to find L:
+		// yi(x, 00, 00, 00) ^ c = L(yj(x, 00, 00, 00))
+		// It is easy to see that L is already defined if we have values for yi, yj, we just
+		// have to:
+		// 1. determine transformation for base vectors e1,...,e8
+		// 2. test whether these transformation holds linearity property for whole space spanned by these base vectors
+		//
+		// Observe x is same for yi, yj, thus: a.) determine inverse for yj[x] = e_i; b.) L[ei] = yi[x] + c
+		for(int i=0; i<8; i++){
+			int lei = yi[yj_inv[1<<i]] ^ c;
+			L.Lm[1<<i]   = lei;
+			L.Lminv[lei] = 1<<i;
+
+			// build transformation matrix
+			colVector(lei, L.L, i);
+		}
+
+		// If transformation L is linear, then it has to have proper matrix inverse and determinant!=0
+		GF2 determinant;
+		NTL::inv(determinant, L.Linv, L.L);
+		if (determinant==GF2::zero()){
+			continue;	// matrix is not invertible -> not linear
+		}
+
+		// Now check whether already determined mapping is linear for whole space, just check.
+		bool works = true;
+		for(int x=0; x<0xff; x++){
+			BYTE ix = yj[x];
+			BYTE iy = yi[x] ^ c;
+			mat_GF2 mx = colVector(ix);    // mx for L * mx
+			mat_GF2 my = colVector(iy);    // my for my =? L * mx
+			if ((L.L * mx) != my){
+				works=false;
+				break;
+			}
+
+			L.Lm[ix] = iy;
+			L.Lminv[iy] = ix;
+		}
+
+		// mapping is ok, return it
+		if (works){
+			ret = L;
+			return 1;
+		}
+	}
+
+	return 0; // not found
 }
 
 void BGEAttack::run(void) {
@@ -609,6 +692,10 @@ void BGEAttack::run(void) {
 	cout << "Going to test WBAES after modifying tables" << endl;
 	generator.testComputedVectors(true, this->wbaes, coding);
 
+	//
+	// Attack, proceeding to phase 2 - removing affine parts for output encoding
+	//
+
 	// Derive B set
 	Bset bset2;
 	deriveBset(bset2, defAES, true);
@@ -618,13 +705,41 @@ void BGEAttack::run(void) {
 		cout << CHEX(*it) << ", ";
 	} cout << "} " << endl;
 
-	// now we can generate multiplication matrices from given constants and then compute char. polynomials for them
+	// Now we can generate multiplication matrices from given constants and then compute char. polynomials for them.
+	// L = A0 * beta * A0^{-1} is similar to beta matrix, so they have same characteristic polynomials. From
+	// this we can determine possible beta values for given L as matrix.
+	charPolynomialMultimap_t charPolyMap;
 	for(Bset::const_iterator it = bset2.begin(); it!=bset2.end(); ++it){
 		mat_GF2 m = defAES.makeMultAMatrix(*it);
 		cout << "Computing characteristic polynomial for: " << CHEX(*it) << "; ....";
 
 		GF2X poly = characteristicPolynomial(m);
 		cout << "Characteristic polynomial=" << poly << "; hex=" << GF2EHEX(poly) << endl;
+
+		// Insert characteristic polynomial to multi-map. Later it will be used to determine B
+		charPolyMap.insert(charPolynomialMultimap_elem_t(getLong(poly), *it));
+	}
+
+	// Now we can compute L0, L1 according to the paper from proposition1
+	affineEquiv_t L0, L1;
+	int resL0 = proposition1(L0, 2, 0, 0, 1, 0);
+	int resL1 = proposition1(L1, 2, 0, 0, 1, 1);
+	if (resL0==0 || resL1==0){
+		cout << "One of relations is not affine! l0="<<resL0 << "; l1="<<resL1 << endl;
+	}
+
+	// Compute L = L0 * L1^{-1}
+	mat_GF2 L = L0.L * L1.Linv;
+	GF2X Lpoly = characteristicPolynomial(L);
+	int LpolyInt = getLong(Lpoly);
+	// determine beta values for L
+	if (charPolyMap.count(LpolyInt)==0){
+		cout << "Error, cannot find beta for characteristic polynomial: " << Lpoly << endl;
+	} else {
+		auto its = charPolyMap.equal_range(LpolyInt);
+		for (auto it = its.first; it != its.second; ++it) {
+			cout << "Possible beta for L is " << CHEX(it->second) << "; poly(L)=" << Lpoly << endl;
+		}
 	}
 
 	delete[] Sr;

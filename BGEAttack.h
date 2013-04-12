@@ -15,6 +15,7 @@
 #include "WBAES.h"
 #include "WBAESGenerator.h"
 NTL_CLIENT
+using wbacr::laeqv::affineEquiv_t;
 
 namespace wbacr {
 namespace attack {
@@ -109,27 +110,53 @@ typedef struct Qaffine_t_{
 // set for beta coefficients from 3.3 section
 typedef boost::unordered_set<BYTE> Bset;
 
+// characteristic polynomial multimap for resolving to beta
+typedef boost::unordered_multimap<int, BYTE> charPolynomialMultimap_t;
+typedef std::pair<int, BYTE> charPolynomialMultimap_elem_t;
+
 // square matrix 8x8 (maximum) of GF2X elements
 typedef struct mat_GF2X_t_ {
 	NTL::GF2X x[8][8];
 	int n;
 }mat_GF2X_t;
 
+// Affine equivalence
+typedef std::map<BYTE, BYTE> lmap_t;
+typedef std::pair<BYTE, BYTE> lmap_elem_t;
+typedef struct affineEquiv_t_ {
+	mat_GF2 L;
+	mat_GF2 Linv;
+	lmap_t  Lm;
+	lmap_t  Lminv;
+	BYTE   c;
+} affineEquiv_t;
+
 class BGEAttack {
 public:
 	BGEAttack();
 	virtual ~BGEAttack();
 
+	// AES to attack on
 	WBAES wbaes;
-	Sset_t S;
 
 	void run(void);
 	void Rbox(W128b& state, bool encrypt=true, int r=1, bool noShift=false);
 	void recoverPsi(Sset_t & set);
 	int deriveBset(Bset & bset, GenericAES & aes, bool permissive=true);
+
+	// Computes characteristic polynomial of matrix with coefficients from GF2.
+	// Uses recursive coMatrices algorithm.
 	GF2X characteristicPolynomial(mat_GF2 m);
 
-	//void Rbox2fction(fction_t_ * fction, BYTE x0, BYTE x1, bool encrypt=true, int r=1, bool noShift=true);
+	// Proposition 1 solver - finding affine equivalences between (yi, yj)
+	// yi is computed with Rbox() function using current wbaes.
+	//
+	// @param r       round to compute on
+	// @param col     column in given round
+	// @param syi     1..4, which row to use for yi
+	// @param syj     1..4, which row to use for yj
+	// @param sx      which x 1..4 should be used to compute yi, yj
+	int proposition1(affineEquiv_t & ret, int r, int col, int syi, int syj, int sx);
 
 	// just identity on 16 elements - used when shift rows operation ignored
 	static int shiftIdentity[16];
