@@ -28,6 +28,9 @@ BGEAttack::~BGEAttack() {
 
 using namespace std;
 using namespace NTL;
+using namespace boost;
+using namespace wbacr::attack;
+using namespace wbacr::laeqv;
 
 int BGEAttack::shiftIdentity[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 int BGEAttack::shiftT2[16] =
@@ -189,6 +192,131 @@ void BGEAttack::recoverPsi(Sset_t & S){
 	if (R.size() < GF256 && Stmp.size() == 0){
 		cerr << "Something bad happened, S is empty, R does not span whole vector space. size=" << R.size() << endl;
 	}
+}
+
+int BGEAttack::deriveBset(Bset & bset, GenericAES & aes, bool permissive){
+	struct coef_t {
+		GF2E gfCoef;
+		BYTE intCoef;
+		GF2E gfCoefInv;
+		BYTE intCoefInv;
+		short int count;					  // number of occurences in one column in mixcol matrix
+	};
+
+	int dIdxs=0;							  // number of distincs indexes in one column in mixcol
+	struct coef_t coefs[4];
+	boost::unordered_map<BYTE, int> coefsMap; // simple map: index -> array of indexes
+
+	// Determine coefficients used in MixCol in current AES used, compute inverses
+	for(int i=0; i<4; i++){
+		GF2E gfCoef = aes.mixColMat[i][0];
+		BYTE curCoef = (BYTE) getLong(gfCoef);
+		if(coefsMap.count(curCoef)==0){
+			coefs[dIdxs].gfCoef = gfCoef;
+			coefs[dIdxs].intCoef = curCoef;
+			inv(coefs[dIdxs].gfCoefInv, gfCoef);
+			coefs[dIdxs].intCoefInv = (BYTE) getLong(coefs[dIdxs].gfCoefInv);
+			coefs[dIdxs].count=1;
+			coefsMap.insert(std::pair<BYTE,int>(curCoef, dIdxs++));
+		} else {
+			coefs[coefsMap[curCoef]].count++;
+		}
+	}
+
+	// just use MixCol matrix rows - more strict variant
+	if (permissive==false){
+		for(int i=0; i<4; i++){
+			int a = coefsMap[(BYTE)getLong(aes.mixColMat[i][0])];
+			int c = coefsMap[(BYTE)getLong(aes.mixColMat[i][1])];
+			for(int j=0; j<4; j++){
+				if (i==j) continue;
+				int d = coefsMap[(BYTE)getLong(aes.mixColMat[j][0])];
+				int b = coefsMap[(BYTE)getLong(aes.mixColMat[j][1])];
+
+				GF2E beta = (coefs[a].gfCoef * coefs[b].gfCoef) * (coefs[c].gfCoefInv * coefs[d].gfCoefInv);
+				BYTE intBeta = (BYTE) getLong(beta);
+				cout << "i="<<i<<"; Beta=["<<CHEX(intBeta)
+						<<"]; a="<<CHEX(coefs[a].intCoef)
+						<<"; b="<<CHEX(coefs[b].intCoef)
+						<<"; c="<<CHEX(coefs[c].intCoef) << ", inv="<<CHEX(coefs[c].intCoefInv)
+						<<"; d="<<CHEX(coefs[d].intCoef) << ", inv="<<CHEX(coefs[d].intCoefInv)<<endl;
+
+				if (bset.count(intBeta)==0) bset.insert(intBeta);
+			}
+		}
+	} else {
+		// Now generate combinations, 4*4*4*4 possibilities, I want to avoid 4 nested for loops, so with just one
+		for(int i=0; i<GF256; i++){
+			int a =  i       & 0x3; // index
+			int b = (i >> 2) & 0x3;
+			int c = (i >> 4) & 0x3;	// c is from same col as a, c is inverse
+			int d = (i >> 6) & 0x3; // d is from same col as b, d is inverse
+			if (a>=dIdxs || b>=dIdxs || c>=dIdxs || d>=dIdxs) continue; // in case there are some coefs with count>1
+			if (a==c && coefs[a].count==1) continue;	// they are from same col, can have same value only if count is bigger than 1
+			if (b==d && coefs[b].count==1) continue;    // they are from same col, can have same value only if count is bigger than 1
+			if (a==d && coefs[a].count==1) continue;    // they are from same row, can have same value only if count is bigger than 1
+			if (b==c && coefs[b].count==1) continue;    // they are from same row, can have same value only if count is bigger than 1
+			if (a==d && b==c) continue; // not 2 rows same
+			GF2E beta = (coefs[a].gfCoef * coefs[b].gfCoef) * (coefs[c].gfCoefInv * coefs[d].gfCoefInv);
+			BYTE intBeta = (BYTE) getLong(beta);
+			cout << "i="<<i<<"; Beta=["<<CHEX(intBeta)
+					<<"]; a="<<CHEX(coefs[a].intCoef)
+					<<"; b="<<CHEX(coefs[b].intCoef)
+					<<"; c="<<CHEX(coefs[c].intCoef) << ", inv="<<CHEX(coefs[c].intCoefInv)
+					<<"; d="<<CHEX(coefs[d].intCoef) << ", inv="<<CHEX(coefs[d].intCoefInv)<<endl;
+
+			if (bset.count(intBeta)==0) bset.insert(intBeta);
+		}
+	}
+
+	return 0;
+}
+
+NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2X_t m){
+	// This is recursive function, so if size is 2, return result directly
+	if (m.n==2){
+		return (m.x[0][0] * m.x[1][1]) + (m.x[0][1] * m.x[1][0]);
+	}
+
+	NTL::GF2X poly = GF2XFromLong(0, 9);
+	// Recursive expansion by rows
+	mat_GF2X_t nm;
+	nm.n = m.n-1;
+	for(int k=0; k<m.n; k++){
+		// optimization, multiplicaiton by zero - save recursion steps
+		if (m.x[0][k]==GF2X::zero()) continue;
+
+		// create submatrix, we expand everytime by first row
+		for(int i=1; i<m.n; i++){
+			for(int j=0,col=0; j<m.n; j++){
+				if (j==k) continue;
+				nm.x[i-1][col++] = m.x[i][j];
+			}
+		}
+
+		poly = poly + m.x[0][k] * characteristicPolynomial(nm);
+	}
+
+	return poly;
+}
+
+NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2 m){
+	mat_GF2X_t subMatrix;
+	int n = m.NumRows();
+	subMatrix.n=n;
+
+	// Transform to GF2X matrix with variable on main diagonal
+	NTL::GF2X var = GF2XFromLong(2, 9);
+	assert(m.NumCols()==n && n==8);	 // is square matrix?
+	for(int i=0; i<n; i++){
+		for(int j=0; j<n; j++){
+			NTL::GF2X cur = GF2XFromLong(m[i][j] == NTL::GF2::zero() ? 0:1, 9);
+			subMatrix.x[i][j] = i==j ? (cur+var) : cur;
+		}
+	}
+
+	return characteristicPolynomial(subMatrix);
+
 }
 
 void BGEAttack::run(void) {
@@ -480,6 +608,24 @@ void BGEAttack::run(void) {
 	// WBAES changed to state with affine matching bijections at round boundaries.
 	cout << "Going to test WBAES after modifying tables" << endl;
 	generator.testComputedVectors(true, this->wbaes, coding);
+
+	// Derive B set
+	Bset bset2;
+	deriveBset(bset2, defAES, true);
+
+	cout << "Bset: { ";
+	for(Bset::const_iterator it = bset2.begin(); it!=bset2.end(); ++it){
+		cout << CHEX(*it) << ", ";
+	} cout << "} " << endl;
+
+	// now we can generate multiplication matrices from given constants and then compute char. polynomials for them
+	for(Bset::const_iterator it = bset2.begin(); it!=bset2.end(); ++it){
+		mat_GF2 m = defAES.makeMultAMatrix(*it);
+		cout << "Computing characteristic polynomial for: " << CHEX(*it) << "; ....";
+
+		GF2X poly = characteristicPolynomial(m);
+		cout << "Characteristic polynomial=" << poly << "; hex=" << GF2EHEX(poly) << endl;
+	}
 
 	delete[] Sr;
 	delete Qaffine;

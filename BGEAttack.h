@@ -14,6 +14,7 @@
 #include "GenericAES.h"
 #include "WBAES.h"
 #include "WBAESGenerator.h"
+NTL_CLIENT
 
 namespace wbacr {
 namespace attack {
@@ -105,6 +106,15 @@ typedef struct Qaffine_t_{
 	fction_t Q[9][AES_BYTES];
 }Qaffine_t;
 
+// set for beta coefficients from 3.3 section
+typedef boost::unordered_set<BYTE> Bset;
+
+// square matrix 8x8 (maximum) of GF2X elements
+typedef struct mat_GF2X_t_ {
+	NTL::GF2X x[8][8];
+	int n;
+}mat_GF2X_t;
+
 class BGEAttack {
 public:
 	BGEAttack();
@@ -116,11 +126,18 @@ public:
 	void run(void);
 	void Rbox(W128b& state, bool encrypt=true, int r=1, bool noShift=false);
 	void recoverPsi(Sset_t & set);
+	int deriveBset(Bset & bset, GenericAES & aes, bool permissive=true);
+	GF2X characteristicPolynomial(mat_GF2 m);
+
 	//void Rbox2fction(fction_t_ * fction, BYTE x0, BYTE x1, bool encrypt=true, int r=1, bool noShift=true);
 
 	// just identity on 16 elements - used when shift rows operation ignored
 	static int shiftIdentity[16];
 	static int shiftT2[16];
+
+protected:
+	// used internally for comptuting characteristic polynomial
+	GF2X characteristicPolynomial(mat_GF2X_t m);
 };
 
 } /* namespace attack */
