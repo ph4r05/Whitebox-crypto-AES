@@ -131,6 +131,9 @@ typedef struct affineEquiv_t_ {
 	BYTE   c;
 } affineEquiv_t;
 
+// vector of base vectors
+typedef std::vector<NTL::vec_GF2> baseVectors_t;
+
 class BGEAttack {
 public:
 	BGEAttack();
@@ -161,7 +164,17 @@ public:
 	// Proposition 2 solver - Finding A~0 for given matrix L and Beta.
 	// L = A0 * beta * A0^{-1}
 	// A~0 = A0 * gamma 		for some unique gamma \in GF(2^8)
-	int proposition2(mat_GF2 & inp, NTL::mat_GF2 & out, mat_GF2 beta);
+	//
+	// Function returns result in out variable.
+	// If system of equations obtained is nonsingular, out will contain only
+	// one vector - solution of the system, but can be trivial (null).
+	//   If there is only trivial solution, return value = -1
+	//   If found solution is invalid, return value = -2  (something wrong, maybe bug)
+	//   Else return value = 0
+	//
+	// If system is singular, out contains set of orthogonal base vectors
+	// that span subspace that solves system. Return value = 1.
+	int proposition2(mat_GF2 & inp, baseVectors_t & out, mat_GF2 beta);
 
 	// just identity on 16 elements - used when shift rows operation ignored
 	static int shiftIdentity[16];
