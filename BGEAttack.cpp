@@ -344,7 +344,7 @@ NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2 m){
 	//
 	// Thus we are iterating by affine constant
 	int c;
-	for(c=0; c<0xff; c++){
+	for(c=0; c<=0xff; c++){
 		// We are looking for linear relation between yi+c and yj. Thus just get values for L(e1), ..., L(e8)
 		affineEquiv_t L;
 		L.c = c;
@@ -378,7 +378,7 @@ NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2 m){
 
 		// Now check whether already determined mapping is linear for whole space, just check.
 		bool works = true;
-		for(int x=0; x<0xff; x++){
+		for(int x=0; x<=0xff; x++){
 			BYTE ix = yj[x];
 			BYTE iy = yi[x] ^ c;
 			mat_GF2 mx = colVector(ix);    // mx for L * mx
@@ -520,6 +520,158 @@ int BGEAttack::proposition2(mat_GF2 & L, baseVectors_t & out, mat_GF2 beta){
 
 	out.push_back(x);
 	return 0;
+}
+
+int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int col, int row, baseVectors_t & Atild){
+	// Solving of this problem is based on iterating over 2 variables in GF(2^8) and checking
+	// if resulting mapping is affine.
+	//
+	// Now prepare A~^{-1} from proposition 2 result. Just take first vector in Atild,
+	// make matrix, take inverse, build lookup table
+	if (Atild.size()==0) return -1;
+	NTL::GF2 determinant;
+	NTL::mat_GF2 AtildMat(INIT_SIZE, 8, 8);
+	NTL::mat_GF2 AtildMatInv(INIT_SIZE, 8, 8);
+
+	// Very defensive approach here, if Atild is composed of set of orthogonal vectors, try each from subspace
+	int vectSpaceDim  = Atild.size();
+	long int vIdxMax  = (long int) pow(2.0,vectSpaceDim);
+	for(long int vIdx = 1; vIdx < vIdxMax ; vIdx++){
+
+		// Reset matrix
+		for(int x=0; x<64; x++){
+			AtildMat.put(x/8, x%8, 0);
+		}
+
+		// Construct vector from subspace of solutions
+		for(int d=0; d<vectSpaceDim; d++){
+			if ((vIdx & (1<<d)) == 0) continue;		    // vIdx does not permit to use Atild[d] vector
+			for(int x=0; x<64; x++){
+				AtildMat.put(x/8, x%8, Atild[d].get(x));
+			}
+		}
+
+		// Check if this matrix is OK
+		NTL::inv(determinant, AtildMatInv, AtildMat);  // construct inverse - thats what we are looking for
+		if (determinant!=GF2::zero()){
+			break;
+		}
+	}
+
+	// No solution form invertible matrix
+	if (determinant==GF2::zero()){
+		cout << "There was problem with finding Atild inversion from given set of base vectors, dim=" << vectSpaceDim << endl;
+		return -2;
+	}
+
+	// Build lookup table for Atild
+	GF256_func_t AtildInvLoT;
+	for(int x=0; x<=0xff; x++){
+		mat_GF2 xMat   = colVector(x);
+		mat_GF2 res    = AtildMatInv * xMat;
+		GF2X    resGF  = colVector_GF2X(res, 0);
+		AtildInvLoT[x] = getLong(resGF);
+	}
+
+	//
+	// Construct those mappings y_row. This can be similar to prop1, but
+	// here we are iterating over 2 variables and CHECKING if resulting mapping is affine.
+	//
+	int PiOK=0;
+	for(int p=0; p<4; p++){
+		GF256_func_t y_row;                         // pre-computed functions
+		W128b state;
+		for(int x=0; x<=0xff; x++){
+			memset(&state, 0, sizeof(state));		// put 0 everywhere
+			state.B[col + 4*p] = x;                 // In each iteration P_i, we set X to different position, namely x0,x1,x2,x3
+
+			this->Rbox(state, true, r, true);		// perform R box computation on input & output values
+			y_row[x] = state.B[col + 4*row];
+		}
+
+		// It is important to set dimensions to mat_GF2 before starting working with it, otherwise --> segfault
+		out->P[p].L.SetDims(8,8);
+		out->P[p].Linv.SetDims(8,8);
+
+		// Now iterate over 2 variables in GF(256), construct mapping and check affinity
+		bool foundAffine=false;
+		for(int delta=1; delta<=0xff && foundAffine==false; delta++){
+			// multiplication matrix
+			mat_GF2 deltMultM = aes.makeMultAMatrix(delta);
+			// multiplication lookup table
+			GF256_func_t deltMultLoT;
+			for(int x=0; x<=0xff; x++){
+				mat_GF2 xMat   = colVector(x);
+				mat_GF2 res    = deltMultM * xMat;
+				GF2X    resGF  = colVector_GF2X(res, 0);
+				deltMultLoT[x] = getLong(resGF);
+			}
+
+			// Iterate over c constant \in GF(2^8)
+			for(int c=0; c<=0xff && foundAffine==false; c++){
+				out->P[p].delta = delta;
+				out->P[p].c     = c;
+
+				// Constructing Pi mapping
+				// P0(x) = (SboxInv * deltMult * AtildInv)(y_row( x, 00, 00, 00) + c0)
+				// P1(x) = (SboxInv * deltMult * AtildInv)(y_row(00,  x, 00, 00) + c0)
+				// P2(x) = (SboxInv * deltMult * AtildInv)(y_row(00, 00,  x, 00) + c0)
+				// P3(x) = (SboxInv * deltMult * AtildInv)(y_row(00, 00, 00,  x) + c0)
+				GF256_func_t linPart; // Linear part of above equations - to test for linearity later
+				for(int x=0; x<=0xff; x++){
+					out->P[p].affineMap[x] = aes.sboxAffineInv[deltMultLoT[AtildInvLoT[y_row[x] ^ c]]];
+					linPart[x]             = x==0 ? 0 : out->P[p].affineMap[x] ^ out->P[p].affineMap[0];
+				}
+
+				// Now check, if constructed mapping is affine. Store affine constant for later = Af(0)
+				out->P[p].affineConst = out->P[p].affineMap[0];
+
+				// Check, if given linear transformation works
+				// in the same way on each element in space, using transformation results on canon. base
+				bool isTestOK=true;
+				for(int x=0; x<=0xff; x++){
+					int shouldBe = linPart[x];
+					int realResult = 0;
+					for(int d=0; d<8; d++){
+						realResult ^= ((x & (1<<d)) > 0 ? linPart[1<<d] : 0);
+					}
+
+					if (shouldBe != realResult){
+						isTestOK=false;
+						break;
+					}
+				}
+
+				if (isTestOK==false){
+					continue;
+				}
+
+				// Verify linearity of linPart. Easy procedure: 1. construct matrix representation by
+				// applying transformation on canon. base,      2. test invertibility
+				for(int x=0; x<64; x++){
+					out->P[p].L.put(x/8, x%8, 0);
+					out->P[p].Linv.put(x/8, x%8, 0);
+				}
+
+				for(int x=0; x<8; x++){
+					colVectorT(linPart[1<<x], out->P[p].L, x);
+				}
+
+				NTL::inv(determinant, out->P[p].Linv, out->P[p].L);
+				if (determinant == GF2::zero()){
+					cout << "Strange situation, determinant=0, but transformation worked on space... p= "<<p<<";Delta="<<delta<<"; c="<<c<<endl;
+					continue;
+				}
+
+				foundAffine = true;
+				break;
+			}
+		}
+
+		PiOK |= foundAffine ? 1<<p : 0;
+	}
+
+	return PiOK;
 }
 
 int BGEAttack::run(void) {
@@ -840,21 +992,26 @@ int BGEAttack::run(void) {
 		charPolyMap.insert(charPolynomialMultimap_elem_t(getLong(poly), *it));
 	}
 
-	// Now we can compute L0, L1 according to the paper from proposition1
+	//
+	// TODO: refactor following code to work on more than 1 state array byte
+	//
+	r=2;
+
+	// Now we can compute L0, L1 according to the paper from section 3.2, Proposition 1
 	affineEquiv_t L0, L1;
-	int resL0 = proposition1(L0, 2, 0, 0, 1, 0);
-	int resL1 = proposition1(L1, 2, 0, 0, 1, 1);
+	int resL0 = proposition1(L0, r, 0, 0, 1, 0);
+	int resL1 = proposition1(L1, r, 0, 0, 1, 1);
 	if (resL0==0 || resL1==0){
 		cout << "One of relations is not affine! l0="<<resL0 << "; l1="<<resL1 << endl;
 		return -1;
 	}
 
-	// Compute L = L0 * L1^{-1}
+	// Compute L = L0 * L1^{-1}, section 3.2
 	mat_GF2 L = L0.L * L1.Linv;
 	GF2X Lpoly = characteristicPolynomial(L);
 	int LpolyInt = getLong(Lpoly);
 
-	// determine beta values for L
+	// Determine beta values for L using characteristic polynomial
 	if (charPolyMap.count(LpolyInt)==0){
 		cout << "Error, cannot find beta for characteristic polynomial: " << Lpoly << endl;
 	} else {
@@ -862,10 +1019,6 @@ int BGEAttack::run(void) {
 		auto its = charPolyMap.equal_range(LpolyInt);
 		for (auto it = its.first; it != its.second; ++it) {
 			BYTE possBeta = it->second;
-
-		//for(auto it = bset2.begin(); it!=bset2.end(); ++it){
-			//BYTE possBeta = *it;
-
 			cout << "Possible beta for L is " << CHEX(possBeta) << "; poly(L)=" << Lpoly << endl;
 
 			// Try this value of beta, proceed with proposition 2 to obtain A~ for L
@@ -881,6 +1034,27 @@ int BGEAttack::run(void) {
 			for(int k=0, ln=bVectors.size(); k<ln; k++){
 				dumpVector(bVectors[k]);
 			}
+
+			// Continue with proposition 3
+			prop3struct_t * prop3struct = new prop3struct_t;
+			int prop3Result = proposition3(prop3struct, defAES, r, 0, 0, bVectors);
+			cout << "Prop3 done with result=" << CHEX(prop3Result) << endl;
+			for(int x=0; x<4; x++){
+				cout << "  Prop3["<<x<<"] valid="<<(((prop3Result & (1<<x))>0) ? 1:0)
+					 << "; delta="<<CHEX(prop3struct->P[x].delta)
+					 << "; c="<<CHEX(prop3struct->P[x].c)
+					 << "; affConst="<<CHEX(prop3struct->P[x].affineConst) << endl;
+			}
+
+			// If proposition 3 failed, reason may be invalid beta, so try another one.
+			if (prop3Result != 0xf){
+				cout << "This value of Beta was probably not valid, since proposition 3 failed for some relations" << endl;
+				betaValid=false;
+				continue;
+			}
+
+
+			delete prop3struct;
 		}
 
 		// Things didn't go as expected.

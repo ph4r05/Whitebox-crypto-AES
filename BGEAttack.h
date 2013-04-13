@@ -131,8 +131,24 @@ typedef struct affineEquiv_t_ {
 	BYTE   c;
 } affineEquiv_t;
 
-// vector of base vectors
+// vector of base vectors - used for solving singular system of homogeouns equations
 typedef std::vector<NTL::vec_GF2> baseVectors_t;
+
+// Structure for 1 affine relation in proposition 3
+typedef struct prop3affineRelation_t_{
+	BYTE delta;             // delta_i according to the paper, defining affine mapping
+	BYTE c;                 // c_i     according to the paper, defining affine mapping
+
+	BYTE affineConst;       // affine constant of final affine mapping determined
+	mat_GF2 L;				// linear part of the mapping
+	mat_GF2 Linv;			// inversion of linear part of the mapping
+	GF256_func_t affineMap;	// resulting affine mapping P~_i
+} prop3affineRelation_t;
+
+// Return structure for proposition 3
+typedef struct prop3struct_t_{
+	prop3affineRelation_t P[4];
+} prop3struct_t;
 
 class BGEAttack {
 public:
@@ -175,6 +191,20 @@ public:
 	// If the system is singular, the out contains the set of orthogonal base vectors
 	// that span subspace that solves the system. Return value = 1.
 	int proposition2(mat_GF2 & inp, baseVectors_t & out, mat_GF2 beta);
+
+	// Proposition 3 according to the paper.
+	// Finding affine relations with embedded round key
+	//
+	// @param aes     AES to use for Sbox inverse
+	// @param r       computing prop3 for given round
+	// @param col     column of state array to compute on
+	// @param row     y0...y3 to compute on
+	// @param Atild   result from proposition 2, A~ relation
+	// Returns:
+	//                -1 in case Atild is empty
+	//                -2 in case A~Inv cannot be constructed from Atild
+	//                Flags determining whether P0,P1,P2,P3 were computed successfully (bit 1 if yes)
+	int proposition3(prop3struct_t * out, GenericAES & aes, int r, int col, int row, baseVectors_t & Atild);
 
 	// just identity on 16 elements - used when shift rows operation ignored
 	static int shiftIdentity[16];
