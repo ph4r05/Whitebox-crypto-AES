@@ -693,7 +693,7 @@ int BGEAttack::run(void) {
 	generator.generateIO128Coding(coding, true);
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, true);  cout << "AES ENC generated" << endl;
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
-	int (&nextTbox)[N_BYTES]     = encrypt ? (generator.shiftRowsLBijection) : (generator.shiftRowsLBijectionInv);
+	int (&nextTbox)[N_BYTES]     = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
 
 	// WBAES changed to state with affine matching bijections at round boundaries.
 	cout << "Going to test WBAES before modifying tables" << endl;
@@ -705,7 +705,7 @@ int BGEAttack::run(void) {
 	//
 	//
 
-	// Recover affine parts of Q for round r=0
+	// Recover affine parts of output mapping Q for round 0..9
 	int r = 0;
 	int row=0;
 	int x = 0;
@@ -750,7 +750,7 @@ int BGEAttack::run(void) {
 			}
 		}
 
-		// f(x,0,0,0) finalization - compute hash
+		// f(x,0,0,0) finalization - compute hash of f00 function
 		for(i=0; i<AES_BYTES; i++){
 			Sr[r].S[i%4][i/4].f_00.initHash();
 		}
@@ -807,7 +807,7 @@ int BGEAttack::run(void) {
 				Sr[r].S[i%4][i/4].fctions[j].initHash();
 				std::string & hash = Sr[r].S[i%4][i/4].fctions[j].hash;
 
-				// By iterating c1 over GF256 we constructed vector space, with 256 elements, thus every
+				// By iterating c1 over GF256 we constructed vector space, with 256 elements, thus each function
 				// should be different. We are checking, whether this assumption is OK and vector space is correct.
 				if (Sr[r].S[i%4][i/4].fmap.count(hash)!=0){
 					cerr << "Sr["<<r<<"].["<<(i%4)<<"]["<<(i/4)<<"] set already contains hash[" << hash << "]; for j=" << j << std::endl;
@@ -819,8 +819,8 @@ int BGEAttack::run(void) {
 		}
 
 
-
-		// Now we have Sr[r] generated.
+		//
+		// Now we have Sr[r] generated (set S for whole round r)
 		// According to the paper, we now have to construct isomorphism
 		// \phi S --> GF(2)^8
 		//      Q \op \oplus_{\beta} \op Q^{-1}  --> [\beta]
@@ -851,7 +851,7 @@ int BGEAttack::run(void) {
 				    x = curS.psi[j];
 				int y = curS.fctions[j].f[0];
 
-				// correctness
+				// correctness, verification that it spans completely
 				if (keySet.count(x)>0){
 					cerr << "Key x=["<<x<<"] already defined in Q["<<r<<"]["<<i<<"].f["<<x<<"]"<< endl;
 				}
@@ -903,7 +903,7 @@ int BGEAttack::run(void) {
 			// In WBAES implementation, shift rows will follow, thus first 4 T2boxes will be feeded by indexes of state array:
 			// state[0,7,10,13]; next 4 T2 boxes will be feeded by state[4,1,14,11]
 			// The point is that nextTbox \ocirc shiftRows (during evaluation) = identity
-			AES_TB_TYPE2 & curT2     = this->wbaes.eTab2[(r+1)][shiftT2[i]];     // T2 table in next round connected to particular HILO(xtb1, xtb2)
+			AES_TB_TYPE2 & curT2     = this->wbaes.eTab2[(r+1)][nextTbox[i]];    // T2 table in next round connected to particular HILO(xtb1, xtb2)
 			XTB & curXtb1            = this->wbaes.eXTab[r][i%4][5][2*(i/4)+0];  // 3.rd index - XOR table number 5, last in round
 			XTB & curXtb2            = this->wbaes.eXTab[r][i%4][5][2*(i/4)+1];
 			GF256_func_t & outBiject = this->wbaes.eOutputBijection[r][i];
@@ -969,6 +969,10 @@ int BGEAttack::run(void) {
 	//
 
 	// Derive B set
+	// According to the paper, section 3.3
+	// B = { \Alfa_{0,0}\Alfa_{1,1}\Alfa{0,1}^{-1}\Alfa_{1,0}^{-1} | \Alfa_{i,j} \ in {01, 02, 03}}
+	//
+	// We will need this later, to determine which element from B set forms particular linear transformation
 	Bset bset2;
 	deriveBset(bset2, defAES, true);
 
@@ -977,9 +981,12 @@ int BGEAttack::run(void) {
 		cout << CHEX(*it) << ", ";
 	} cout << "} " << endl;
 
-	// Now we can generate multiplication matrices from given constants and then compute char. polynomials for them.
-	// L = A0 * beta * A0^{-1} is similar to beta matrix, so they have same characteristic polynomials. From
-	// this we can determine possible beta values for given L as matrix.
+	// Now we can generate multiplication matrices from given constants \in B, then compute
+	// characteristic polynomials for them.
+	//
+	// L = A0 * beta * A0^{-1} ~ beta ==> poly(L) = poly(beta)
+	// From this we can determine possible beta values for given L as matrix.
+	//
 	charPolynomialMultimap_t charPolyMap;
 	for(Bset::const_iterator it = bset2.begin(); it!=bset2.end(); ++it){
 		mat_GF2 m = defAES.makeMultAMatrix(*it);
@@ -993,81 +1000,120 @@ int BGEAttack::run(void) {
 	}
 
 	//
-	// TODO: refactor following code to work on more than 1 state array byte
+	// Out attack now recovers round keys in rounds 2,3,4,5.
 	//
-	r=2;
+	const int roundStart = 2;
+	const int rounds2hack = 4;
+	BYTE roundKeys[rounds2hack][16];
 
-	// Now we can compute L0, L1 according to the paper from section 3.2, Proposition 1
-	affineEquiv_t L0, L1;
-	int resL0 = proposition1(L0, r, 0, 0, 1, 0);
-	int resL1 = proposition1(L1, r, 0, 0, 1, 1);
-	if (resL0==0 || resL1==0){
-		cout << "One of relations is not affine! l0="<<resL0 << "; l1="<<resL1 << endl;
-		return -1;
+	// Proposition 3 data structure for 3 rounds and 4 columns in each round
+	std::vector<prop3struct_t*> prop3structVector;
+	prop3structVector.reserve(rounds2hack*4);
+	for(int x=0; x<rounds2hack*4; x++){
+		prop3structVector[x] = new prop3struct_t;
 	}
 
-	// Compute L = L0 * L1^{-1}, section 3.2
-	mat_GF2 L = L0.L * L1.Linv;
-	GF2X Lpoly = characteristicPolynomial(L);
-	int LpolyInt = getLong(Lpoly);
-
-	// Determine beta values for L using characteristic polynomial
-	if (charPolyMap.count(LpolyInt)==0){
-		cout << "Error, cannot find beta for characteristic polynomial: " << Lpoly << endl;
-	} else {
-		bool betaValid=false;
-		auto its = charPolyMap.equal_range(LpolyInt);
-		for (auto it = its.first; it != its.second; ++it) {
-			BYTE possBeta = it->second;
-			cout << "Possible beta for L is " << CHEX(possBeta) << "; poly(L)=" << Lpoly << endl;
-
-			// Try this value of beta, proceed with proposition 2 to obtain A~ for L
-			baseVectors_t bVectors;
-			int AtildResult = proposition2(L, bVectors, defAES.makeMultAMatrix(possBeta));
-			if (AtildResult < 0){
-				cout << "Something bad happen, attack does not work here - Atild computation problem" << endl;
-				continue;
+	for(r=roundStart; r<(roundStart+rounds2hack); r++){
+		// Our attack now determines Q0 for given round and col totaly, with round key
+		// extraction for k0,k1,k2,k3. We want to determine round key for whole round
+		// so iterate over columns
+		for(int col=0; col<4; col++){
+			cout << endl << "Extracting round keys for r="<<r<<"; col="<<col<<endl;
+			// We are using section 3.2, proposition 1 to compute L0, L1 linear parts of affine
+			// transformation between (yi, yj).
+			// Prop1: yi(x0, 00, 00, 00) = L(yj(x0, 00, 00, 00)) + c
+			//
+			// Then we compute L0 using prop1 on (y_0, y_1) when x0 is varying
+			// In the same way L1 using prop1 on (y_0, y_1) when x1 is varying
+			// Then we get L = L0 * L1^{-1} = A0 * beta * A0^{-1}     where A0 is linear part of Q0 output mapping.
+			//
+			affineEquiv_t L0, L1;
+			int resL0 = proposition1(L0, r, col, 0, 1, 0);
+			int resL1 = proposition1(L1, r, col, 0, 1, 1);
+			if (resL0==0 || resL1==0){
+				cout << "One of relations is not affine! r="<<r<<"; col="<<col<<"; l0="<<resL0 << "; l1="<<resL1 << endl;
+				return -1;
 			}
 
-			betaValid = true;
-			cout << "We have solutions: " << endl;
-			for(int k=0, ln=bVectors.size(); k<ln; k++){
-				dumpVector(bVectors[k]);
+			// Compute L = L0 * L1^{-1} = A0 * beta * A0^{-1}, section 3.2 and its
+			// characteristic polynomial, what will be used later to determine its beta part.
+			mat_GF2 L = L0.L * L1.Linv;
+			GF2X Lpoly = characteristicPolynomial(L);
+			int LpolyInt = getLong(Lpoly);
+
+			// Determine beta values for L using characteristic polynomial - explained above
+			if (charPolyMap.count(LpolyInt)==0){
+				cout << "Error, cannot find beta for characteristic polynomial: " << Lpoly << endl;
+			} else {
+				bool betaValid=false;
+				auto its = charPolyMap.equal_range(LpolyInt);
+				for (auto it = its.first; it != its.second; ++it) {
+					BYTE possBeta = it->second;
+					cout << "Possible beta for L is " << CHEX(possBeta) << "; poly(L)=" << Lpoly << endl;
+
+					// Try this value of beta, proceed with proposition 2 to obtain A~ for L
+					// From proposition 2 we will get A~0 = A0 * gamma, where A0 is linear part of Q0
+					// Assuming we know L = A0 * beta * A0^{-1}  and beta.
+					baseVectors_t bVectors;
+					int AtildResult = proposition2(L, bVectors, defAES.makeMultAMatrix(possBeta));
+					if (AtildResult < 0){
+						cout << "Something bad happen, attack does not work here - Atild computation problem" << endl;
+						continue;
+					}
+
+					// Just debug for user - we may get some error if beta was not correctly guessed, or
+					// subspace of solutions.
+					betaValid = true;
+					cout << "We have number of solutions=" << bVectors.size() << endl;
+
+					// Continue with proposition 3, to extract k0,k1,k2,k3
+					prop3struct_t * prop3struct = prop3structVector[(r-roundStart)*4+col];
+					int prop3Result = proposition3(prop3struct, defAES, r, col, 0, bVectors);
+					cout << "Prop3 done with result=" << CHEX(prop3Result) << endl;
+					for(int x=0; x<4; x++){
+						cout << "  Prop3["<<x<<"] valid="<<(((prop3Result & (1<<x))>0) ? 1:0)
+							 << "; delta="<<CHEX(prop3struct->P[x].delta)
+							 << "; c="<<CHEX(prop3struct->P[x].c)
+							 << "; affConst="<<CHEX(prop3struct->P[x].affineConst) << endl;
+
+						roundKeys[(r-roundStart)][4*col+x] = prop3struct->P[x].affineConst;
+					}
+
+					// If proposition 3 failed, reason may be invalid beta, so try another one.
+					if (prop3Result != 0xf){
+						cout << "This value of Beta was probably not valid, since proposition 3 failed for some relations" << endl;
+						betaValid=false;
+						continue;
+					}
+				}
+
+				// Things didn't go as expected.
+				if (!betaValid){
+					cout << "Problem with beta, cannot continue with attack." << endl;
+					return -2;
+				}
 			}
-
-			// Continue with proposition 3
-			prop3struct_t * prop3struct = new prop3struct_t;
-			int prop3Result = proposition3(prop3struct, defAES, r, 0, 0, bVectors);
-			cout << "Prop3 done with result=" << CHEX(prop3Result) << endl;
-			for(int x=0; x<4; x++){
-				cout << "  Prop3["<<x<<"] valid="<<(((prop3Result & (1<<x))>0) ? 1:0)
-					 << "; delta="<<CHEX(prop3struct->P[x].delta)
-					 << "; c="<<CHEX(prop3struct->P[x].c)
-					 << "; affConst="<<CHEX(prop3struct->P[x].affineConst) << endl;
-			}
-
-			// If proposition 3 failed, reason may be invalid beta, so try another one.
-			if (prop3Result != 0xf){
-				cout << "This value of Beta was probably not valid, since proposition 3 failed for some relations" << endl;
-				betaValid=false;
-				continue;
-			}
-
-
-			delete prop3struct;
 		}
 
-		// Things didn't go as expected.
-		if (!betaValid){
-			cout << "Problem with beta, cannot continue with attack." << endl;
-			return -2;
-		}
+		cout << "Round keys extracted from the process, r=" << r << endl;
+		dumpVectorT(roundKeys[r-roundStart], 16); cout << endl;
+	}
+
+	// Last part of the attack - extract encryption key from round keys from consecutive rounds
+	// TODO: finish this
+	cout << endl << "Going to reconstruct encryption key from extracted round keys..." << endl;
+	for(int r=0; r<rounds2hack; r++){
+		cout << "Round keys extracted from the process, r=" << (r+roundStart) << endl;
+		dumpVectorT(roundKeys[r], 16); cout << endl;
+	}
+
+	// Free memory part
+	for(int x=0; x<rounds2hack*4; x++){
+		delete prop3structVector[x];
 	}
 
 	delete[] Sr;
 	delete Qaffine;
-
-
 	return 0;
 }
 
