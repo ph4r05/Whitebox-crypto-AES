@@ -366,7 +366,7 @@ NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2 m){
 			L.Lminv[lei] = 1<<i;
 
 			// build transformation matrix
-			colVector(lei, L.L, i);
+			colVectorT(lei, L.L, i);
 		}
 
 		// If transformation L is linear, then it has to have proper matrix inverse and determinant!=0
@@ -467,7 +467,7 @@ int BGEAttack::proposition2(mat_GF2 & L, baseVectors_t & out, mat_GF2 beta){
 			}
 
 			// Express other elements having assigned values by free variables
-			for(int i=63-freeVariables, c=0; i>=0; i--, c++){
+			for(int i=63-freeVariables; i>=0; i--){
 				GF2 curVe = GF2::zero();
 				// Express current element in current vector by lower vectors
 				for(int j=i+1; j<64; j++){

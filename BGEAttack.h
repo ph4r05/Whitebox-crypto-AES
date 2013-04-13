@@ -166,14 +166,14 @@ public:
 	// A~0 = A0 * gamma 		for some unique gamma \in GF(2^8)
 	//
 	// Function returns result in out variable.
-	// If system of equations obtained is nonsingular, out will contain only
+	// If a system of equations obtained is non-singular, out will contain only
 	// one vector - solution of the system, but can be trivial (null).
-	//   If there is only trivial solution, return value = -1
+	//   If the only one found solution is trivial, return value = -1
 	//   If found solution is invalid, return value = -2  (something wrong, maybe bug)
-	//   Else return value = 0
+	//   Otherwise return value = 0
 	//
-	// If system is singular, out contains set of orthogonal base vectors
-	// that span subspace that solves system. Return value = 1.
+	// If the system is singular, the out contains the set of orthogonal base vectors
+	// that span subspace that solves the system. Return value = 1.
 	int proposition2(mat_GF2 & inp, baseVectors_t & out, mat_GF2 beta);
 
 	// just identity on 16 elements - used when shift rows operation ignored

@@ -601,7 +601,7 @@ int AESAffineRelationsVerify(bool inverseSbox){
 //
 // Find affine relations correspondence for AES Sboxes
 //
-int AffCallbackCorrespondence(affineEquiv_t * el, affineEquivalencesList * lish, boost::unordered_set<std::string> * hashes, LinearAffineEq * eqCheck, void * usrData){
+int AffCallbackCorrespondence(wbacr::laeqv::affineEquiv_t * el, wbacr::laeqv::affineEquivalencesList * lish, boost::unordered_set<std::string> * hashes, wbacr::laeqv::LinearAffineEq * eqCheck, void * usrData){
 	std::string hashL1 = LinearAffineEq::hashSmap(el->L1);
 	std::string hashL2 = LinearAffineEq::hashSmap(el->L2);
 	std::string totalHash = hashL1;
