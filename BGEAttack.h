@@ -139,7 +139,7 @@ public:
 	// AES to attack on
 	WBAES wbaes;
 
-	void run(void);
+	int run(void);
 	void Rbox(W128b& state, bool encrypt=true, int r=1, bool noShift=false);
 	void recoverPsi(Sset_t & set);
 	int deriveBset(Bset & bset, GenericAES & aes, bool permissive=true);
@@ -157,6 +157,11 @@ public:
 	// @param syj     1..4, which row to use for yj
 	// @param sx      which x 1..4 should be used to compute yi, yj
 	int proposition1(affineEquiv_t & ret, int r, int col, int syi, int syj, int sx);
+
+	// Proposition 2 solver - Finding A~0 for given matrix L and Beta.
+	// L = A0 * beta * A0^{-1}
+	// A~0 = A0 * gamma 		for some unique gamma \in GF(2^8)
+	int proposition2(mat_GF2 & inp, NTL::mat_GF2 & out, mat_GF2 beta);
 
 	// just identity on 16 elements - used when shift rows operation ignored
 	static int shiftIdentity[16];
