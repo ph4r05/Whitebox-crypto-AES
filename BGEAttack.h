@@ -87,7 +87,6 @@ typedef struct Sset_t_ {
 
 	// PSI mapping (isomorphism S -> GF(2)^8)
 	psiFction_t psi;
-	int a;
 } Sset_t;
 
 // set S per each round (each for one state array element)
@@ -105,6 +104,8 @@ typedef struct Qaffine_t_{
 	//         |      +-------- For each state array element (y0, y1, y2, y3, for each column)
 	//         |      |
 	fction_t Q[9][AES_BYTES];
+	BYTE     qj[9][AES_BYTES];	// affine constant determined in later phase of attack
+	mat_GF2  Aj[9][AES_BYTES];	// linear part of affine transformation determined in later phase of attack
 }Qaffine_t;
 
 // set for beta coefficients from 3.3 section
@@ -143,11 +144,17 @@ typedef struct prop3affineRelation_t_{
 	mat_GF2 L;				// linear part of the mapping
 	mat_GF2 Linv;			// inversion of linear part of the mapping
 	GF256_func_t affineMap;	// resulting affine mapping P~_i
+
+	bool valid;             // should be this record taken seriously?
+	BYTE alfa_0;            // MixColumn coefficient alfa_{0,i}
 } prop3affineRelation_t;
 
 // Return structure for proposition 3
 typedef struct prop3struct_t_{
 	prop3affineRelation_t P[4];
+	BYTE gamma;
+	BYTE c4;
+
 } prop3struct_t;
 
 class BGEAttack {
@@ -195,16 +202,35 @@ public:
 	// Proposition 3 according to the paper.
 	// Finding affine relations with embedded round key
 	//
-	// @param aes     AES to use for Sbox inverse
-	// @param r       computing prop3 for given round
-	// @param col     column of state array to compute on
-	// @param row     y0...y3 to compute on
-	// @param Atild   result from proposition 2, A~ relation
+	// @param aes        AES to use for Sbox inverse
+	// @param r          computing prop3 for given round
+	// @param col        column of state array to compute on
+	// @param row        y0...y3 to compute on
+	// @param Atild      result from proposition 2, A~ relation
+	// @param vectorIdx  if Atild is whole vector space, which vector to use
 	// Returns:
 	//                -1 in case Atild is empty
 	//                -2 in case A~Inv cannot be constructed from Atild
 	//                Flags determining whether P0,P1,P2,P3 were computed successfully (bit 1 if yes)
-	int proposition3(prop3struct_t * out, GenericAES & aes, int r, int col, int row, baseVectors_t & Atild);
+	int proposition3(prop3struct_t * out, GenericAES & aes, int r, int col, int row, baseVectors_t & Atild, long int vectorIdx=0);
+
+	// Modified version of proposition 3 - with exactly given A~_row{-1} matrix which to use
+	// This is used when we have determined Q_row affine transformation completely and Aj linear part of Qj
+	// to find also cj, constant part of Qj.
+	int proposition3(prop3struct_t * out, GenericAES & aes, int r, int col, int row, const mat_GF2 AtildMatInv);
+
+	// Helper method to recover Qj if we already know A0 for Q0
+	//
+	// @param r            computing prop3 for given round
+	// @param col          column of state array to compute on
+	// @param row          recovers A_row, should be \in {1,2,3}
+	// @param A0           linear part A0 of Q0 derived from y0
+	// @param alfa00       MixColumn coefficient alfa_{0,0} - should be 2 in general
+	// @param alfa_row_0   MixColumn coefficient alfa_{row,0}
+	// @param Aj           computed matrix - linear part of affine mapping Qj
+	// @param qj           computed constant - constant part of affine mapping Qj
+	//
+	int recoverQj(GenericAES & aes, int r, int col, int row, const mat_GF2 A0, BYTE alfa00, BYTE alfa_row_0, mat_GF2 & Aj, BYTE * qj);
 
 	// just identity on 16 elements - used when shift rows operation ignored
 	static int shiftIdentity[16];

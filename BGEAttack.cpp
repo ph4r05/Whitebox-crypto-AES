@@ -480,7 +480,7 @@ int BGEAttack::proposition2(mat_GF2 & L, baseVectors_t & out, mat_GF2 beta){
 			// do self-test, this vector should solve system
 			mat_GF2 outM(INIT_SIZE,8,8);
 			for(int i=0; i<64; i++){
-				outM.put(i/8, i%8, x[i]);
+				outM.put(i/8, i%8, curV[i]);
 			}
 
 			// Final verification of given solution - is equation on the top correct now?
@@ -488,6 +488,8 @@ int BGEAttack::proposition2(mat_GF2 & L, baseVectors_t & out, mat_GF2 beta){
 			mat_GF2 rhs = outM * beta;
 			if(lhs != rhs){
 				cout << "Something wrong with the result, equation does not hold in self-test..." << endl;
+				cout << "Dimension of solution="<<freeVariables<<"; Faulty vector k="<<k<<"; Vector: " << endl;
+				dumpMatrix(outM);
 				return -4;
 			}
 
@@ -522,7 +524,7 @@ int BGEAttack::proposition2(mat_GF2 & L, baseVectors_t & out, mat_GF2 beta){
 	return 0;
 }
 
-int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int col, int row, baseVectors_t & Atild){
+int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int col, int row, baseVectors_t & Atild, long int vectorIdx){
 	// Solving of this problem is based on iterating over 2 variables in GF(2^8) and checking
 	// if resulting mapping is affine.
 	//
@@ -553,7 +555,12 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 
 		// Check if this matrix is OK
 		NTL::inv(determinant, AtildMatInv, AtildMat);  // construct inverse - thats what we are looking for
-		if (determinant!=GF2::zero()){
+		if (determinant==GF2::zero()){
+			cout << "One Atild vector is not invertible but it should be: " << vIdx << endl;
+			if (vectorIdx==vIdx) return -5;
+		}
+
+		if (determinant!=GF2::zero() && vectorIdx==vIdx){
 			break;
 		}
 	}
@@ -564,6 +571,11 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 		return -2;
 	}
 
+	// We determined Atild which to use, so continue with original proposition3
+	return proposition3(out, aes, r, col, row, AtildMatInv);
+}
+
+int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int col, int row, mat_GF2 AtildMatInv){
 	// Build lookup table for Atild
 	GF256_func_t AtildInvLoT;
 	for(int x=0; x<=0xff; x++){
@@ -592,6 +604,7 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 		// It is important to set dimensions to mat_GF2 before starting working with it, otherwise --> segfault
 		out->P[p].L.SetDims(8,8);
 		out->P[p].Linv.SetDims(8,8);
+		out->P[p].valid=false;
 
 		// Now iterate over 2 variables in GF(256), construct mapping and check affinity
 		bool foundAffine=false;
@@ -613,10 +626,10 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 				out->P[p].c     = c;
 
 				// Constructing Pi mapping
-				// P0(x) = (SboxInv * deltMult * AtildInv)(y_row( x, 00, 00, 00) + c0)
-				// P1(x) = (SboxInv * deltMult * AtildInv)(y_row(00,  x, 00, 00) + c0)
-				// P2(x) = (SboxInv * deltMult * AtildInv)(y_row(00, 00,  x, 00) + c0)
-				// P3(x) = (SboxInv * deltMult * AtildInv)(y_row(00, 00, 00,  x) + c0)
+				// P0(x) = (SboxInv * deltMult_0 * AtildInv)(y_row( x, 00, 00, 00) + c0)
+				// P1(x) = (SboxInv * deltMult_1 * AtildInv)(y_row(00,  x, 00, 00) + c1)
+				// P2(x) = (SboxInv * deltMult_2 * AtildInv)(y_row(00, 00,  x, 00) + c2)
+				// P3(x) = (SboxInv * deltMult_3 * AtildInv)(y_row(00, 00, 00,  x) + c3)
 				GF256_func_t linPart; // Linear part of above equations - to test for linearity later
 				for(int x=0; x<=0xff; x++){
 					out->P[p].affineMap[x] = aes.sboxAffineInv[deltMultLoT[AtildInvLoT[y_row[x] ^ c]]];
@@ -657,12 +670,14 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 					colVectorT(linPart[1<<x], out->P[p].L, x);
 				}
 
+				NTL::GF2 determinant;
 				NTL::inv(determinant, out->P[p].Linv, out->P[p].L);
 				if (determinant == GF2::zero()){
 					cout << "Strange situation, determinant=0, but transformation worked on space... p= "<<p<<";Delta="<<delta<<"; c="<<c<<endl;
 					continue;
 				}
 
+				out->P[p].valid = true;
 				foundAffine = true;
 				break;
 			}
@@ -671,7 +686,114 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 		PiOK |= foundAffine ? 1<<p : 0;
 	}
 
+	// Finally, compute c4 = y0(00,00,00,00) for q0 = c0 ^ c1 ^ c2 ^ c3 ^ c4
+	W128b state;
+	memset(&state, 0, sizeof(state));		// put 0 everywhere
+	this->Rbox(state, true, r, true);		// perform R box computation on input & output values
+	out->c4 = state.B[4*row + col];         // In order to make sense, compute y_row(00,00,00,00)
+
+	// Additional stuff - derive gamma and mix column coefficients
+	// delta^{-1}_i = gamma * alfa_{0,i}
+	// There are some values twice -> 01 (because 01 is also twice in each row in MC).
+	if(PiOK==0xf){
+		int idxTwice=-1;              // index that has 01 as MC coefficient
+		for(int d1=0;d1<4;d1++){
+			for(int d2=0;d2<4;d2++){
+				if (d1!=d2 && out->P[d1].delta == out->P[d2].delta){ idxTwice = d1; break; }
+			}
+		}
+
+		if (idxTwice==-1){
+			cout << "Weird thing happened, there should be 2 deltas with same value, is MC as it should be?" << endl;
+			return PiOK;
+		}
+
+		// Now we are able to derive gamma, delta^{-1}_{idxTwice} = gamma * 01 = gamma
+		// alfa = delta^{-1} * gamma^{-1}
+		GF2E gammaInvGF = GF2EFromLong(out->P[idxTwice].delta, 8);
+		GF2E gammaGF    = NTL::inv(gammaInvGF);
+		out->gamma      = (BYTE) getLong(gammaGF);
+		for(int d=0; d<4; d++){
+			if (out->P[d].valid==false) continue;
+			GF2E deltaCurGF    = GF2EFromLong(out->P[d].delta, 8);
+			GF2E deltaCurInvGF = NTL::inv(deltaCurGF);
+			GF2E alfaGF        = gammaInvGF * deltaCurInvGF;
+			out->P[d].alfa_0   = (BYTE) getLong(alfaGF);
+		}
+	}
+
 	return PiOK;
+}
+
+int BGEAttack::recoverQj(GenericAES & aes, int r, int col, int row, const mat_GF2 A0, BYTE alfa00, BYTE alfa_row_0, mat_GF2 & Aj, BYTE * qj){
+	assert(r>=0 && r<N_ROUNDS);
+	assert(col>=0 && col<=3);
+	assert(row>=1 && row<=3);
+
+	// From the Proposition 1, if we know already linear part A0 of Q0, we can this way determine
+	// Aj linear part of Qj for other mappings
+	//
+	// Proposition 1 solves:
+	// y_i(x0,00,00,00) = L(y_j(x0,00,00,00)) + c    while L and c is returned
+	// 	 L   = A_i * (\alfa_{i,0} * \alfa_{j,0}^{-1}) * A_j^{-1}  while we know L, A_i, alfa...
+	//   A_j = L^{-1} * A_i * (\alfa_{i,0} * \alfa_{j,0}^{-1})
+	affineEquiv_t L;
+	int prop1result = proposition1(L, r, col, 0, row, 0);
+	if (prop1result==0) {
+		cout << "recoverAj fail: Proposition1 failed for r="<<r<<"; col="<<col<<"; (y0, y"<<row<<") " << endl;
+		return -1;
+	}
+
+	// Here we need inverse of alfa_row_0
+	GF2E alfa00GF      = GF2EFromLong(alfa00, 8);
+	GF2E alfaRowGF     = GF2EFromLong(alfa_row_0, 8);
+	GF2E alfaRowInvGF  = NTL::inv(alfaRowGF);
+	GF2E alfaGF        = alfa00GF * alfaRowInvGF;
+	BYTE alfa          = (BYTE) getLong(alfaGF);
+	mat_GF2 alfaMatrix = aes.makeMultAMatrix(alfa);
+
+	// compute linear part from L
+	Aj = L.Linv * A0 * alfaMatrix;
+
+	// Part 2 - constant part extraction
+	// If we put known Aj linear part to proposition 3 we don't have to bother with A~_j and gamma.
+	// Then delta_i^{-1} = afa_j,i
+	mat_GF2 AjInv;
+	GF2 determinant;
+	NTL::inv(determinant, AjInv, Aj);
+	if (determinant == GF2::zero()){
+		cout << "Cannot compute inverse - should never happen!!" << endl; return -2;
+	}
+
+	prop3struct_t * prop3 = new prop3struct_t;
+	int prop3result = proposition3(prop3, aes, r, col, row, AjInv);
+	if (prop3result != 0xf) {
+		cout << "some problem with proposition 3 in recover Qj occurred. result="<<prop3result<<endl; return -3;
+	}
+
+	// We don't really care about delta, important is, that Aj should be correct, so we
+	// can directly recover qj - see end of section 3.3
+	(*qj) =   prop3->c4
+			^ prop3->P[0].c
+			^ prop3->P[1].c
+			^ prop3->P[2].c
+			^ prop3->P[3].c;
+
+	// Here we can do another test to verify that we are doing well - just visually, not checking against MC
+	// delta_i^{-1} = afa_j,i
+	for(int x=0; x<4; x++){
+		GF2E deltaGF    = GF2EFromLong(prop3->P[x].delta, 8);
+		GF2E deltaInvGF = NTL::inv(deltaGF);
+		BYTE deltaInv   = getLong(deltaInvGF);
+		cout << "   recoverQj self-test; r="<<r<<"; col="<<col<<"; (y0, y"<<row<<"); P["<<x
+			 <<"].deltaInv="<<CHEX(deltaInv)
+			 <<"; alfa_{"<<row<<","<<x<<"}="<< CHEX(prop3->P[x].alfa_0) << endl;
+	}
+
+	cout << "   recoverQj; q = " << CHEX(*qj) << "; gamma=" << CHEX(prop3->gamma) << "; " << endl;
+
+	delete prop3;
+	return 0;
 }
 
 int BGEAttack::run(void) {
@@ -690,6 +812,9 @@ int BGEAttack::run(void) {
 	bool encrypt = true;
 	generator.useDualAESARelationsIdentity=true;	// this attack works only on basic form
 	generator.useDualAESIdentity=true;
+	//generator.useIO04x04Identity=true;
+	//generator.useIO08x08Identity=true;
+	//generator.useMB32x32Identity=true;
 	generator.generateIO128Coding(coding, true);
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, true);  cout << "AES ENC generated" << endl;
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
@@ -698,6 +823,14 @@ int BGEAttack::run(void) {
 	// WBAES changed to state with affine matching bijections at round boundaries.
 	cout << "Going to test WBAES before modifying tables" << endl;
 	generator.testComputedVectors(true, this->wbaes, coding);
+
+	// The aim of this attack is to extract round keys, so generate them here to be able to compare results
+	vec_GF2E defaultKey;						// key for default AES in GF2E representation
+	vec_GF2E expandedKey;						// expanded key for default AES
+	generator.BYTEArr_to_vec_GF2E(GenericAES::testVect128_key, KEY_SIZE_16, defaultKey);			// convert BYTE key to GF2E key
+	defAES.expandKey(expandedKey, defaultKey, KEY_SIZE_16);	// key schedule for default AES
+	cout << "Expanded key: " << endl;
+	dumpVector(expandedKey);
 
 	//
 	//
@@ -1002,8 +1135,9 @@ int BGEAttack::run(void) {
 	//
 	// Out attack now recovers round keys in rounds 2,3,4,5.
 	//
-	const int roundStart = 2;
+	const int roundStart  = 2;
 	const int rounds2hack = 4;
+	const int vectorIdx   = 1;		 // which vector to use if proposition 2 returned subspace
 	BYTE roundKeys[rounds2hack][16];
 
 	// Proposition 3 data structure for 3 rounds and 4 columns in each round
@@ -1041,73 +1175,208 @@ int BGEAttack::run(void) {
 			GF2X Lpoly = characteristicPolynomial(L);
 			int LpolyInt = getLong(Lpoly);
 
+			// Structure needed in proposition3
+			prop3struct_t * prop3struct = prop3structVector[(r-roundStart)*4+col];
+			baseVectors_t bVectors;
+			BYTE beta;
+
 			// Determine beta values for L using characteristic polynomial - explained above
 			if (charPolyMap.count(LpolyInt)==0){
 				cout << "Error, cannot find beta for characteristic polynomial: " << Lpoly << endl;
-			} else {
-				bool betaValid=false;
-				auto its = charPolyMap.equal_range(LpolyInt);
-				for (auto it = its.first; it != its.second; ++it) {
-					BYTE possBeta = it->second;
-					cout << "Possible beta for L is " << CHEX(possBeta) << "; poly(L)=" << Lpoly << endl;
+				cout << "Attack cannot continue, please check implementation for possible bugs..." << endl;
+				return -5;
+			}
 
-					// Try this value of beta, proceed with proposition 2 to obtain A~ for L
-					// From proposition 2 we will get A~0 = A0 * gamma, where A0 is linear part of Q0
-					// Assuming we know L = A0 * beta * A0^{-1}  and beta.
-					baseVectors_t bVectors;
-					int AtildResult = proposition2(L, bVectors, defAES.makeMultAMatrix(possBeta));
-					if (AtildResult < 0){
-						cout << "Something bad happen, attack does not work here - Atild computation problem" << endl;
-						continue;
-					}
+			bool betaValid=false;
+			auto its = charPolyMap.equal_range(LpolyInt);
+			for (auto it = its.first; it != its.second; ++it) {
+				int prop3Result=-1;
+				beta = it->second;
+				cout << "Possible beta for L is " << CHEX(beta) << "; poly(L)=" << Lpoly << endl;
 
-					// Just debug for user - we may get some error if beta was not correctly guessed, or
-					// subspace of solutions.
-					betaValid = true;
-					cout << "We have number of solutions=" << bVectors.size() << endl;
-
-					// Continue with proposition 3, to extract k0,k1,k2,k3
-					prop3struct_t * prop3struct = prop3structVector[(r-roundStart)*4+col];
-					int prop3Result = proposition3(prop3struct, defAES, r, col, 0, bVectors);
-					cout << "Prop3 done with result=" << CHEX(prop3Result) << endl;
-					for(int x=0; x<4; x++){
-						cout << "  Prop3["<<x<<"] valid="<<(((prop3Result & (1<<x))>0) ? 1:0)
-							 << "; delta="<<CHEX(prop3struct->P[x].delta)
-							 << "; c="<<CHEX(prop3struct->P[x].c)
-							 << "; affConst="<<CHEX(prop3struct->P[x].affineConst) << endl;
-
-						roundKeys[(r-roundStart)][4*col+x] = prop3struct->P[x].affineConst;
-					}
-
-					// If proposition 3 failed, reason may be invalid beta, so try another one.
-					if (prop3Result != 0xf){
-						cout << "This value of Beta was probably not valid, since proposition 3 failed for some relations" << endl;
-						betaValid=false;
-						continue;
-					}
+				// Try this value of beta with Proposition 2 to obtain A~_0 = A_0 * gamma for L=A0 * beta * A0^{-1}
+				// From proposition 2 we will get A~0 = A0 * gamma, where A0 is linear part of Q0
+				// Assuming we know L = A0 * beta * A0^{-1}  and beta.
+				int AtildResult = proposition2(L, bVectors, defAES.makeMultAMatrix(beta));
+				if (AtildResult < 0 || bVectors.size()==0){
+					cout << "Something bad happen, attack does not work here - Atild computation problem" << endl;
+					continue;
 				}
 
-				// Things didn't go as expected.
-				if (!betaValid){
-					cout << "Problem with beta, cannot continue with attack." << endl;
-					return -2;
+				// Just debug for user - we may get some error if beta was not correctly guessed, or
+				// subspace of solutions.
+				betaValid = true;
+				cout << "We have number of solutions=" << bVectors.size() << endl;
+
+				// Continue with proposition 3 to extract info about affine part Q0.
+				// Recovers deltaMult_i and c_i from following equations:
+				// P~_0(x) = (SboxInv * deltMult_0 * AtildInv)(y_row( x, 00, 00, 00) + c0)
+				// P~_1(x) = (SboxInv * deltMult_1 * AtildInv)(y_row(00,  x, 00, 00) + c1)
+				// P~_2(x) = (SboxInv * deltMult_2 * AtildInv)(y_row(00, 00,  x, 00) + c2)
+				// P~_3(x) = (SboxInv * deltMult_3 * AtildInv)(y_row(00, 00, 00,  x) + c3)
+				//
+				// Also holds the following:
+				// P~_i = P_i(x) + k_i  , i \in [0,3]
+				//     k_i is corresponding round key byte
+				//     P_i(x) is affine input transformation (we changed it to affine in 1. phase)
+				// Generally:
+				// P~_i = L_i(x) + Pc + k_i
+				//
+				prop3Result = proposition3(prop3struct, defAES, r, col, 0, bVectors, vectorIdx);
+				cout << "Prop3 done(v="<<vectorIdx<<") with result=" << CHEX(prop3Result) << "; gamma=" << CHEX(prop3struct->gamma) << endl;
+				for(int x=0; x<4; x++){
+					cout << "  Prop3["<<x<<"] valid="<<(((prop3Result & (1<<x))>0) ? 1:0)
+						 << "; .valid=" << prop3struct->P[x].valid
+						 << "; delta="<<CHEX(prop3struct->P[x].delta)
+						 << "; c="<<CHEX(prop3struct->P[x].c)
+						 << "; affConst="<<CHEX(prop3struct->P[x].affineConst)
+						 << "; alfa_{0,"<<x<<"}="<<CHEX(prop3struct->P[x].alfa_0) << endl;
+				}
+
+				// If proposition 3 failed, reason may be invalid beta, so try another one.
+				// From paper we know that our beta could be from set {b, b^2} so try next one.
+				// But definitely one of betas should be correct.
+				if (prop3Result != 0xf){
+					cout << "This value of Beta was probably not valid, since proposition 3 failed for some relations" << endl;
+					betaValid=false;
+					continue;
 				}
 			}
+
+			// Things didn't go as expected, beta was not correctly guessed from characteristics polynomial.
+			// This should never happen if implementation is correct.
+			if (!betaValid){
+				cout << "Problem with beta, cannot continue with attack." << endl;
+				return -2;
+			}
+
+			// Construct also q0 ( constant part of Q0 affine mapping )
+			// q0 = c0 ^ c1 ^ c2 ^ c3 ^ c4
+			// c4 = y0(00,00,00,00)
+			//
+			// Computing q0 is essential for round key extraction.
+			// Recall that P,Q are matching and AFFINE transformations.
+			// P~_i = P_i(x) + k_i ==> P~^{r+1}_i * Q^{r}_i = P_i(Q(x)) + k_i
+			//
+			// P~^{r+1}_i * Q^{r}_i (0) =		// P^{r+1}_i * Q^{r}_i = identity  (affine MATCHING)
+			//   =  P_i(Ai * 0 + qi) + k_i
+			//   =  P_i(qi) + k_i
+			//   =  P_iA * qi + P_iC + k_i
+			//   =  k_i
+			Qaffine->qj[r][col] =
+					prop3struct->c4
+					^ prop3struct->P[0].c
+					^ prop3struct->P[1].c
+					^ prop3struct->P[2].c
+					^ prop3struct->P[3].c;
+
+			// delta_i^{-1} = gamma * alfa_{0,i}
+			// Now we know MC coefficients alfa, 01 occurs twice => two values in delta_i will be same
+			// so they correspond to 01 MC coefficients. Others can be derived by finding row from
+			// MC that has two 01 on particular positions in multiplication with corresponding x_j
+			//
+			// Small redefinition was here from previous sections
+			// A~_0 = A_0 * 1/gamma    (previously it was gamma)
+			//
+			// We know that last MC coef is 01 (described above) => delta_3^{-1} = gamma
+			//
+			// If we already know gamma, we can compute A0, linear part of affine output transformation Q0
+			// A_0 = A~_0 * gamma
+			//
+			// Now we can derive A_0, linear part of Q0
+			mat_GF2 gammaMatrix = defAES.makeMultAMatrix(prop3struct->gamma);
+
+			// Thing mentioned in original paper here!
+			// Proposition 2 can return subspace that solves given system of equations
+			// but real A_0, real linear part of Q0 is only one, since Q0 is only one. Beta is determined correctly
+			// from comparison of characteristic polynomial.
+			// But it seems that:
+			// A_0 = \text{\~{A}}^{(1)}_0 \cdot \gamma^{(1)} = \text{\~{A}}^{(2)}_0 \cdot \gamma^{(2)} = \dots = \text{\~{A}}^{(2^{\text{dim}})}_0 \cdot \gamma^{(2^{\text{dim}})}
+			// A_0 = A~0 * gamma_0 = A'~0 * gamma'_0 = ... etc. for whole vector space.
+			mat_GF2 A0Matrix(INIT_SIZE, 8, 8);
+			mat_GF2 A0InvMatrix(INIT_SIZE, 8, 8);
+			assert(vectorIdx==1); // here we just assume that vector from sulution subspace choosen is #1
+			for(int x=0; x<64; x++){
+				A0Matrix.put(x/8, x%8, bVectors[0].get(x));
+			}
+
+			A0Matrix = A0Matrix * gammaMatrix;
+			Qaffine->Aj[r][col] = A0Matrix;
+
+			// test A0 for invertibility, should be invertible
+			GF2 determinant;
+			NTL::inv(determinant, A0InvMatrix, A0Matrix);
+			if(determinant==GF2::zero()){
+				cout << "Problem with the attack, A0 (linear part of Q0) is not invertible" << endl;
+				return -6;
+			}
+
+			// We can check if everything is OK by comparing now L = A0 * beta * A0^{-1},
+			// Just one of the possible assertions that should hold.
+			mat_GF2 betaMatrix = defAES.makeMultAMatrix(beta);
+			mat_GF2 Lcons = A0Matrix * betaMatrix * A0InvMatrix;
+			if (Lcons != L){
+				cout << "L matrix determined in proposition 2 is not same as should be" << endl;
+				cout << "L matrix: " << endl; dumpMatrix(L);
+				cout << "A0 * beta * A0^{-1} matrix: " << endl; dumpMatrix(Lcons);
+				cout << endl;
+			}
+
+			// From the Proposition 1, if we know already linear part A0 of Q0, we can this way determine
+			// Aj linear part of Qj for other mappings
+			//
+			// Proposition 1 solves:
+			// y_i(x0,00,00,00) = L(y_j(x0,00,00,00)) + c    while L and c is returned
+			// 	 L   = A_i * (\alfa_{i,0} * \alfa_{j,0}^{-1}) * A_j^{-1}  while we know L, A_i, alfa...
+			//   A_j = L^{-1} * A_i * (\alfa_{i,0} * \alfa_{j,0}^{-1})
+			//
+			// Then with the Proposition 3 we obtain also constant parts - plugging known matrices to prop3 we get c_j
+			recoverQj(defAES, r, col, 1, A0Matrix, prop3struct->P[0].alfa_0, 0x1, Qaffine->Aj[r][4  + col], &(Qaffine->qj[r][4  + col]));
+			recoverQj(defAES, r, col, 2, A0Matrix, prop3struct->P[0].alfa_0, 0x1, Qaffine->Aj[r][8  + col], &(Qaffine->qj[r][8  + col]));
+			recoverQj(defAES, r, col, 3, A0Matrix, prop3struct->P[0].alfa_0, 0x3, Qaffine->Aj[r][12 + col], &(Qaffine->qj[r][12 + col]));
+
+			// We could have removed affine parts Q0 and P0 from WBAES implementation
+			// to verify our approach is correct.
+			// k^{r}_{i,j} = P~^{3}_{i,j} * Q|^{2}_{i,j}  where Q|^{2}_{i,j} is affine part of Q
 		}
-
-		cout << "Round keys extracted from the process, r=" << r << endl;
-		dumpVectorT(roundKeys[r-roundStart], 16); cout << endl;
 	}
 
-	// Last part of the attack - extract encryption key from round keys from consecutive rounds
-	// TODO: finish this
+	// From proposition3 we obtained P~ affine equivalences
+	// P~_i = P_i(x) + k_i   where k_i is corresponding byte of round key and P_i(x) is affine transformation
+	// P^{r+1}_{i,j} * Q^{r}_{i,j} = identity  ==> derive round key by composition of those two.
 	cout << endl << "Going to reconstruct encryption key from extracted round keys..." << endl;
-	for(int r=0; r<rounds2hack; r++){
-		cout << "Round keys extracted from the process, r=" << (r+roundStart) << endl;
-		dumpVectorT(roundKeys[r], 16); cout << endl;
+
+	// Reset, we didn't recover Q0 relations connected to this round..
+	for(int x=0; x<16; x++){
+		roundKeys[0][x]=0;
 	}
 
+	// Recover keys as described. Round keys are indexed by rows, but in AES implementation round keys are
+	// indexed by columns, so just transpose before roundkey->encryption key transformation.
+	for(int r=1; r<rounds2hack; r++){
+		int roundBase = roundStart+r-1;
+		for(int col=0; col<4; col++){
+			for (int row=0; row<4; row++){
+				int i  = 4*row + col;
+				roundKeys[r][generator.shiftRows[i]] = prop3structVector[r*4 + col]->P[row].affineMap[ Qaffine->qj[roundBase][ generator.shiftRows[i] ] ];
+			}
+		}
+	}
+
+	// just simply printout
+	for(int r=1; r<rounds2hack; r++){
+		cout << "* Round keys extracted from the process, r=" << (r+roundStart+1) << endl;
+		dumpVectorT(roundKeys[r], 16);
+	}
+
+	//
+	// TODO: recover encryption key from recovered round keys
+	//
+
+
+	//
 	// Free memory part
+	//
 	for(int x=0; x<rounds2hack*4; x++){
 		delete prop3structVector[x];
 	}
