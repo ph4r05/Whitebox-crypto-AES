@@ -232,6 +232,10 @@ public:
 	//
 	int recoverQj(GenericAES & aes, int r, int col, int row, const mat_GF2 A0, BYTE alfa00, BYTE alfa_row_0, mat_GF2 & Aj, BYTE * qj);
 
+	// Recovers encryption key from two consecutive round keys
+	// For now it works only for AES-128
+	int recoverCipherKey(GenericAES & aes, BYTE roundKeys[2][16], vec_GF2E& encKey);
+
 	// just identity on 16 elements - used when shift rows operation ignored
 	static int shiftIdentity[16];
 	static int shiftT2[16];

@@ -686,11 +686,11 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 		PiOK |= foundAffine ? 1<<p : 0;
 	}
 
-	// Finally, compute c4 = y0(00,00,00,00) for q0 = c0 ^ c1 ^ c2 ^ c3 ^ c4
+	// Finally, compute c4 = y_row(00,00,00,00) for q_row = c0 ^ c1 ^ c2 ^ c3 ^ c4
 	W128b state;
-	memset(&state, 0, sizeof(state));		// put 0 everywhere
-	this->Rbox(state, true, r, true);		// perform R box computation on input & output values
-	out->c4 = state.B[4*row + col];         // In order to make sense, compute y_row(00,00,00,00)
+	memset(&state, 0, sizeof(state));  // put 0 everywhere
+	this->Rbox(state, true, r, true);  // perform R box computation on input & output values
+	out->c4 = state.B[4*row + col];    // In order to make sense, compute y_row(00,00,00,00)
 
 	// Additional stuff - derive gamma and mix column coefficients
 	// delta^{-1}_i = gamma * alfa_{0,i}
@@ -796,6 +796,96 @@ int BGEAttack::recoverQj(GenericAES & aes, int r, int col, int row, const mat_GF
 	return 0;
 }
 
+int BGEAttack::recoverCipherKey(GenericAES & aes, BYTE roundKeys[2][16], vec_GF2E& encKey){
+	encKey.SetLength(16);
+
+	// At first determine correct round and Rcon constant
+	// Verify that given round key is OK
+	// w9  = w8  + w5
+	// w10 = w9  + w6
+	// w11 = w10 + w7
+	for(int col=1; col<4; col++){
+		for(int row=1; row<4; row++){
+			if (roundKeys[1][4*row+col] != (roundKeys[1][4*row+col-1] ^ roundKeys[0][4*row+col])){
+				cout << "Error in round key verification, you passed invalid round keys; col="<<col<<"; row="<<row << endl;
+				return -1;
+			}
+		}
+	}
+
+	//
+	// Keys are probably OK, now recover RCON constant and round to which key belongs
+	//
+	vec_GF2E gw7(INIT_SIZE, 4);
+	vec_GF2E  w7(INIT_SIZE, 4);
+	for(int i=0; i<4; i++)  w7[i] = GF2EFromLong(roundKeys[0][4*i+3], 8);
+	for(int i=0; i<4; i++) gw7[i] = GF2EFromLong(roundKeys[1][4*i] ^ roundKeys[0][4*i], 8); // w8 = g(w7) + w4
+
+	int rconIdx = -1;
+	for(int rc=0; rc<16; rc++){
+		vec_GF2E gw7_copy(INIT_SIZE, 4);
+		for(int i=0; i<4; i++) gw7_copy[i] = gw7[i];
+
+		// Revert RC[rc] application on first element
+		gw7_copy[0] = GF2EFromLong(getLong(gw7[0] + aes.RC[rc]),8);
+		// Inverse Sbox application
+		for(int i=0; i<4; i++) gw7_copy[i] = GF2EFromLong(aes.sboxAffineInv[getLong(gw7_copy[i])], 8);
+		// Inverse left shift -> shift to the right, respectively test it with taking shift into account
+		bool correctRcon=true;
+		for(int i=0; i<4; i++){
+			if (w7[(i+1) % 4] != gw7_copy[i]) {
+				correctRcon=false;
+				break;
+			}
+		}
+
+		if(correctRcon){
+			rconIdx = rc;
+			cout << "We have correct Rcon! rconIdx="<<rc<<endl;
+			break;
+		}
+	}
+
+	if (rconIdx==-1) return -3;
+
+	// now perform reverse key schedule to get cipher key
+	mat_GF2E w(INIT_SIZE, 4, 4);
+	for(int i=0; i<16; i++) w[i/4][i%4] = GF2EFromLong(roundKeys[0][i], 8);
+	for(int rc=rconIdx-1; rc>=0; rc--){
+		mat_GF2E wp(INIT_SIZE, 4, 4); // previous
+
+		// we can simply derive w1, w2, w3
+		for(int col=1; col<4; col++){
+			for(int row=0; row<4; row++){
+				wp[row][col] = GF2EFromLong(getLong(w[row][col] + w[row][col-1]), 8);
+			}
+		}
+
+		// w0 = w4 + g(w3), g(w3) we already have, so compute g(w3)
+		// 1. copy w3 to w0
+		// 2. apply g to w0
+		// 3. add w4 to w0
+		for(int i=0; i<4; i++){
+			wp[i][0] = GF2EFromLong(aes.sboxAffine[getLong(wp[(i+1) % 4][3])], 8); // take shift into account + apply sbox
+		}
+
+		// Apply RCON
+		wp[0][0] = GF2EFromLong(getLong(wp[0][0] + aes.RC[rc]), 8);
+
+		// Add w4 and we have complete w0
+		for(int i=0; i<4; i++) wp[i][0] = GF2EFromLong(getLong(wp[i][0] + w[i][0]), 8);
+
+		// copy back
+		for(int i=0; i<16; i++) w[i/4][i%4] = GF2EFromLong(getLong(wp[i/4][i%4]), 8);
+
+		cout << "RC=" << rc << "; previousKey: "<<endl;
+		dumpMatrix(w);
+	}
+
+	for(int i=0; i<16; i++) encKey[i] = GF2EFromLong(getLong(w[i%4][i/4]), 8);
+	return 0;
+}
+
 int BGEAttack::run(void) {
 	GenericAES defAES;
 	defAES.init(0x11B, 0x03);
@@ -831,6 +921,7 @@ int BGEAttack::run(void) {
 	defAES.expandKey(expandedKey, defaultKey, KEY_SIZE_16);	// key schedule for default AES
 	cout << "Expanded key: " << endl;
 	dumpVector(expandedKey);
+
 
 	//
 	//
@@ -1346,11 +1437,6 @@ int BGEAttack::run(void) {
 	// P^{r+1}_{i,j} * Q^{r}_{i,j} = identity  ==> derive round key by composition of those two.
 	cout << endl << "Going to reconstruct encryption key from extracted round keys..." << endl;
 
-	// Reset, we didn't recover Q0 relations connected to this round..
-	for(int x=0; x<16; x++){
-		roundKeys[0][x]=0;
-	}
-
 	// Recover keys as described. Round keys are indexed by rows, but in AES implementation round keys are
 	// indexed by columns, so just transpose before roundkey->encryption key transformation.
 	for(int r=1; r<rounds2hack; r++){
@@ -1358,20 +1444,26 @@ int BGEAttack::run(void) {
 		for(int col=0; col<4; col++){
 			for (int row=0; row<4; row++){
 				int i  = 4*row + col;
-				roundKeys[r][generator.shiftRows[i]] = prop3structVector[r*4 + col]->P[row].affineMap[ Qaffine->qj[roundBase][ generator.shiftRows[i] ] ];
+				roundKeys[r-1][generator.shiftRows[i]] = prop3structVector[r*4 + col]->P[row].affineMap[ Qaffine->qj[roundBase][ generator.shiftRows[i] ] ];
 			}
 		}
 	}
 
 	// just simply printout
-	for(int r=1; r<rounds2hack; r++){
+	for(int r=0; r<rounds2hack-1; r++){
 		cout << "* Round keys extracted from the process, r=" << (r+roundStart+1) << endl;
 		dumpVectorT(roundKeys[r], 16);
 	}
 
 	//
-	// TODO: recover encryption key from recovered round keys
+	// Recover encryption key from recovered round keys
 	//
+	cout << "Recovering cipher key from round keys..." << endl;
+	vec_GF2E encKey;
+	recoverCipherKey(defAES, roundKeys, encKey);
+
+	cout << "Final result: " << endl;
+	dumpVector(encKey);
 
 
 	//

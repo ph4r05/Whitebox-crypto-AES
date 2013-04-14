@@ -346,6 +346,11 @@ public:
      */
     mat_GF2 T;
     mat_GF2 Tinv;
+
+    /**
+     * Round key constant
+     */
+    GF2E RC[16];
 private:
 
     /**
@@ -370,11 +375,6 @@ private:
     GF2EX mixColModulus;
     GF2EX mixColMultiply;
     GF2EX mixColMultiplyInv;
-
-    /**
-     * Round key constant
-     */
-    GF2E RC[16];
 
     /**
      * AES field.
