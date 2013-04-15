@@ -103,8 +103,8 @@ GenericAES::~GenericAES() {
  * Initializes AES with given indices to modulus and generator array
  */
 void GenericAES::initFromIndex(int modulus, int generator){
-	if (modulus < 0   || modulus >= AES_IRRED_POLYNOMIALS) return;
-	if (generator < 0 || generator >= AES_GENERATORS) return;
+	assert(modulus   >= 0 && modulus   < AES_IRRED_POLYNOMIALS);
+	assert(generator >= 0 && generator < AES_GENERATORS);
 	init(irreduciblePolynomials[modulus], generators[modulus][generator]);
 }
 

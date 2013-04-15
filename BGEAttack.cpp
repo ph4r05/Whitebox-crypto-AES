@@ -900,8 +900,8 @@ int BGEAttack::run(void) {
 	W128b state;
 	cout << "Generating AES..." << endl;
 	bool encrypt = true;
-	generator.useDualAESARelationsIdentity=true;	// this attack works only on basic form
-	generator.useDualAESIdentity=true;
+	generator.useDualAESARelationsIdentity=false;	// this attack works only on basic form
+	generator.useDualAESIdentity=false;
 	//generator.useIO04x04Identity=true;
 	//generator.useIO08x08Identity=true;
 	//generator.useMB32x32Identity=true;

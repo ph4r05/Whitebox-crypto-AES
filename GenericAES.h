@@ -29,6 +29,7 @@
 #include <NTL/vec_long.h>
 #include <NTL/new.h>
 #include <math.h>
+#include <assert.h>
 #include "base.h"
 #include "NTLUtils.h"
 #define AES_FIELD_SIZE 256
@@ -145,15 +146,18 @@ public:
 	inline int mod4(int a){ int c = a % 4; return c<0 ? c+4 : c; }
 
 	inline GF2E& ByteSub(GF2E& e){
+		this->restoreModulus();
 		return this->sboxAffineGF2E[getLong(e)];
 	}
 
 	inline long ByteSub(long e){
+		this->restoreModulus();
 		return this->sboxAffine[e];
 	}
 
  	inline void ByteSub(mat_GF2E& state){
 		int i,j;
+		this->restoreModulus();
 		for(i=0;i<4;i++){
 			for(j=0;j<4;j++){
 				state[i][j] = this->sboxAffineGF2E[getLong(state[i][j])];
@@ -162,15 +166,18 @@ public:
 	}
 
 	inline GF2E& ByteSubInv(GF2E& e){
+		this->restoreModulus();
 		return this->sboxAffineInvGF2E[getLong(e)];
 	}
 
 	inline long ByteSubInv(long e){
+		this->restoreModulus();
 		return this->sboxAffineInv[e];
 	}
 
 	inline void ByteSubInv(mat_GF2E& state){
 		int i,j;
+		this->restoreModulus();
 		for(i=0;i<4;i++){
 			for(j=0;j<4;j++){
 				state[i][j] = this->sboxAffineInvGF2E[getLong(state[i][j])];
@@ -180,6 +187,7 @@ public:
 
 	inline void AddRoundKey(mat_GF2E& state, vec_GF2E& expandedKey, unsigned int offset){
 		int i,j;
+		this->restoreModulus();
 		for(i=0; i<4; i++){
 			for(j=0; j<4; j++){
 				state[i][j] += expandedKey[offset + j*4+i];
@@ -192,6 +200,7 @@ public:
 		// for AES with Nb=4, left shift for rows are: 1=1, 2=2, 3=3.
 		GF2E tmp;
 		int i,j=0;
+		this->restoreModulus();
 		for(i=1; i<4;i++){
 			for(j=1; j<=i; j++){
 				tmp = state[i][0];
@@ -208,6 +217,7 @@ public:
 		// for AES with Nb=4, left shift for rows are: 1=1, 2=2, 3=3.
 		GF2E tmp;
 		signed int i=0,j=0;
+		this->restoreModulus();
 		for(i=1; i<4;i++){
 			for(j=1; j<=i; j++){
 				tmp = state[i][3];
@@ -221,6 +231,7 @@ public:
 
 	inline void MixColumn(mat_GF2E& state){
 		int i,j;
+		this->restoreModulus();
 		mat_GF2E tmpMat(INIT_SIZE, 4,1);
 		mat_GF2E resMat(INIT_SIZE, 4,1);
 
@@ -241,6 +252,7 @@ public:
 
 	inline void MixColumnInv(mat_GF2E& state){
 		int i,j;
+		this->restoreModulus();
 		mat_GF2E tmpMat(INIT_SIZE, 4,1);
 		mat_GF2E resMat(INIT_SIZE, 4,1);
 
