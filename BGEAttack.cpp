@@ -59,7 +59,7 @@ std::string composeFunction(GF256_func_t f, GF256_func_t g){
 // Rbox operation - one round of AES. State is indexed by rows
 // First row: 0 1 2 3; It is processed by columns, first column is computed from
 // state array indexes: 0,4,8,12; second from 1,5,9,13, and so on...
-void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift){
+void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift, int colMask2compute){
 	int i=0;
 	W32b ires[N_BYTES];				// intermediate result for T-boxes
 
@@ -73,14 +73,19 @@ void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift){
 #endif
 
 	// Perform rest of the operations on 4 tuples.
+
 	for(i=0; i<N_BYTES; i+=4){
+		// masking operation - compute only wanted columns
+		int col = i/4;
+		if ((colMask2compute & (1 << col)) == 0) continue;
+
 		// Apply type 2 tables to all bytes, counting also shift rows selector.
 		// One section ~ 1 column of state array, so select 1 column, first will
 		// have indexes 0,4,8,12. Also take ShiftRows() into consideration.
-		ires[i+0].l = edTab2[r][i+0][state.B[shiftOp[i/4+0*4]]].l;
-		ires[i+1].l = edTab2[r][i+1][state.B[shiftOp[i/4+1*4]]].l;
-		ires[i+2].l = edTab2[r][i+2][state.B[shiftOp[i/4+2*4]]].l;
-		ires[i+3].l = edTab2[r][i+3][state.B[shiftOp[i/4+3*4]]].l;
+		ires[i+0].l = edTab2[r][i+0][state.B[shiftOp[col+0*4]]].l;
+		ires[i+1].l = edTab2[r][i+1][state.B[shiftOp[col+1*4]]].l;
+		ires[i+2].l = edTab2[r][i+2][state.B[shiftOp[col+2*4]]].l;
+		ires[i+3].l = edTab2[r][i+3][state.B[shiftOp[col+3*4]]].l;
 
 		// In the last round, result is directly in T2 boxes
 		if (r==(N_ROUNDS-1)){
@@ -88,9 +93,9 @@ void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift){
 		}
 
 		// XOR results of T2 boxes
-		op8xor(ires[i+0], ires[i+1], edXTab[r][i/4][0], ires[i+0]);  // 1 xor 2
-		op8xor(ires[i+2], ires[i+3], edXTab[r][i/4][1], ires[i+2]);  // 3 xor 4
-		op8xor(ires[i+0], ires[i+2], edXTab[r][i/4][2], ires[i+0]);  // (1 xor 2) xor (3 xor 4) - next XOR stage
+		op8xor(ires[i+0], ires[i+1], edXTab[r][col][0], ires[i+0]);  // 1 xor 2
+		op8xor(ires[i+2], ires[i+3], edXTab[r][col][1], ires[i+2]);  // 3 xor 4
+		op8xor(ires[i+0], ires[i+2], edXTab[r][col][2], ires[i+0]);  // (1 xor 2) xor (3 xor 4) - next XOR stage
 
 		// Apply T3 boxes, valid XOR results are in ires[0], ires[4], ires[8], ires[12]
 		// Start from the end, because in ires[i] is our XORing result.
@@ -107,9 +112,9 @@ void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift){
 
 		// Apply XORs again, now on T3 results
 		// Copy results back to state
-		op8xor(ires[i+0], ires[i+1], edXTab[r][i/4][3], ires[i+0]);  // 1 xor 2
-		op8xor(ires[i+2], ires[i+3], edXTab[r][i/4][4], ires[i+2]);  // 3 xor 4
-		op8xor(ires[i+0], ires[i+2], edXTab[r][i/4][5], ires[i+0]);  // (1 xor 2) xor (3 xor 4) - next XOR stage
+		op8xor(ires[i+0], ires[i+1], edXTab[r][col][3], ires[i+0]);  // 1 xor 2
+		op8xor(ires[i+2], ires[i+3], edXTab[r][col][4], ires[i+2]);  // 3 xor 4
+		op8xor(ires[i+0], ires[i+2], edXTab[r][col][5], ires[i+0]);  // (1 xor 2) xor (3 xor 4) - next XOR stage
 	}
 
 	//
@@ -900,11 +905,13 @@ int BGEAttack::run(void) {
 	W128b state;
 	cout << "Generating AES..." << endl;
 	bool encrypt = true;
-	generator.useDualAESARelationsIdentity=false;	// this attack works only on basic form
+	generator.useDualAESARelationsIdentity=true;	// this attack works only on basic form
 	generator.useDualAESIdentity=false;
-	//generator.useIO04x04Identity=true;
-	//generator.useIO08x08Identity=true;
-	//generator.useMB32x32Identity=true;
+	generator.useDualAESSimpeAlternate=true;
+	generator.useIO04x04Identity=true;
+	generator.useIO08x08Identity=true;
+	generator.useMB08x08Identity=true;
+	generator.useMB32x32Identity=true;
 	generator.generateIO128Coding(coding, true);
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, true);  cout << "AES ENC generated" << endl;
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
@@ -973,6 +980,7 @@ int BGEAttack::run(void) {
 				f00.finv[state.B[i]] = x;
 			}
 		}
+
 
 		// f(x,0,0,0) finalization - compute hash of f00 function
 		for(i=0; i<AES_BYTES; i++){
@@ -1092,6 +1100,7 @@ int BGEAttack::run(void) {
 
 			Qaffine->Q[r][i].initHash();
 			cout << "Q~ recovered; hash=" << Qaffine->Q[r][i].hash << endl;
+			cout << "PSI function: " << hashFunction(curS.psi) << endl;
 		}
 
 		cout << "PSI recovered for all sets in given round" << endl;
@@ -1466,6 +1475,33 @@ int BGEAttack::run(void) {
 	dumpVector(encKey);
 
 
+	// DEBUG: dump determined relations
+	for(int r=1; r<rounds2hack; r++){
+		int roundBase = roundStart+r-1;
+		for(int i=0;i<16;i++){
+			cout << "## r="<<r<<"; i="<<i
+					<<"; Qj="<<CHEX(Qaffine->qj[roundBase][i])
+					<<"; Aj="<<hashMatrix(Qaffine->Aj[roundBase][i])
+					<<"; Matrix="<<dumpMatrix2str(Qaffine->Aj[roundBase][i], false)
+					<<endl;
+		}
+	}
+
+	GenericAES dualAES;
+	dualAES.initFromIndex(AES_IRRED_POLYNOMIALS-1, AES_GENERATORS-1);
+	cout << "T: " << endl; dumpMatrix(dualAES.T);
+	cout << "Tinv: " << endl; dumpMatrixN(dualAES.Tinv);
+	cout << "T*20: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][0]);
+	cout << "T*21: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][1]);
+	cout << "20*T: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.T);
+	cout << "21*T: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.T);
+
+	cout << "Tinv*20: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][0]);
+	cout << "Tinv*21: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][1]);
+	cout << "20*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.Tinv);
+	cout << "21*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.Tinv);
+
+
 	//
 	// Free memory part
 	//
@@ -1475,6 +1511,150 @@ int BGEAttack::run(void) {
 
 	delete[] Sr;
 	delete Qaffine;
+	return 0;
+}
+
+
+int BGEAttack::invertCipherTest(){
+	GenericAES defAES;
+	defAES.init(0x11B, 0x03);
+
+#ifndef AES_BGE_ATTACK
+	cerr << "Cannot proceed with attack if \"AES_BGE_ATTACK\" is not defined, we are missing required additions"<<endl;
+	exit(1);
+#endif
+
+	WBAESGenerator generator;
+	CODING8X8_TABLE coding[16];
+
+	cout << "Generating AES..." << endl;
+	bool encrypt = true;
+	generator.useDualAESARelationsIdentity=true;	// this attack works only on basic form
+	generator.useDualAESIdentity=true;
+	generator.useDualAESSimpeAlternate=false;
+	generator.useIO04x04Identity=false;
+	generator.useIO08x08Identity=false;
+	generator.useMB08x08Identity=false;
+	generator.useMB32x32Identity=false;
+	generator.generateIO128Coding(coding, true);
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, true);  cout << "AES ENC generated" << endl;
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
+	int (&nextTbox)[N_BYTES]     = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
+
+	// WBAES changed to state with affine matching bijections at round boundaries.
+	cout << "Going to test WBAES before modifying tables" << endl;
+	generator.testComputedVectors(true, this->wbaes, coding);
+
+	// Encrypt test vector and then try to decrypt it by inverting encryption tables
+	W128b plain, cipher, state;
+	arr_to_W128b(GenericAES::testVect128_plain[0], 0, plain);
+	arr_to_W128b(GenericAES::testVect128_plain[0], 0, state);
+	arr_to_W128b(GenericAES::testVect128_cipher[0], 0, cipher);
+
+	// encryption
+	this->wbaes.encrypt(state);
+	cout << "=====================" << endl;
+	cout << "InvertTest plaintext: " << endl;
+	dumpW128b(plain); cout << endl;
+	cout << "InvertTest ciphertext: " << endl;
+	dumpW128b(cipher); cout << endl;
+	cout << "Enc(plaintext_test): " << endl;
+	dumpW128b(state); cout << endl;
+
+	time_t lastRound = time(NULL);
+	time_t lastTm = time(NULL);
+	time_t curTm;
+	// Invertion with use of Rbox function
+	// Iterate over each round, finding inversion manually.
+	//   Goal is to find X such that Rbox(X) = Y where Y is current state array.
+	//
+	//   Search is done simultaneously by running each column over GF(2^8)^4, since each column
+	//	 is independent in one round of each other.
+	//
+	for(int r=9; r>=0; r--){
+		W128b prevState, prevState2, prevStateFinal;
+		int foundCols=0;
+		unsigned long long int col = 0;	// represents whole state array column
+		int colMask2compute = 15; // start with full mask
+
+		cout << "Inverting cipher; round=" << r << endl;
+		curTm     = time(NULL);
+		lastRound = time(NULL);
+
+		// run over GF(2^8)^4, one column, finding inverse now
+		int cnt=0;
+		for(col=0; col < 4294967296L && foundCols < 4; col++, cnt++){
+			// Initialize prevState from col iterator - each column is the same - simultaneous search
+			INIT_W128B_COL(prevState2, 0, col);
+			INIT_W128B_COL(prevState2, 1, col);
+			INIT_W128B_COL(prevState2, 2, col);
+			INIT_W128B_COL(prevState2, 3, col);
+
+			// current progress monitoring
+			if (cnt >= 65536){
+				cnt = 0;
+				curTm = time(NULL);
+				if ((curTm - lastTm) > 30){
+					cout << "...progress=" <<((((double)col) / 4294967296.0)*100) << " %" << endl;
+					lastTm = curTm;
+				}
+			}
+
+			// Run encryption - during invertion we are using only one type of tables, finding inverses
+			// Caution: prevState2 is changed in this function, so we don't have source, but in majority
+			// of cases it is not needed, we can obtain it again from col variable if needed (match will be found)
+			this->Rbox(prevState2, true, r, true, colMask2compute);
+
+			// find if one of columns holds state = Rbox(prevState2)
+			for(int i=0; i<4; i++){
+				if ((colMask2compute & (1<<i)) > 0 && ISEQ_W128B_COL(prevState2, i, state, i)){
+					cout << "..found inverse for col="<<i<<"; foundCols="<<foundCols
+							<<"; col=" << col
+							<<"; done=" << ((((double)col) / 4294967296.0)*100) << " %" << endl;
+
+					// copy matched inverse to appropriate field in prevStateFinal
+					INIT_W128B_COL(prevStateFinal, i, col);
+					foundCols+=1;
+
+					colMask2compute &= ~(1<<i); // remove col from mask
+				}
+			}
+		}
+
+		// If reached this point, all inverses should have been found
+		if (foundCols!=4){
+			cout << "ERROR: foundCols!=4; " << foundCols << endl;
+			return -1;
+		}
+
+		// Do not invert shiftRows if this is first round - we already have a result
+		if (r>0){
+			// Invert ShiftRows -> apply inversion of shiftrows operation on state array
+			// InvShiftRows is shifting each row to the right, each column by its number
+			for(int i=1; i<4; i++){
+				for(int j=0; j<=i; j++){
+					BYTE tmp = prevStateFinal.B[3 + 4*i];
+					prevStateFinal.B[3 + 4*i] = prevStateFinal.B[2 + 4*i];;
+					prevStateFinal.B[2 + 4*i] = prevStateFinal.B[1 + 4*i];;
+					prevStateFinal.B[1 + 4*i] = prevStateFinal.B[0 + 4*i];;
+					prevStateFinal.B[0 + 4*i] = tmp;
+				}
+			}
+		}
+
+		time_t curTime = time(NULL);
+		cout << "Inverse found; r="<<r
+				<<"; time elapsed=" << (curTime - lastRound)
+				<<" s; state dump: " << endl;
+
+		dumpW128b(prevStateFinal);
+
+		// copy back to state
+		W128CP(state, prevStateFinal);
+	}
+
+
+
 	return 0;
 }
 

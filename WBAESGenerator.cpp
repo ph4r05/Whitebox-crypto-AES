@@ -54,6 +54,7 @@ int WBAESGenerator::shiftRowsInv[N_BYTES] = {
 WBAESGenerator::WBAESGenerator() {
 	useDualAESARelationsIdentity=false;
 	useDualAESIdentity=false;
+	useDualAESSimpeAlternate=false;
 	useIO04x04Identity=false;
 	useIO08x08Identity=true;
 	useMB08x08Identity=false;
@@ -203,7 +204,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	GenericAES					defaultAES;
 
 	// Initialize IO coding map (networked fashion of mappings)
-	generateCodingMap(codingMap, &codingCount, true);
+	generateCodingMap(codingMap, &codingCount, encrypt);
 
 	// Preparing all 4Bits internal encoding/decoding bijections
 	CODING4X4_TABLE* pCoding04x04 = new CODING4X4_TABLE[codingCount+1];
@@ -212,7 +213,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	// Generate mixing bijections
 	MB08x08_TABLE eMB_L08x08 [MB_CNT_08x08_ROUNDS][MB_CNT_08x08_PER_ROUND];
 	MB32x32_TABLE eMB_MB32x32[MB_CNT_32x32_ROUNDS][MB_CNT_32x32_PER_ROUND];
-	this->generateMixingBijections(eMB_L08x08, MB_CNT_08x08_ROUNDS, eMB_MB32x32, MB_CNT_32x32_ROUNDS);
+	this->generateMixingBijections(eMB_L08x08, MB_CNT_08x08_ROUNDS, eMB_MB32x32, MB_CNT_32x32_ROUNDS, useMB08x08Identity, useMB32x32Identity);
 
 	// Encryption/Decryption dependent functions and tables
 	int (&nextTbox)[N_BYTES]     = encrypt ? (this->shiftRowsLBijection) : (this->shiftRowsLBijectionInv);
@@ -258,6 +259,11 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 		int rndGenerator  = useDualAESIdentity ? 0 : rand() % AES_GENERATORS;
 		genA[i]			  = useDualAESARelationsIdentity ? 1 : (rand() % 255) + 1;
 		genI[i]			  = useDualAESARelationsIdentity ? 0 : rand() % 8;
+		if (useDualAESSimpeAlternate && !useDualAESIdentity){
+			rndPolynomial = (i)%2 == 0 ? 0: AES_IRRED_POLYNOMIALS-1;
+			rndGenerator  = (i)%2 == 0 ? 0: AES_GENERATORS-1;
+		}
+
 		this->AESCipher[i].initFromIndex(rndPolynomial, rndGenerator);
 
 		// convert BYTE[] to key

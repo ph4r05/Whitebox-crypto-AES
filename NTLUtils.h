@@ -188,6 +188,7 @@ void dumpVector(NTL::GF2E * a, size_t len);
 void dumpVector(long * a, size_t len);
 void dumpMatrix(NTL::mat_GF2E& a);
 void dumpMatrix(NTL::mat_GF2& a);
+void dumpMatrixN(NTL::mat_GF2 a);
 void dumpMatrix(ostream& out, NTL::mat_GF2E& a);
 void dumpMatrix(ostream& out, NTL::mat_GF2& a, bool newLine);
 std::string dumpMatrix2str(NTL::mat_GF2& a, bool newLine);
@@ -237,6 +238,8 @@ std::string hashString(std::string inputBuffer);
 
 // hashes lookup table using MD5 hash
 std::string hashLookupTable(vec_GF2E s);
+
+std::string hashMatrix(mat_GF2 m);
 
 template <class T> class vector_inserter{
 public:

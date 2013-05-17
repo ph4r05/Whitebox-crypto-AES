@@ -40,6 +40,10 @@ int main(void) {
 
 	BGEAttack atk;
 
+	cout << "Testing cipher inversion;" << endl;
+	atk.invertCipherTest();
+	exit(3);
+
 	cout << "Starting an attack! Obj: " << endl;
 	atk.run();
 	exit(3);
@@ -53,26 +57,26 @@ int main(void) {
 	//cout << "Testing done, errors: " << errors << endl;
 	//exit(3);
 
-	mat_GF2 m = defAES.makeMultAMatrix(0x44);
-	mat_GF2 minv = inv(m);
+	//mat_GF2 m = defAES.makeMultAMatrix(0x44);
+	//mat_GF2 minv = inv(m);
 
-	mat_GF2 t1 = defAES.makeSquareMatrix(0x1);
+	//mat_GF2 t1 = defAES.makeSquareMatrix(0x1);
 	//dumpMatrix(t1);
 
-	mat_GF2 t1inv = inv(t1);
+	//mat_GF2 t1inv = inv(t1);
 	//dumpMatrix(t1inv);
 
-	mat_GF2 t2 = defAES.makeSquareMatrix(7);
+	//mat_GF2 t2 = defAES.makeSquareMatrix(7);
 	//dumpMatrix(t2);
 
-	mat_GF2 res = m*t1;
-	dumpMatrix(res);
+	//mat_GF2 res = m*t1;
+	//dumpMatrix(res);
 
-	res = t1inv*minv;
-	dumpMatrix(res);
+	//res = t1inv*minv;
+	//dumpMatrix(res);
 
-	res = m*t1*t1inv*minv;
-	dumpMatrix(res);
+	//res = m*t1*t1inv*minv;
+	//dumpMatrix(res);
 
 
 	exit(4);
@@ -83,8 +87,8 @@ int main(void) {
 	//A1A2relationsGenerator();
 	//exit(2);
 
-	AESAffineRelationsVerify(true);
-	exit(3);
+	//AESAffineRelationsVerify(true);
+	//exit(3);
 
 	//MBgen();
 	//exit(3);

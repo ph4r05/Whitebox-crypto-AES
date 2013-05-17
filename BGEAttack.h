@@ -14,21 +14,50 @@
 #include "GenericAES.h"
 #include "WBAES.h"
 #include "WBAESGenerator.h"
+#include <time.h>
 NTL_CLIENT
 using wbacr::laeqv::affineEquiv_t;
 
 namespace wbacr {
 namespace attack {
 
+// compares columns of two state arrays for equality
+#define ISEQ_W128B_COL(a,cola,b,colb)	( \
+		(a).B[(cola) + 4*0] == (b).B[(colb) + 4*0] && \
+		(a).B[(cola) + 4*1] == (b).B[(colb) + 4*1] && \
+		(a).B[(cola) + 4*2] == (b).B[(colb) + 4*2] && \
+		(a).B[(cola) + 4*3] == (b).B[(colb) + 4*3]    \
+		)
+
+// initializes column of state array from long long. Requires semicolon (do-while trick)
+#define INIT_W128B_COL(a, cola, lng)   do {   \
+		(a).B[(cola) + 4*0] = (lng)         & 0xFF;  \
+		(a).B[(cola) + 4*1] = ((lng) >> 8)  & 0xFF;  \
+		(a).B[(cola) + 4*2] = ((lng) >> 16) & 0xFF;  \
+		(a).B[(cola) + 4*3] = ((lng) >> 24) & 0xFF;  \
+		} while(0)
+
 // Function map hash -> function idx
+#ifdef FORCE_DETERMINISM
+// std map is sorted, so it always leads to same solutions using this map
+typedef std::map<std::string, int>fctionMap_t;
+#else
+// unordered version is faster - implemented by hash table, but brings also some
+// nondeterminism when iterating over it
 typedef boost::unordered_map<std::string, int>fctionMap_t;
+#endif
+
 typedef std::pair<std::string, int> fctionMap_elem_t;
 
 // Psi mapping, function idx -> [\Beta]
 typedef BYTE psiFction_t[256];
 
 // R set in algorithm for PSI recovery
+#ifdef FORCE_DETERMINISM
+typedef std::map<BYTE, BYTE> Rmap_t;
+#else
 typedef boost::unordered_map<BYTE, BYTE> Rmap_t;
+#endif
 typedef std::pair<BYTE, BYTE> Rmap_elem_t;
 
 // Hashes GF256 function with MD5
@@ -166,7 +195,7 @@ public:
 	WBAES wbaes;
 
 	int run(void);
-	void Rbox(W128b& state, bool encrypt=true, int r=1, bool noShift=false);
+	void Rbox(W128b& state, bool encrypt=true, int r=1, bool noShift=false, int colMask2compute=15);
 	void recoverPsi(Sset_t & set);
 	int deriveBset(Bset & bset, GenericAES & aes, bool permissive=true);
 
@@ -235,6 +264,9 @@ public:
 	// Recovers encryption key from two consecutive round keys
 	// For now it works only for AES-128
 	int recoverCipherKey(GenericAES & aes, BYTE roundKeys[2][16], vec_GF2E& encKey);
+
+	// Tries to invert encryption cipher to decryption
+	int invertCipherTest();
 
 	// just identity on 16 elements - used when shift rows operation ignored
 	static int shiftIdentity[16];

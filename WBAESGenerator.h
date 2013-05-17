@@ -367,6 +367,7 @@ public:
     // use given protection or not?
     bool useDualAESARelationsIdentity;
     bool useDualAESIdentity;
+    bool useDualAESSimpeAlternate;
     bool useIO04x04Identity;
     bool useIO08x08Identity;
     bool useMB08x08Identity;

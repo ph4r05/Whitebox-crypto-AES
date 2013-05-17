@@ -127,7 +127,7 @@ typedef XTB    W32XTB[8];
 #define W32CP(s,d) { s.l = d.l; }
 	
 // Copies W128b data from destination (d) to source (s)
-#define W128CP(s,d) { s.l[0]  = d.l[0];   s.l[1] = d.l[1];  s.l[2] = d.l[2];  s.l[3] = d.l[3]; }
+#define W128CP(d,s) { d.l[0]  = s.l[0];   d.l[1] = s.l[1];  d.l[2] = s.l[2];  d.l[3] = s.l[3]; }
 
 // 
 // Simple 32bit wide XOR operation.

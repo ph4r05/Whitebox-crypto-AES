@@ -94,6 +94,10 @@ void dumpMatrix(NTL::mat_GF2& a){
 	dumpMatrix(cout, a, true);
 }
 
+void dumpMatrixN(NTL::mat_GF2 a){
+	dumpMatrix(cout, a, true);
+}
+
 std::string dumpMatrix2str(NTL::mat_GF2& a, bool newLine){
 	std::ostringstream out;
 	dumpMatrix(out, a, newLine);
@@ -217,3 +221,7 @@ std::string hashLookupTable(vec_GF2E s){
 	return hashString(inputBuffer);
 }
 
+std::string hashMatrix(mat_GF2 m){
+	std::string inputBuffer = dumpMatrix2str(m, false);
+	return hashString(inputBuffer);
+}

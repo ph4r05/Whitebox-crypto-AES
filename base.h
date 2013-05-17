@@ -10,6 +10,7 @@
 
 
 #define AES_BGE_ATTACK 1
+#define FORCE_DETERMINISM 1
 
 
 #endif /* BASE_H_ */
