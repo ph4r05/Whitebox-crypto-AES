@@ -213,7 +213,7 @@ inline void op8xor(const W32b& o1, const W32b& o2, const W32XTB& xtb, W32b& res)
  *
  * Typesafe wrapper for macro OP8XOR_128.
  */
-inline void op8xor_128(const W128b& o1, const W128b& o2, const W32XTB * xtb, W32b& res){
+inline void op8xor_128(const W128b& o1, const W128b& o2, const W32XTB * xtb, W128b& res){
     OP8XOR_128(o1, o2, xtb, res);
 }
 

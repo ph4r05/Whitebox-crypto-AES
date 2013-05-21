@@ -93,6 +93,38 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	}
 
 	// Now compute cascade of XOR tables
+	// We have 8*32 XOR tables, they sum T1: [01] [23] [45] [67] [89] [1011] [1213] [1415]
+	//                                        0     1   2     3   4     5      6      7
+	// The task is to connect                  \   /     \   /     \   /        \    /
+	//                                         [0123]    [4567]   [891011]    [12131415]
+	//                                            8         9        10          11
+	//                                             \       /          \          /
+	//                                              \     /            \        /
+	//                                             [01234567]       [89101112131415]
+	//                                                 12                 13
+	//                                                  \                 /
+	//                                                   \               /
+	//                                                [0123456789101112131415]
+	//                                                           14
+	//
+
+	// 1st level of XORs
+	for(i=0;i<N_BYTES;i+=2){
+		op8xor_128(ares[i+0], ares[i+1], edXTabEx[0][i/2], ares[i+0]);  // 1 xor 2 --> 1
+	}
+
+	// Finish XOR cascade by hand
+	op8xor_128(ares[0], ares[1], edXTabEx[0][8],  ares[0]);  // 0 xor 1 --> 0
+	op8xor_128(ares[2], ares[3], edXTabEx[0][9],  ares[2]);  // 2 xor 3 --> 2
+	op8xor_128(ares[4], ares[5], edXTabEx[0][10], ares[4]);  // 4 xor 5 --> 4
+	op8xor_128(ares[6], ares[7], edXTabEx[0][11], ares[6]);  // 6 xor 7 --> 6
+	// 3. lvl
+	op8xor_128(ares[0], ares[2], edXTabEx[0][12], ares[0]);  // 0 xor 2 --> 0
+	op8xor_128(ares[4], ares[6], edXTabEx[0][13], ares[4]);  // 4 xor 6 --> 4
+	// 4. lvl - final stage. Result in ares[0]
+	op8xor_128(ares[0], ares[4], edXTabEx[0][14], ares[0]);  // 0 xor 4 --> 0
+	// Copy result from ares[0] to state
+	W128CP(state, ares[0]);
 
 	// Compute 9 rounds of T2 boxes
 	for(r=0; r<(N_ROUNDS-1); r++){
@@ -114,12 +146,6 @@ void WBAES::encdec(W128b& state, bool encrypt){
 //											  << CHEX(state.B[shiftOp[i/4+1*4]]) << ", "
 //											  << CHEX(state.B[shiftOp[i/4+2*4]]) << ", "
 //											  << CHEX(state.B[shiftOp[i/4+3*4]]) << endl;
-
-			// In the last round, result is directly in T2 boxes
-			if (r==(N_ROUNDS-1)){
-				continue;
-			}
-
 //			cout << "T2[" << r << "][" << (i+0) << "] " << CHEX(ires[i].l) << endl;
 //			cout << "T2[" << r << "][" << (i+1) << "] " << CHEX(ires[i+1].l) << endl;
 //			cout << "T2[" << r << "][" << (i+2) << "] " << CHEX(ires[i+2].l) << endl;
@@ -156,10 +182,10 @@ void WBAES::encdec(W128b& state, bool encrypt){
 		// ires[i] now contains 32bit XOR result
 		// We have to copy result to column...
 		for(i=0; i<N_BYTES; i+=4){
-			state.B[i/4+ 0] = r<(N_ROUNDS-1) ? ires[i].B[0] : ires[i+0].B[0];
-			state.B[i/4+ 4] = r<(N_ROUNDS-1) ? ires[i].B[1] : ires[i+1].B[0];
-			state.B[i/4+ 8] = r<(N_ROUNDS-1) ? ires[i].B[2] : ires[i+2].B[0];
-			state.B[i/4+12] = r<(N_ROUNDS-1) ? ires[i].B[3] : ires[i+3].B[0];
+			state.B[i/4+ 0] = ires[i].B[0];
+			state.B[i/4+ 4] = ires[i].B[1];
+			state.B[i/4+ 8] = ires[i].B[2];
+			state.B[i/4+12] = ires[i].B[3];
 		}
 
 #ifdef AES_BGE_ATTACK
@@ -176,6 +202,47 @@ void WBAES::encdec(W128b& state, bool encrypt){
 			cout << "EndOfRound[" << r << "] dump: " << endl;
 			dumpW128b(state);
 		}
+	}
+
+	//
+	// Final round is special -> T1 boxes
+	//
+	for(i=0; i<N_BYTES; i++){
+		W128CP(ares[i], edTab1[1][i][state.B[shiftOp[i]]]);
+	}
+
+	// and finally compute XOR cascade again, now for T1[1] - output T1
+	// 1st level of XORs
+	for(i=0;i<N_BYTES;i+=2){
+		op8xor_128(ares[i+0], ares[i+1], edXTabEx[1][i/2], ares[i+0]);  // 1 xor 2 --> 1
+	}
+
+	// Finish XOR cascade by hand
+	op8xor_128(ares[0], ares[1], edXTabEx[1][8],  ares[0]);  // 0 xor 1 --> 0
+	op8xor_128(ares[2], ares[3], edXTabEx[1][9],  ares[2]);  // 2 xor 3 --> 2
+	op8xor_128(ares[4], ares[5], edXTabEx[1][10], ares[4]);  // 4 xor 5 --> 4
+	op8xor_128(ares[6], ares[7], edXTabEx[1][11], ares[6]);  // 6 xor 7 --> 6
+	// 3. lvl
+	op8xor_128(ares[0], ares[2], edXTabEx[1][12], ares[0]);  // 0 xor 2 --> 0
+	op8xor_128(ares[4], ares[6], edXTabEx[1][13], ares[4]);  // 4 xor 6 --> 4
+	// 4. lvl - final stage. Result in ares[0]
+	op8xor_128(ares[0], ares[4], edXTabEx[1][14], ares[0]);  // 0 xor 4 --> 0
+	// Copy result from ares[0] to state
+	W128CP(state, ares[0]);
+
+#ifdef AES_BGE_ATTACK
+	// If we are performing attack, we modified output bijection for 1 byte from 2 concatenated 4x4 bijections to one 8x8
+	for(i=0; i<N_BYTES; i+=4){
+		state.B[i/4+ 0] = edOutputBijection[r][i/4+ 0][state.B[i/4+ 0]];
+		state.B[i/4+ 4] = edOutputBijection[r][i/4+ 4][state.B[i/4+ 4]];
+		state.B[i/4+ 8] = edOutputBijection[r][i/4+ 8][state.B[i/4+ 8]];
+		state.B[i/4+12] = edOutputBijection[r][i/4+12][state.B[i/4+12]];
+	}
+#endif
+
+	if (dumpEachRound){
+		cout << "EndOfRound[" << r << "] dump: " << endl;
+		dumpW128b(state);
 	}
 }
 
