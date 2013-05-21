@@ -25,8 +25,6 @@ using namespace wbacr::attack;
 #define GENERIC_AES_DEBUG 1
 
 int main(void) {
-	long i,j;
-
 	// very poor PRNG seeding, but just for now
 	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
@@ -38,12 +36,16 @@ int main(void) {
 	WBAESGenerator generator;
 	WBAES genAES;
 
-	BGEAttack atk;
+	// test WB AES with test vectors
+	generator.testWithVectors(true, genAES);
 
+	// Invert test
+	BGEAttack atk;
 	cout << "Testing cipher inversion;" << endl;
 	atk.invertCipherTest();
 	exit(3);
 
+	// BGE attack
 	cout << "Starting an attack! Obj: " << endl;
 	atk.run();
 	exit(3);
@@ -52,8 +54,8 @@ int main(void) {
 	//generator.useIO04x04Identity=true;
 	//generator.useIO08x08Identity=true;
 	//generator.useMB08x08Identity=true;
-	///generator.useMB32x32Identity=true;
-	int errors = generator.testWithVectors(true, genAES);
+	//generator.useMB32x32Identity=true;
+	//int errors = generator.testWithVectors(true, genAES);
 	//cout << "Testing done, errors: " << errors << endl;
 	//exit(3);
 
