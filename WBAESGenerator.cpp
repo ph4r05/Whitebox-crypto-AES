@@ -371,8 +371,10 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	int (&shiftRowsOp)[N_BYTES]  = encrypt ? (this->shiftRows)    		 : (this->shiftRowsInv);
 	W32XTB        (&genAES_edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS]  = encrypt ? genAES.eXTab    : genAES.dXTab;
 	W32XTB        (&genAES_edXTabEx)[2][15][4]                          = encrypt ? genAES.eXTabEx  : genAES.dXTabEx;
+	AES_TB_TYPE1  (&genAES_edTab1)[2][N_BYTES]			 		        = encrypt ? genAES.eTab1    : genAES.dTab1;
 	AES_TB_TYPE2  (&genAES_edTab2)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES.eTab2    : genAES.dTab2;
 	AES_TB_TYPE3  (&genAES_edTab3)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES.eTab3    : genAES.dTab3;
+	W08x128Coding (&codingMap_edT1)[2][N_BYTES]					        = encrypt ? codingMap->eT1  : codingMap->dT1;
 	W08x32Coding  (&codingMap_edT2)[N_ROUNDS][N_SECTIONS][4]	        = encrypt ? codingMap->eT2  : codingMap->dT2;
 	W08x32Coding  (&codingMap_edT3)[N_ROUNDS][N_SECTIONS][4]            = encrypt ? codingMap->eT3  : codingMap->dT3;
 	CODING        (&codingMap_edXOR1)[N_ROUNDS][N_SECTIONS][24]         = encrypt ? codingMap->eXOR1: codingMap->dXOR1;
@@ -470,7 +472,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 			}
 
 			//
-			// T table construction (Type2)
+			// T table construction (Type2, if r=last one, then T1)
 			//
 			for(j=0; j<N_SECTIONS; j++){
 //cout << "T["<<r<<"]["<<i<<"]["<<j<<"] key = 16*" << r << " + " << ((int)shiftRowsOp[ j*4 + i ]) <<  " = " << (vecRoundKey[r][i][16*r + shiftRowsOp[ j*4 + i ]]) << endl;
@@ -485,7 +487,12 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 
 					// In the first round we apply codings from T1 tables.
 					// Decode input with IO coding
-					bb = iocoding_encode08x08(bb, codingMap_edT2[r][i][j].IC, true, pCoding04x04, pCoding08x08);
+					// For the last round, INPUT coding is for T1 box, otherwise for T2 box
+					if (r < (N_ROUNDS-1)){
+						bb = iocoding_encode08x08(bb, codingMap_edT2[r][i][j].IC, true, pCoding04x04, pCoding08x08);
+					} else {
+						bb = iocoding_encode08x08(bb, codingMap_edT1[1][i*4+j].IC, true, pCoding04x04, pCoding08x08);
+					}
 
 					// Dual AES mapping.
 					// Tapply(curAES, TapplyInv(prevAES, state)) for rounds > 0
@@ -612,6 +619,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					}
 
 					// If we are in last round we also have to add k_10, not affected by ShiftRows()
+					// And more importantly, build T1
 					if (r==N_ROUNDS-1){
 						// Adding last encryption key (k_10) by special way is performed only in encryption
 						if (encrypt) {
@@ -622,12 +630,24 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 						this->AESCipher[4*r + i].applyTinv(tmpE);
 
 						// Now we use output encoding G and quit, no MixColumn or Mixing bijections here.
+						W128b mapResult;
 						bb = getLong(tmpE);
-						bb = pCoding08x08[ N_SECTIONS*i + j ].coding[bb];
-						genAES_edTab2[r][i*4+j][b].B[0] = bb;
-						genAES_edTab2[r][i*4+j][b].B[1] = bb;
-						genAES_edTab2[r][i*4+j][b].B[2] = bb;
-						genAES_edTab2[r][i*4+j][b].B[3] = bb;
+						// Encode with external encoding
+						bb = extc->lfC[1][4*i+j].coding[bb];
+						// Transform bb to matrix, to perform mixing bijection operation (matrix multiplication)
+						mat_GF2 tmpMat(INIT_SIZE, 128, 1);
+						// builds binary matrix [0 0 bb 0 0 0 0 0 0 0 0 0 0 0 0 0], if j==2
+						BYTE_to_matGF2(bb, tmpMat, i*8, 0);
+						// Build MB multiplication result
+						tmpMat = extc->IODM[1].mb * tmpMat;
+						// Encode 128-bit wide output to map result
+						for(j=0; j<16; j++){
+							mapResult.B[j] = matGF2_to_BYTE(tmpMat, 8*j, 0);
+						}
+						// Encode mapResult with out encoding of T1 table
+						iocoding_encode128x128(mapResult, mapResult, codingMap_edT1[1][4*i+j], false, pCoding04x04, pCoding08x08);
+						// Store result value to lookup table
+						W128CP(genAES_edTab1[1][4*i+j][b], mapResult);
 						continue;
 					}
 
@@ -795,7 +815,6 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 			}
 		}
 	}
-
 
 	delete[] this->pCoding04x04;
 	this->pCoding04x04 = NULL;
