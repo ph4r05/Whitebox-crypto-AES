@@ -114,7 +114,7 @@ void WBAES::encdec(W128b& state, bool encrypt){
 		op8xor_128(ares[i+0], ares[i+1], edXTabEx[0][i/2], ares[i+0]);  // 1 xor 2 --> 1
 	}
 
-	// Finish XOR cascade by hand
+	// Finish XOR cascade
 	op8xor_128(ares[0],  ares[2],  edXTabEx[0][8],  ares[0]);  // 0  xor 2  --> 0
 	op8xor_128(ares[4],  ares[6],  edXTabEx[0][9],  ares[4]);  // 4  xor 6  --> 4
 	op8xor_128(ares[8],  ares[10], edXTabEx[0][10], ares[8]);  // 8  xor 10 --> 8
@@ -126,9 +126,6 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	op8xor_128(ares[0],  ares[8],  edXTabEx[0][14], ares[0]);  // 0 xor 8 --> 0
 	// Copy result from ares[0] to state
 	W128CP(state, ares[0]);
-
-	cout << "First level: " << endl;
-	dumpW128b(state);
 
 	// Compute 9 rounds of T2 boxes
 	for(r=0; r<(N_ROUNDS-1); r++){

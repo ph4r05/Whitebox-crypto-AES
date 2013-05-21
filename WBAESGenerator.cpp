@@ -92,7 +92,10 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 		}
 
 		// XOR table cascade for T1 out sum, 8,4,2,1 = 15 XOR tables
+		// Caution! Last 128-bit XOR table from T1[1] is output from whole cipher -> no allocation for this
 		for(i=0; i<XTB_CNT_T1; i+=32){
+			if (r==1 && i==(XTB_CNT_T1-32)) continue; 	// not for output XOR table
+
 			ALLOCXOR128Coding(edXOR3[r], i, cIdx);
 		}
 
@@ -133,9 +136,9 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
         //                                                [0123456789101112131415]
 		// On index                                                 448
 		//
-		for(i=0; i<4; i++){
+		for(i=0; i<8; i+=2){
 			// index of XOR tables we can use on 2. level
-			int xtbId = i*32+256;
+			int xtbId = i*16+256;
 			CONNECT_XOR_TO_XOR_128_H(edXOR3[r], (i+0)*32, edXOR3[r], xtbId);
 			CONNECT_XOR_TO_XOR_128_L(edXOR3[r], (i+1)*32, edXOR3[r], xtbId);
 		}
@@ -153,6 +156,8 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 	// Now connect XOR3 tables form R=0 (sums T1 input table) to input of T2 tables
 	// Result is stored in last XOR table starting on 448 offset, result is stored in LOW value
 	// Note that ShiftRows is done here, every Sbox uses result of ShiftRows operation on its input
+	//
+	// 128-bit XOR has output indexed by rows, same as state.
 	//
 	// Connects last XOR:
 	// 00 01 02 03 | 04 05 06 07 | 08 09 10 11 | 12 13 14 15  -- classical numbering (according to enc. routine)
@@ -232,29 +237,16 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 
 			if (r<(N_ROUNDS-2)){
 				// Connect result XOR layer 4 to T2 boxes in next round
-				newIdx = shiftOp[4*i+0];
-				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
-				newIdx = shiftOp[4*i+1];
-				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
-				newIdx = shiftOp[4*i+2];
-				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
-				newIdx = shiftOp[4*i+3];
-				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
+				newIdx = shiftOp[4*i+0]; CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
+				newIdx = shiftOp[4*i+1]; CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
+				newIdx = shiftOp[4*i+2]; CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
+				newIdx = shiftOp[4*i+3]; CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
 			} else {
 				// Connect result XOR layer 4 to T1 boxes in last round; r==8
-				// T1[1] are indexed by columns!
-				newIdx = shiftOp[4*i+0];
-				cout << "tralala; newIdx="<<newIdx<<endl;
-				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT1[1][newIdx]);
-				newIdx = shiftOp[4*i+1];
-				cout << "tralala; newIdx="<<newIdx<<endl;
-				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT1[1][newIdx]);
-				newIdx = shiftOp[4*i+2];
-				cout << "tralala; newIdx="<<newIdx<<endl;
-				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT1[1][newIdx]);
-				newIdx = shiftOp[4*i+3];
-				cout << "tralala; newIdx="<<newIdx<<endl;
-				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT1[1][newIdx]);
+				newIdx = shiftOp[4*i+0]; CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT1[1][newIdx]);
+				newIdx = shiftOp[4*i+1]; CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT1[1][newIdx]);
+				newIdx = shiftOp[4*i+2]; CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT1[1][newIdx]);
+				newIdx = shiftOp[4*i+3];CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT1[1][newIdx]);
 			}
 		}
 	}
@@ -849,8 +841,14 @@ void WBAESGenerator::generateXorTable(CODING * xorCoding, XTB * xtb){
 }
 
 int WBAESGenerator::generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size, bool identity){
-	unsigned int i,c;
+	unsigned long int i,c;
 	for(i=0; i<size; i++){
+		// HINT: if you are debugging IO problems, try to turn on and off some bijections,
+		// you can very easily localize the problem.
+
+		//if (i>=0x3c0) identity=true;
+		identity=false;
+		//if (i>=0x1610) identity=true;
 		c |= generate4X4Bijection(&tbl[i].coding, &tbl[i].invCoding, identity);
 	}
 
@@ -899,7 +897,7 @@ int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
 		dumpVectorT(GenericAES::testVect128_key, 16);
 	}
 
-	this->useIO04x04Identity=true;
+	//this->useIO04x04Identity=true;
 	this->useIO08x08Identity=true;
 	this->useDualAESARelationsIdentity=true;
 	this->useDualAESIdentity=true;
