@@ -56,76 +56,113 @@ std::string composeFunction(GF256_func_t f, GF256_func_t g){
 	return hashFunction(nf.f);
 }
 
-// Rbox operation - one round of AES. State is indexed by rows
-// First row: 0 1 2 3; It is processed by columns, first column is computed from
-// state array indexes: 0,4,8,12; second from 1,5,9,13, and so on...
+
 void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift, int colMask2compute){
 	int i=0;
-	W32b ires[N_BYTES];				// intermediate result for T-boxes
+	W32b  ires[N_BYTES];				// intermediate result for T2,T3-boxes
+	W128b ares[N_BYTES];				// intermediate result for T1-boxes
 
 	// encryption/decryption dependent operations and tables
 	int (&shiftOp)[N_BYTES]  = noShift ? this->shiftIdentity : (encrypt ? (this->wbaes.shiftRows)   : (this->wbaes.shiftRowsInv));
 	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->wbaes.eXTab) 	   : (this->wbaes.dXTab);
+	W32XTB (&edXTabEx)[2][15][4]                         = encrypt ? (this->wbaes.eXTabEx)     : (this->wbaes.dXTabEx);
+	AES_TB_TYPE1 (&edTab1)[2][N_BYTES]                   = encrypt ? (this->wbaes.eTab1)       : (this->wbaes.dTab1);
 	AES_TB_TYPE2 (&edTab2)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes.eTab2) 	   : (this->wbaes.dTab2);
 	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes.eTab3) 	   : (this->wbaes.dTab3);
 #ifdef AES_BGE_ATTACK
 	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (this->wbaes.eOutputBijection) : (this->wbaes.dOutputBijection);
 #endif
-
-	// Perform rest of the operations on 4 tuples.
-
-	for(i=0; i<N_BYTES; i+=4){
-		// masking operation - compute only wanted columns
-		int col = i/4;
-		if ((colMask2compute & (1 << col)) == 0) continue;
-
-		// Apply type 2 tables to all bytes, counting also shift rows selector.
-		// One section ~ 1 column of state array, so select 1 column, first will
-		// have indexes 0,4,8,12. Also take ShiftRows() into consideration.
-		ires[i+0].l = edTab2[r][i+0][state.B[shiftOp[col+0*4]]].l;
-		ires[i+1].l = edTab2[r][i+1][state.B[shiftOp[col+1*4]]].l;
-		ires[i+2].l = edTab2[r][i+2][state.B[shiftOp[col+2*4]]].l;
-		ires[i+3].l = edTab2[r][i+3][state.B[shiftOp[col+3*4]]].l;
-
-		// In the last round, result is directly in T2 boxes
-		if (r==(N_ROUNDS-1)){
-			continue;
+	// Last round = special case. Just T1 boxes && 128-bot XOR cascade
+	if (r==(N_ROUNDS-1)){
+		for(i=0; i<N_BYTES; i+=4){
+			W128CP(ares[i+0], edTab1[1][i+0][state.B[shiftOp[i/4+0*4]]]);
+			W128CP(ares[i+1], edTab1[1][i+1][state.B[shiftOp[i/4+1*4]]]);
+			W128CP(ares[i+2], edTab1[1][i+2][state.B[shiftOp[i/4+2*4]]]);
+			W128CP(ares[i+3], edTab1[1][i+3][state.B[shiftOp[i/4+3*4]]]);
 		}
 
-		// XOR results of T2 boxes
-		op8xor(ires[i+0], ires[i+1], edXTab[r][col][0], ires[i+0]);  // 1 xor 2
-		op8xor(ires[i+2], ires[i+3], edXTab[r][col][1], ires[i+2]);  // 3 xor 4
-		op8xor(ires[i+0], ires[i+2], edXTab[r][col][2], ires[i+0]);  // (1 xor 2) xor (3 xor 4) - next XOR stage
+		// and finally compute XOR cascade again, now for T1[1] - output T1
+		// 1st level of XORs
+		for(i=0;i<N_BYTES;i+=2){
+			op8xor_128(ares[i+0], ares[i+1], edXTabEx[1][i/2], ares[i+0]);  // 1 xor 2 --> 1
+		}
 
-		// Apply T3 boxes, valid XOR results are in ires[0], ires[4], ires[8], ires[12]
-		// Start from the end, because in ires[i] is our XORing result.
+		// Finish XOR cascade by hand
+		op8xor_128(ares[0],  ares[2],  edXTabEx[1][8],  ares[0]);  // 0  xor 2  --> 0
+		op8xor_128(ares[4],  ares[6],  edXTabEx[1][9],  ares[4]);  // 4  xor 6  --> 4
+		op8xor_128(ares[8],  ares[10], edXTabEx[1][10], ares[8]);  // 8  xor 10 --> 8
+		op8xor_128(ares[12], ares[14], edXTabEx[1][11], ares[12]); // 12 xor 14 --> 12
+		op8xor_128(ares[0],  ares[4],  edXTabEx[1][12], ares[0]);  // 0 xor 4  --> 0
+		op8xor_128(ares[8],  ares[12], edXTabEx[1][13], ares[8]);  // 8 xor 12 --> 8
+		op8xor_128(ares[0],  ares[8],  edXTabEx[1][14], ares[0]);  // 0 xor 8 --> 0
+		for(i=0; i<N_BYTES; i++){
+			state.B[i] = ares[0].B[idxTranspose(i)];
+		}
+	} else {
+		// Firt round -> need to apply T1 boxes & 128-bit XOR cascade before
+		if (r==0){
+			// At first we have to put input to T1 boxes directly, no shift rows
+			// compute result to ares[16]
+			for(i=0; i<N_BYTES; i++){
+				// Note: Tbox is indexed by cols, state by rows - transpose needed here
+				W128CP(ares[i], edTab1[0][i][state.B[idxTranspose(i)]]);
+			}
+
+			// 1st level of XORs
+			for(i=0;i<N_BYTES;i+=2){
+				op8xor_128(ares[i+0], ares[i+1], edXTabEx[0][i/2], ares[i+0]);  // 1 xor 2 --> 1
+			}
+
+			// Finish XOR cascade
+			op8xor_128(ares[0],  ares[2],  edXTabEx[0][8],  ares[0]);  // 0  xor 2  --> 0
+			op8xor_128(ares[4],  ares[6],  edXTabEx[0][9],  ares[4]);  // 4  xor 6  --> 4
+			op8xor_128(ares[8],  ares[10], edXTabEx[0][10], ares[8]);  // 8  xor 10 --> 8
+			op8xor_128(ares[12], ares[14], edXTabEx[0][11], ares[12]); // 12 xor 14 --> 12
+			op8xor_128(ares[0],  ares[4],  edXTabEx[0][12], ares[0]);  // 0 xor 4  --> 0
+			op8xor_128(ares[8],  ares[12], edXTabEx[0][13], ares[8]);  // 8 xor 12 --> 8
+			op8xor_128(ares[0],  ares[8],  edXTabEx[0][14], ares[0]);  // 0 xor 8 --> 0
+			W128CP(state, ares[0]);
+		}
+
+
+		// Perform rest of the operations on 4 tuples.
+		for(i=0; i<N_BYTES; i+=4){
+			// Apply type 2 tables to all bytes, counting also shift rows selector.
+			// One section ~ 1 column of state array, so select 1 column, first will
+			// have indexes 0,4,8,12. Also take ShiftRows() into consideration.
+			ires[i+0].l = edTab2[r][i+0][state.B[shiftOp[i/4+0*4]]].l;
+			ires[i+1].l = edTab2[r][i+1][state.B[shiftOp[i/4+1*4]]].l;
+			ires[i+2].l = edTab2[r][i+2][state.B[shiftOp[i/4+2*4]]].l;
+			ires[i+3].l = edTab2[r][i+3][state.B[shiftOp[i/4+3*4]]].l;
+
+			// XOR results of T2 boxes
+			op8xor(ires[i+0], ires[i+1], edXTab[r][i/4][0], ires[i+0]);  // 1 xor 2
+			op8xor(ires[i+2], ires[i+3], edXTab[r][i/4][1], ires[i+2]);  // 3 xor 4
+			op8xor(ires[i+0], ires[i+2], edXTab[r][i/4][2], ires[i+0]);  // (1 xor 2) xor (3 xor 4) - next XOR stage
+
+			// Apply T3 boxes, valid XOR results are in ires[0], ires[4], ires[8], ires[12]
+			// Start from the end, because in ires[i] is our XORing result.
+			ires[i+3].l = edTab3[r][i+3][ires[i].B[3]].l;
+			ires[i+2].l = edTab3[r][i+2][ires[i].B[2]].l;
+			ires[i+1].l = edTab3[r][i+1][ires[i].B[1]].l;
+			ires[i+0].l = edTab3[r][i+0][ires[i].B[0]].l;
+
+			// Apply XORs again, now on T3 results
+			// Copy results back to state
+			op8xor(ires[i+0], ires[i+1], edXTab[r][i/4][3], ires[i+0]);  // 1 xor 2
+			op8xor(ires[i+2], ires[i+3], edXTab[r][i/4][4], ires[i+2]);  // 3 xor 4
+			op8xor(ires[i+0], ires[i+2], edXTab[r][i/4][5], ires[i+0]);  // (1 xor 2) xor (3 xor 4) - next XOR stage
+		}
 		//
-		//                    ________________________ ROUND
-		//                   |    ____________________ T3 box for 1 section
-		//                   |   |      ______________ (1 xor 2) xor (3 xor 4)
-		//                   |   |     |        ______ 8bit parts of 32 bit result
-		//                   |   |     |       |
-		ires[i+3].l = edTab3[r][i+3][ires[i].B[3]].l;
-		ires[i+2].l = edTab3[r][i+2][ires[i].B[2]].l;
-		ires[i+1].l = edTab3[r][i+1][ires[i].B[1]].l;
-		ires[i+0].l = edTab3[r][i+0][ires[i].B[0]].l;
-
-		// Apply XORs again, now on T3 results
 		// Copy results back to state
-		op8xor(ires[i+0], ires[i+1], edXTab[r][col][3], ires[i+0]);  // 1 xor 2
-		op8xor(ires[i+2], ires[i+3], edXTab[r][col][4], ires[i+2]);  // 3 xor 4
-		op8xor(ires[i+0], ires[i+2], edXTab[r][col][5], ires[i+0]);  // (1 xor 2) xor (3 xor 4) - next XOR stage
-	}
-
-	//
-	// Copy results back to state
-	// ires[i] now contains 32bit XOR result
-	// We have to copy result to column...
-	for(i=0; i<N_BYTES; i+=4){
-		state.B[i/4+ 0] = r<(N_ROUNDS-1) ? ires[i].B[0] : ires[i+0].B[0];
-		state.B[i/4+ 4] = r<(N_ROUNDS-1) ? ires[i].B[1] : ires[i+1].B[0];
-		state.B[i/4+ 8] = r<(N_ROUNDS-1) ? ires[i].B[2] : ires[i+2].B[0];
-		state.B[i/4+12] = r<(N_ROUNDS-1) ? ires[i].B[3] : ires[i+3].B[0];
+		// ires[i] now contains 32bit XOR result
+		// We have to copy result to column...
+		for(i=0; i<N_BYTES; i+=4){
+			state.B[i/4+ 0] = ires[i].B[0];
+			state.B[i/4+ 4] = ires[i].B[1];
+			state.B[i/4+ 8] = ires[i].B[2];
+			state.B[i/4+12] = ires[i].B[3];
+		}
 	}
 
 #ifdef AES_BGE_ATTACK
@@ -905,13 +942,14 @@ int BGEAttack::run(void) {
 	W128b state;
 	cout << "Generating AES..." << endl;
 	bool encrypt = true;
-	generator.useDualAESARelationsIdentity=true;	// this attack works only on basic form
+
+	generator.useDualAESARelationsIdentity=false;
 	generator.useDualAESIdentity=false;
-	generator.useDualAESSimpeAlternate=true;
-	generator.useIO04x04Identity=true;
-	generator.useIO08x08Identity=true;
-	generator.useMB08x08Identity=true;
-	generator.useMB32x32Identity=true;
+	generator.useDualAESSimpeAlternate=false;
+	generator.useIO04x04Identity=false;
+	generator.useIO08x08Identity=false;
+	generator.useMB08x08Identity=false;
+	generator.useMB32x32Identity=false;
 	generator.generateExtEncoding(&coding, WBAESGEN_EXTGEN_ID);
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, true);  cout << "AES ENC generated" << endl;
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, false); cout << "AES DEC generated" << endl;
@@ -1125,10 +1163,13 @@ int BGEAttack::run(void) {
 	//                 =           L( x ) \oplus        Q^{-1}('00')      ==> affine
 
 	// Applying above description and reduce to affine matching transformations
+	// This would also work up to N_ROUNDS-1, but we would have to change input encoding of T1
+	// in next roud - code overhead. Not needed...
+
 	// Q will be on transfered to AES output bijection layer - additional one
 	// P will be on this->wbaes.eTab2[r][?][0..256]
 	cout << "Going to transform AES input/output matching bijection to affine" << endl;
-	for(r=0; r<N_ROUNDS-1; r++){
+	for(r=0; r<N_ROUNDS-2; r++){
 		for(i=0; i<AES_BYTES; i++){
 			// Choice of indexes for eTab2 explained below:
 			// Since we are interested in output encoding, we don't really care about input to Rbox (shiftrows is ignored).
@@ -1474,33 +1515,35 @@ int BGEAttack::run(void) {
 	cout << "Final result: " << endl;
 	dumpVector(encKey);
 
-
-	// DEBUG: dump determined relations
-	for(int r=1; r<rounds2hack; r++){
-		int roundBase = roundStart+r-1;
-		for(int i=0;i<16;i++){
-			cout << "## r="<<r<<"; i="<<i
-					<<"; Qj="<<CHEX(Qaffine->qj[roundBase][i])
-					<<"; Aj="<<hashMatrix(Qaffine->Aj[roundBase][i])
-					<<"; Matrix="<<dumpMatrix2str(Qaffine->Aj[roundBase][i], false)
-					<<endl;
+	// Just debug piece of code - was needed in proof that BGE attack works also
+	// on Dual AES scheme.
+	if (0){
+		// DEBUG: dump determined relations
+		for(int r=1; r<rounds2hack; r++){
+			int roundBase = roundStart+r-1;
+			for(int i=0;i<16;i++){
+				cout << "## r="<<r<<"; i="<<i
+						<<"; Qj="<<CHEX(Qaffine->qj[roundBase][i])
+						<<"; Aj="<<hashMatrix(Qaffine->Aj[roundBase][i])
+						<<"; Matrix="<<dumpMatrix2str(Qaffine->Aj[roundBase][i], false)
+						<<endl;
+			}
 		}
+
+		GenericAES dualAES;
+		dualAES.initFromIndex(AES_IRRED_POLYNOMIALS-1, AES_GENERATORS-1);
+		cout << "T: " << endl; dumpMatrix(dualAES.T);
+		cout << "Tinv: " << endl; dumpMatrixN(dualAES.Tinv);
+		cout << "T*20: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][0]);
+		cout << "T*21: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][1]);
+		cout << "20*T: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.T);
+		cout << "21*T: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.T);
+
+		cout << "Tinv*20: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][0]);
+		cout << "Tinv*21: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][1]);
+		cout << "20*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.Tinv);
+		cout << "21*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.Tinv);
 	}
-
-	GenericAES dualAES;
-	dualAES.initFromIndex(AES_IRRED_POLYNOMIALS-1, AES_GENERATORS-1);
-	cout << "T: " << endl; dumpMatrix(dualAES.T);
-	cout << "Tinv: " << endl; dumpMatrixN(dualAES.Tinv);
-	cout << "T*20: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][0]);
-	cout << "T*21: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][1]);
-	cout << "20*T: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.T);
-	cout << "21*T: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.T);
-
-	cout << "Tinv*20: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][0]);
-	cout << "Tinv*21: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][1]);
-	cout << "20*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.Tinv);
-	cout << "21*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.Tinv);
-
 
 	//
 	// Free memory part

@@ -36,21 +36,23 @@ int main(void) {
 	WBAESGenerator generator;
 	WBAES genAES;
 
-	// test WB AES with test vectors
+	// Test WB AES with test vectors.
+	// This test also demonstrates usage of external encodings by wrapping AES
 	generator.testWithVectors(true, genAES);
 
 	// Invert test
 	BGEAttack atk;
 
-	// Cipher inversion
-	//cout << "Testing cipher inversion;" << endl;
-	//atk.invertCipherTest();
-	//exit(3);
-
 	// BGE attack
 	cout << "Starting an attack! Obj: " << endl;
 	atk.run();
 	exit(3);
+
+	// Cipher inversion - works only without external encodings,
+	//  more specifically, big diffusion matrix has to be I_{128}
+	//cout << "Testing cipher inversion;" << endl;
+	//atk.invertCipherTest();
+	//exit(3);
 
 	//generator.useDualAESIdentity=true;
 	//generator.useIO04x04Identity=true;
