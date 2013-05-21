@@ -152,9 +152,11 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 
 	// Now connect XOR3 tables form R=0 (sums T1 input table) to input of T2 tables
 	// Result is stored in last XOR table starting on 448 offset, result is stored in LOW value
+	// Note that ShiftRows is done here, every Sbox uses result of ShiftRows operation on its input
 	// NO ShiftRows operation here, just 1:1
 	for(i=0; i<N_BYTES; i++){
-		CONNECT_XOR_TO_W08x32(edXOR3[0], 448+i*2, edT2[0][i/4][i%4]);
+		int newIdx = shiftOp[i];
+		CONNECT_XOR_TO_W08x32(edXOR3[0], 448+i*2, edT2[0][newIdx/4][newIdx%4]);
 	}
 
 	//
@@ -381,7 +383,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	CODING        (&codingMap_edXOR2)[N_ROUNDS][N_SECTIONS][24]         = encrypt ? codingMap->eXOR2: codingMap->dXOR2;
 	CODING        (&codingMap_edXOR3)[2][XTB_CNT_T1]                    = encrypt ? codingMap->eXOR3: codingMap->dXOR3;
 
-	// Init T1
+	// Init T1[0] tables - for the first round
 	this->generateT1Tables(genAES, extc, encrypt);
 
 #ifdef AES_BGE_ATTACK
