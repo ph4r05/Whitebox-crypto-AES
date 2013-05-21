@@ -59,6 +59,9 @@ WBAESGenerator::WBAESGenerator() {
 	useIO08x08Identity=true;
 	useMB08x08Identity=false;
 	useMB32x32Identity=false;
+	pCoding04x04 = NULL;
+	pCoding08x08 = NULL;
+	codingMap    = NULL;
 }
 
 WBAESGenerator::~WBAESGenerator() {
@@ -759,25 +762,14 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 			for(j=0; j<6; j++){
 				// every master XOR table consists of 8 small XOR tables
 				for(k=0; k<8; k++){
-					// Build tables - for each byte
-					for(b=0; b<256; b++){
-						int	 bb = b;
-						CODING & xorCoding = j > 2 ? codingMap_edXOR2[r][i][(j-3)*8+k] : codingMap_edXOR1[r][i][j*8+k];
-						bb = iocoding_encode08x08(bb, xorCoding.IC, true, pCoding04x04, pCoding08x08);
-//cout << "XTB["<<r<<"]["<<i<<"]["<<j<<"]["<<k<<"]["<<b<<"] = " << HI(bb) << " ^ " << LO(bb) << " = ";
-						bb = HI(bb) ^ LO(bb);
-						bb = iocoding_encode08x08(bb, xorCoding.OC, false, pCoding04x04, pCoding08x08);
-//cout << bb << endl;
-						//
-						//             ________________________ ROUND
-						//            |   _____________________ Section with same AES structure/MixCol stripe
-						//            |  |   __________________ Master XOR table in section (6 in total, 3 up, 3 down)
-						//            |  |  |   _______________ Slave XOR table in master table, 8 in total
-						//            |  |  |  |   ____________ Mapping for input value
-						//            |  |  |  |  |
-						genAES_edXTab[r][i][j][k][b] = bb;
-
-					}
+					CODING & xorCoding = j > 2 ? codingMap_edXOR2[r][i][(j-3)*8+k] : codingMap_edXOR1[r][i][j*8+k];
+					//
+					//                                            ________________________ ROUND
+					//                                           |   _____________________ Section with same AES structure/MixCol stripe
+					//                                           |  |   __________________ Master XOR table in section (6 in total, 3 up, 3 down)
+					//                                           |  |  |   _______________ Slave XOR table in master table, 8 in total
+					//                                           |  |  |  |
+					generateXorTable(&xorCoding, &(genAES_edXTab[r][i][j][k]));
 				}
 			}
 		}
@@ -789,11 +781,9 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	for(r=0; r<2; r++){
 		for(i=0; i<15; i++){
 			for(j=0; j<4; j++){
-
 				// every master XOR table consists of 8 small XOR tables
 				for(k=0; k<8; k++){
-					CODING & xorCoding = codingMap_edXOR3[r][0]; // TODO: finish this
-
+					CODING & xorCoding = codingMap_edXOR3[r][32*i+8*j+k];
 					//
 					//                                              ________________________ ROUND
 					//                                             |   _____________________ 0..14 8,4,2,1
