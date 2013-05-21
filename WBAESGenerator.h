@@ -165,7 +165,7 @@ typedef struct _W08x128Coding {
 // Input/Output encoding. It is specification for T1 tables for apps using WBAES.
 //
 typedef struct _ExtEncoding {
-	CODING8X8_TABLE lfC[2][N_BYTES];		// 0=>first input round bijection, 1=>last output round bijection
+	CODING4X4_TABLE lfC[2][2*N_BYTES];		// 0=>first input round bijection, 1=>last output round bijection
 	MB128x128_TABLE IODM[2];                // 128 x 128 GF(2) matrix, input, output mixing bijection
 } ExtEncoding;
 

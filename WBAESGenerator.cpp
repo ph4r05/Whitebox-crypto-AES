@@ -293,14 +293,12 @@ int WBAESGenerator::generateMixingBijections(bool identity){
 }
 
 void WBAESGenerator::generateExtEncoding(ExtEncoding * extc, int flags){
-	int i,k;
+	int k;
 
 	// generate 8x8 bijections at first
 	for(k=0; k<2; k++){
 		bool identity = (k==0 && (flags & WBAESGEN_EXTGEN_fCID) > 0) || (k==1 && (flags & WBAESGEN_EXTGEN_lCID) > 0);
-		for(i=0; i<N_BYTES; i++){
-			this->generate8X8Bijections(&(extc->lfC[k][0]), N_BYTES, identity);
-		}
+		this->generate4X4Bijections(&(extc->lfC[k][0]), 2*N_BYTES, identity);
 	}
 
 	// generate mixing bijection
@@ -334,7 +332,7 @@ void WBAESGenerator::generateT1Tables(WBAES& genAES, ExtEncoding * extc, bool en
 			W128b mapResult;
 			int	  bb = b;
 			// Decode with IO encoding
-			bb = extc->lfC[0][i].invCoding[b];
+			bb = HILO(extc->lfC[0][2*i+0].invCoding[HI(b)], extc->lfC[0][2*i+1].invCoding[LO(b)]);
 			// Transform bb to matrix, to perform mixing bijection operation (matrix multiplication)
 			mat_GF2 tmpMat(INIT_SIZE, 128, 1);
 			// builds binary matrix [0 0 bb 0 0 0 0 0 0 0 0 0 0 0 0 0], if i==2
@@ -638,8 +636,6 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 						W128b mapResult128;
 						bb = getLong(tmpE);
 
-						// Encode with external encoding
-						bb = extc->lfC[1][(i*N_SECTIONS + j)].coding[bb];
 						// Transform bb to matrix, to perform mixing bijection operation (matrix multiplication)
 						mat_GF2 tmpMat2(INIT_SIZE, 128, 1);
 						// builds binary matrix [0 0 bb 0 0 0 0 0 0 0 0 0 0 0 0 0], if curByte==2
@@ -810,7 +806,6 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 				// every master XOR table consists of 8 small XOR tables
 				for(k=0; k<8; k++){
 					CODING & xorCoding = codingMap_edXOR3[r][32*i+8*j+k];
-					// TODO: for xor table 14 add external output encoding
 					//
 					//                                              ________________________ ROUND
 					//                                             |   _____________________ 0..14 8,4,2,1
@@ -818,6 +813,15 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 					//                                             |  |  |   _______________ 0..8  (32-bit XOR table)
 					//                                             |  |  |  |
 					generateXorTable(&xorCoding, &(genAES_edXTabEx[r][i][j][k]));
+
+					//
+					// Last XOR table
+					//
+					if (r==1 && i==14) {
+						for(int b=0; b<256; b++){
+							genAES_edXTabEx[r][i][j][k][b] = extc->lfC[1][8*j+k].coding[genAES_edXTabEx[r][i][j][k][b]];
+						}
+					}
 				}
 			}
 		}
@@ -847,8 +851,6 @@ int WBAESGenerator::generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size, bo
 		// you can very easily localize the problem.
 
 		//if (i>=0x3c0) identity=true;
-		identity=false;
-		//if (i>=0x1610) identity=true;
 		c |= generate4X4Bijection(&tbl[i].coding, &tbl[i].invCoding, identity);
 	}
 
@@ -898,11 +900,11 @@ int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
 	}
 
 	//this->useIO04x04Identity=true;
-	this->useIO08x08Identity=true;
-	this->useDualAESARelationsIdentity=true;
-	this->useDualAESIdentity=true;
-	this->useMB08x08Identity=true;
-	this->useMB32x32Identity=true;
+	//this->useIO08x08Identity=true;
+	//this->useDualAESARelationsIdentity=true;
+	//this->useDualAESIdentity=true;
+	//this->useMB08x08Identity=true;
+	//this->useMB32x32Identity=true;
 
 	generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &extc, true);
 	generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &extc, false);
