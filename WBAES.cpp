@@ -114,17 +114,20 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	}
 
 	// Finish XOR cascade by hand
-	op8xor_128(ares[0], ares[1], edXTabEx[0][8],  ares[0]);  // 0 xor 1 --> 0
-	op8xor_128(ares[2], ares[3], edXTabEx[0][9],  ares[2]);  // 2 xor 3 --> 2
-	op8xor_128(ares[4], ares[5], edXTabEx[0][10], ares[4]);  // 4 xor 5 --> 4
-	op8xor_128(ares[6], ares[7], edXTabEx[0][11], ares[6]);  // 6 xor 7 --> 6
+	op8xor_128(ares[0],  ares[2],  edXTabEx[0][8],  ares[0]);  // 0  xor 2  --> 0
+	op8xor_128(ares[4],  ares[6],  edXTabEx[0][9],  ares[4]);  // 4  xor 6  --> 4
+	op8xor_128(ares[8],  ares[10], edXTabEx[0][10], ares[8]);  // 8  xor 10 --> 8
+	op8xor_128(ares[12], ares[14], edXTabEx[0][11], ares[12]); // 12 xor 14 --> 12
 	// 3. lvl
-	op8xor_128(ares[0], ares[2], edXTabEx[0][12], ares[0]);  // 0 xor 2 --> 0
-	op8xor_128(ares[4], ares[6], edXTabEx[0][13], ares[4]);  // 4 xor 6 --> 4
+	op8xor_128(ares[0],  ares[4],  edXTabEx[0][12], ares[0]);  // 0 xor 4  --> 0
+	op8xor_128(ares[8],  ares[12], edXTabEx[0][13], ares[8]);  // 8 xor 12 --> 8
 	// 4. lvl - final stage. Result in ares[0]
-	op8xor_128(ares[0], ares[4], edXTabEx[0][14], ares[0]);  // 0 xor 4 --> 0
+	op8xor_128(ares[0],  ares[8],  edXTabEx[0][14], ares[0]);  // 0 xor 8 --> 0
 	// Copy result from ares[0] to state
 	W128CP(state, ares[0]);
+
+	cout << "First level: " << endl;
+	dumpW128b(state);
 
 	// Compute 9 rounds of T2 boxes
 	for(r=0; r<(N_ROUNDS-1); r++){
@@ -207,8 +210,11 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	//
 	// Final round is special -> T1 boxes
 	//
-	for(i=0; i<N_BYTES; i++){
-		W128CP(ares[i], edTab1[1][i][state.B[shiftOp[i]]]);
+	for(i=0; i<N_BYTES; i+=4){
+		W128CP(ares[i+0], edTab1[1][i+0][state.B[shiftOp[i/4+0*4]]]);
+		W128CP(ares[i+1], edTab1[1][i+1][state.B[shiftOp[i/4+1*4]]]);
+		W128CP(ares[i+2], edTab1[1][i+2][state.B[shiftOp[i/4+2*4]]]);
+		W128CP(ares[i+3], edTab1[1][i+3][state.B[shiftOp[i/4+3*4]]]);
 	}
 
 	// and finally compute XOR cascade again, now for T1[1] - output T1
@@ -218,15 +224,15 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	}
 
 	// Finish XOR cascade by hand
-	op8xor_128(ares[0], ares[1], edXTabEx[1][8],  ares[0]);  // 0 xor 1 --> 0
-	op8xor_128(ares[2], ares[3], edXTabEx[1][9],  ares[2]);  // 2 xor 3 --> 2
-	op8xor_128(ares[4], ares[5], edXTabEx[1][10], ares[4]);  // 4 xor 5 --> 4
-	op8xor_128(ares[6], ares[7], edXTabEx[1][11], ares[6]);  // 6 xor 7 --> 6
+	op8xor_128(ares[0],  ares[2],  edXTabEx[1][8],  ares[0]);  // 0  xor 2  --> 0
+	op8xor_128(ares[4],  ares[6],  edXTabEx[1][9],  ares[4]);  // 4  xor 6  --> 4
+	op8xor_128(ares[8],  ares[10], edXTabEx[1][10], ares[8]);  // 8  xor 10 --> 8
+	op8xor_128(ares[12], ares[14], edXTabEx[1][11], ares[12]); // 12 xor 14 --> 12
 	// 3. lvl
-	op8xor_128(ares[0], ares[2], edXTabEx[1][12], ares[0]);  // 0 xor 2 --> 0
-	op8xor_128(ares[4], ares[6], edXTabEx[1][13], ares[4]);  // 4 xor 6 --> 4
+	op8xor_128(ares[0],  ares[4],  edXTabEx[1][12], ares[0]);  // 0 xor 4  --> 0
+	op8xor_128(ares[8],  ares[12], edXTabEx[1][13], ares[8]);  // 8 xor 12 --> 8
 	// 4. lvl - final stage. Result in ares[0]
-	op8xor_128(ares[0], ares[4], edXTabEx[1][14], ares[0]);  // 0 xor 4 --> 0
+	op8xor_128(ares[0],  ares[8],  edXTabEx[1][14], ares[0]);  // 0 xor 8 --> 0
 	// Copy result from ares[0] to state
 	W128CP(state, ares[0]);
 

@@ -131,7 +131,7 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 		//                                                  \                 /
 		//                                                   \               /
         //                                                [0123456789101112131415]
-		// On index                                                  448
+		// On index                                                 448
 		//
 		for(i=0; i<4; i++){
 			// index of XOR tables we can use on 2. level
@@ -305,7 +305,7 @@ void WBAESGenerator::generateExtEncoding(ExtEncoding * extc, int flags){
 	// generate mixing bijection
 	for(k=0; k<2; k++){
 		bool identity = (k==0 && (flags & WBAESGEN_EXTGEN_IDMID) > 0) || (k==1 && (flags & WBAESGEN_EXTGEN_ODMID) > 0);
-		if (identity){
+		if (!identity){
 			generateMixingBijection(extc->IODM[k].mb, 128, 4);
 			extc->IODM[k].inv = inv(extc->IODM[k].mb);
 		} else {
@@ -632,24 +632,25 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 						this->AESCipher[4*r + i].applyTinv(tmpE);
 
 						// Now we use output encoding G and quit, no MixColumn or Mixing bijections here.
-						W128b mapResult;
+						W128b mapResult128;
 						bb = getLong(tmpE);
+
 						// Encode with external encoding
-						bb = extc->lfC[1][4*i+j].coding[bb];
+						bb = extc->lfC[1][(i*N_SECTIONS + j)].coding[bb];
 						// Transform bb to matrix, to perform mixing bijection operation (matrix multiplication)
-						mat_GF2 tmpMat(INIT_SIZE, 128, 1);
-						// builds binary matrix [0 0 bb 0 0 0 0 0 0 0 0 0 0 0 0 0], if j==2
-						BYTE_to_matGF2(bb, tmpMat, i*8, 0);
+						mat_GF2 tmpMat2(INIT_SIZE, 128, 1);
+						// builds binary matrix [0 0 bb 0 0 0 0 0 0 0 0 0 0 0 0 0], if curByte==2
+						BYTE_to_matGF2(bb, tmpMat2, (i*N_SECTIONS + j)*8, 0);
 						// Build MB multiplication result
-						tmpMat = extc->IODM[1].mb * tmpMat;
+						tmpMat2 = extc->IODM[1].mb * tmpMat2;
 						// Encode 128-bit wide output to map result
-						for(j=0; j<16; j++){
-							mapResult.B[j] = matGF2_to_BYTE(tmpMat, 8*j, 0);
+						for(int jj=0; jj<16; jj++){
+							mapResult128.B[jj] = matGF2_to_BYTE(tmpMat2, jj*8, 0);
 						}
 						// Encode mapResult with out encoding of T1 table
-						iocoding_encode128x128(mapResult, mapResult, codingMap_edT1[1][4*i+j], false, pCoding04x04, pCoding08x08);
+						iocoding_encode128x128(mapResult128, mapResult128, codingMap_edT1[1][(i*N_SECTIONS + j)], false, pCoding04x04, pCoding08x08);
 						// Store result value to lookup table
-						W128CP(genAES_edTab1[1][4*i+j][b], mapResult);
+						W128CP(genAES_edTab1[1][(i*N_SECTIONS + j)][b], mapResult128);
 						continue;
 					}
 
@@ -885,6 +886,13 @@ int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
 		cout << "Generating table implementation for testvector key: " << endl;
 		dumpVectorT(GenericAES::testVect128_key, 16);
 	}
+
+	this->useIO04x04Identity=true;
+	this->useIO08x08Identity=true;
+	this->useDualAESARelationsIdentity=true;
+	this->useDualAESIdentity=true;
+	this->useMB08x08Identity=true;
+	this->useMB32x32Identity=true;
 
 	generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &extc, true);
 	generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &extc, false);
