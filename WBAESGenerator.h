@@ -38,17 +38,22 @@
 #define COD_BITS_UNASSIGNED 0x00
 #define COD_BITS_4          0x01
 #define COD_BITS_8          0x02
+#define COD_BITS_8_EXT      0x03
 
 // MIXING BIJECTION TYPE
 #define MB_IDENTITY 0x00
 #define MB_8x8      0x01
 #define MB_32x32    0x02
+#define MB_128x128  0x04
 
 // MIXING BIJECTION COUNTS
 #define MB_CNT_08x08_ROUNDS 9
 #define MB_CNT_08x08_PER_ROUND 16
 #define MB_CNT_32x32_ROUNDS 9
 #define MB_CNT_32x32_PER_ROUND 4
+
+// NUMBER OF XOR TABLES FOR ONE T1 TABLE
+#define XTB_CNT_T1 480
 
 //
 //  HIGHLOW, DEFINE TWO 4-BITS CODING FOR 8-BITS ARGUMENT
@@ -124,7 +129,7 @@ typedef struct _CODING8X8_TABLE_EX {
 } CODING8X8_TABLE_EX;
 
 //
-//  Mixing bijection
+//  Mixing bijection (linear transformation represented as GF(2) matrix)
 //
 typedef struct _MB_TABLE {
 	//int         type;
@@ -138,6 +143,7 @@ typedef struct _MB_TABLE {
 
 typedef MB_TABLE MB08x08_TABLE;
 typedef MB_TABLE MB32x32_TABLE;
+typedef MB_TABLE MB128x128_TABLE;
 
 //
 // Coding for T2 and T3 boxes, 8bit -> 32bit
@@ -147,6 +153,30 @@ typedef struct _W08x32Coding {
     HIGHLOW OC[4];
 } W08x32Coding;
 
+//
+// Coding for T1 boxes, 8bit -> 128bit
+//
+typedef struct _W08x128Coding {
+    HIGHLOW IC;
+    HIGHLOW OC[16];
+} W08x128Coding;
+
+//
+// Input/Output encoding. It is specification for T1 tables for apps using WBAES.
+//
+typedef struct _ExtEncoding {
+	CODING8X8_TABLE lfC[2][N_BYTES];		// 0=>first input round bijection, 1=>last output round bijection
+	MB128x128_TABLE IODM[2];                // 128 x 128 GF(2) matrix, input, output mixing bijection
+} ExtEncoding;
+
+#define WBAESGEN_EXTGEN_fCID 1          // lfC[0]  in ExtEncoding will be identity
+#define WBAESGEN_EXTGEN_lCID 2          // lfC[1]  in ExtEncoding will be identity
+#define WBAESGEN_EXTGEN_IDMID 4         // IODM[0] in ExtEncoding will be identity
+#define WBAESGEN_EXTGEN_ODMID 8         // IODM[1] in ExtEncoding will be identity
+
+// whole ExtEncoding will be identity
+#define WBAESGEN_EXTGEN_ID (WBAESGEN_EXTGEN_fCID | WBAESGEN_EXTGEN_lCID | WBAESGEN_EXTGEN_IDMID | WBAESGEN_EXTGEN_ODMID)
+
 // NOTE: 
 // Coding for XOR boxes can be done with CODING type easily
 //
@@ -155,59 +185,53 @@ typedef struct _W08x32Coding {
 typedef CODING  CODING32W[4];
 typedef struct _WBACR_AES_CODING_MAP {
     // ENCRYPT TABLES
+	W08x128Coding       eT1[2][N_BYTES];                              // ENCRYPT ROUND CODING MAP
     W08x32Coding        eT2[N_ROUNDS][N_SECTIONS][4];                 // ENCRYPT ROUND CODING MAP
     W08x32Coding        eT3[N_ROUNDS][N_SECTIONS][4];                 // ENCRYPT ROUND CODING MAP   
-    CODING              eXOR1[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD
-    CODING              eXOR2[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD
-    CODING              eFINALROUND[N_SECTIONS][4];
+    CODING              eXOR1[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD, used with T2 tables
+    CODING              eXOR2[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD, used with T3 tables
+    CODING              eXOR3[2][XTB_CNT_T1];					      // 15*4*8, used with T1 tables
     
     // DECRYPT TABLES
+    W08x128Coding       dT1[2][N_BYTES];                              // ENCRYPT ROUND CODING MAP
     W08x32Coding        dT2[N_ROUNDS][N_SECTIONS][4];                 // ENCRYPT ROUND CODING MAP
 	W08x32Coding        dT3[N_ROUNDS][N_SECTIONS][4];                 // ENCRYPT ROUND CODING MAP
-	CODING              dXOR1[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD
-	CODING              dXOR2[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD
-	CODING              dFINALROUND[N_SECTIONS][4];
-
-    /*CODING32W           INVROUND[N_ROUNDS][N_SECTIONS][4]; // DECRYPT ROUND    
-    CODING              INVXOR[N_ROUNDS][N_SECTIONS][24];           // 24 == 8 4-BITS PARTS OF 32-BITS DWORD
-    CODING              INVFIRSTROUND[N_SECTIONS][4];*/
+	CODING              dXOR1[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD, used with T2 tables
+	CODING              dXOR2[N_ROUNDS][N_SECTIONS][24];              // 24 == 8 4-BITS PARTS OF 32-BITS DWORD, used with T3 tables
+	CODING              dXOR3[2][XTB_CNT_T1];					      // 15*4*8, used with T1 tables
 } WBACR_AES_CODING_MAP, *PWBACR_AES_CODING_MAP;
 
+//
+// Allocates new 4X4 encodings for 08x32 tables (T2,T3) from given offset (can be used to allocate also T1)
+// Allocation = generate unique bijection ID for particular IO box.
+// Only OC (output coding) is generated = donor of the bijection. IC = acceptor and is set by CONNECT* macros
+// From other tables OC fields.
+//
+#define ALLOCW08x32CodingEx(cod, ofs, idx) {                  \
+    cod.OC[(ofs)+0].type = COD_BITS_4; cod.OC[(ofs)+1].type = COD_BITS_4; \
+    cod.OC[(ofs)+2].type = COD_BITS_4; cod.OC[(ofs)+3].type = COD_BITS_4; \
+    cod.OC[(ofs)+0].H = ++(idx);                                  \
+    cod.OC[(ofs)+0].L = ++(idx);                                  \
+    cod.OC[(ofs)+1].H = ++(idx);                                  \
+    cod.OC[(ofs)+1].L = ++(idx);                                  \
+    cod.OC[(ofs)+2].H = ++(idx);                                  \
+    cod.OC[(ofs)+2].L = ++(idx);                                  \
+    cod.OC[(ofs)+3].H = ++(idx);                                  \
+    cod.OC[(ofs)+3].L = ++(idx);                                  };
 
-
-
-#define ALLOCW08x32Coding(cod, idx) {                       \
-    cod.OC[0].type = COD_BITS_4; cod.OC[1].type = COD_BITS_4; \
-    cod.OC[2].type = COD_BITS_4; cod.OC[3].type = COD_BITS_4; \
-    cod.OC[0].H = ++(idx);                                  \
-    cod.OC[0].L = ++(idx);                                  \
-    cod.OC[1].H = ++(idx);                                  \
-    cod.OC[1].L = ++(idx);                                  \
-    cod.OC[2].H = ++(idx);                                  \
-    cod.OC[2].L = ++(idx);                                  \
-    cod.OC[3].H = ++(idx);                                  \
-    cod.OC[3].L = ++(idx);                                  };
+#define ALLOCW08x32Coding(cod, idx) ALLOCW08x32CodingEx(cod, 0, idx)
 
 //
-// Connects OUTPUT coding of 32bit wide boxes (T2,T3) to INPUT coding of XOR boxes, 32bit wide. 
-// Each XOR box accepts 2 arguments, first in HIGH part, second in LOW part, thus when associating
-// mapping from one particular W32box we are using either HIGH or LOW parts. 
+// Allocate T1 tables - generate bijection IDs for output side of the table (128-bit wide)
 //
-#define CONNECT_W08x32_TO_XOR(cod, xtb, HL, offset) {             \
-    xtb[(offset)+0].IC.HL = cod.OC[0].H;                          \
-    xtb[(offset)+1].IC.HL = cod.OC[0].L;                          \
-    xtb[(offset)+2].IC.HL = cod.OC[1].H;                          \
-    xtb[(offset)+3].IC.HL = cod.OC[1].L;                          \
-    xtb[(offset)+4].IC.HL = cod.OC[2].H;                          \
-    xtb[(offset)+5].IC.HL = cod.OC[2].L;                          \
-    xtb[(offset)+6].IC.HL = cod.OC[3].H;                          \
-    xtb[(offset)+7].IC.HL = cod.OC[3].L;                          }
-
-#define CONNECT_W08x32_TO_XOR_H(cod, xtb, offset) CONNECT_W08x32_TO_XOR(cod, xtb, H, offset)
-#define CONNECT_W08x32_TO_XOR_L(cod, xtb, offset) CONNECT_W08x32_TO_XOR(cod, xtb, L, offset)
+#define ALLOCW08x128Coding(cod, idx) {                            \
+	ALLOCW08x32CodingEx(cod, 0, idx);                             \
+	ALLOCW08x32CodingEx(cod, 4, idx);                             \
+	ALLOCW08x32CodingEx(cod, 8, idx);                             \
+	ALLOCW08x32CodingEx(cod, 12, idx);                            };
 
 //
-// Allocates new output coding for XOR boxes. 
+// Allocates new output coding for 4-bit XOR boxes XTB[offset+0 - offset+7], altogether 32 bit XOR table
 // Recall that output of XOR is stored in LOW part, thus upper is unused -> no allocation for upper part.
 //
 #define ALLOCXORCoding(xtb, offset, idx) {                                                                           \
@@ -220,6 +244,36 @@ typedef struct _WBACR_AES_CODING_MAP {
     xtb[(offset)+6].OC.type = COD_BITS_4; xtb[(offset)+6].OC.H = UNUSED_CODING; xtb[(offset)+6].OC.L = ++(idx);      \
     xtb[(offset)+7].OC.type = COD_BITS_4; xtb[(offset)+7].OC.H = UNUSED_CODING; xtb[(offset)+7].OC.L = ++(idx);      };
 
+//
+// Allocates XOR table 128-bit wide
+//
+#define ALLOCXOR128Coding(xtb, offset, idx) {                                                                        \
+		ALLOCXORCoding(xtb, (offset)+0,  idx);                                                                       \
+		ALLOCXORCoding(xtb, (offset)+8,  idx);                                                                       \
+		ALLOCXORCoding(xtb, (offset)+16, idx);                                                                       \
+		ALLOCXORCoding(xtb, (offset)+24, idx);                                                                       };
+
+//
+// Connects OUTPUT coding of 32bit wide boxes (T2,T3) to INPUT coding of XOR boxes, 32bit wide. 
+// Each XOR box accepts 2 arguments, first in HIGH part, second in LOW part, thus when associating
+// mapping from one particular W32box we are using either HIGH or LOW parts. 
+//
+#define CONNECT_W08x32_TO_XOR_EX(cod, xtb, HL, offsetL, offsetR) { \
+    xtb[(offsetL)+0].IC.HL = cod.OC[(offsetR)+0].H;                \
+    xtb[(offsetL)+1].IC.HL = cod.OC[(offsetR)+0].L;                \
+    xtb[(offsetL)+2].IC.HL = cod.OC[(offsetR)+1].H;                \
+    xtb[(offsetL)+3].IC.HL = cod.OC[(offsetR)+1].L;                \
+    xtb[(offsetL)+4].IC.HL = cod.OC[(offsetR)+2].H;                \
+    xtb[(offsetL)+5].IC.HL = cod.OC[(offsetR)+2].L;                \
+    xtb[(offsetL)+6].IC.HL = cod.OC[(offsetR)+3].H;                \
+    xtb[(offsetL)+7].IC.HL = cod.OC[(offsetR)+3].L;                }
+
+#define CONNECT_W08x32_TO_XOR_H_EX(cod, xtb, offsetL, offsetR)   CONNECT_W08x32_TO_XOR_EX(cod, xtb, H, offsetL, offsetR)
+#define CONNECT_W08x32_TO_XOR_L_EX(cod, xtb, offsetL, offsetR)   CONNECT_W08x32_TO_XOR_EX(cod, xtb, L, offsetL, offsetR)
+
+#define CONNECT_W08x32_TO_XOR(cod, xtb, HL, offset) CONNECT_W08x32_TO_XOR_EX(cod, xtb, HL, offset, 0)
+#define CONNECT_W08x32_TO_XOR_H(cod, xtb, offset)   CONNECT_W08x32_TO_XOR_H_EX(cod, xtb, offset, 0)
+#define CONNECT_W08x32_TO_XOR_L(cod, xtb, offset)   CONNECT_W08x32_TO_XOR_L_EX(cod, xtb, offset, 0)
 
 //
 // Connects OUTPUT coding for XOR tables to INPUT coding of XOR tables on lower layer.
@@ -243,8 +297,16 @@ typedef struct _WBACR_AES_CODING_MAP {
     xtb3[(offset3)+6].IC.HL = xtb1[(offset1)+6].OC.L;                           \
     xtb3[(offset3)+7].IC.HL = xtb1[(offset1)+7].OC.L;                           }
 
+#define CONNECT_XOR_TO_XOR_128(xtb1, offset1, xtb3, offset3, HL) {             \
+        CONNECT_XOR_TO_XOR(xtb1, (offset1)+0,  xtb3, (offset3)+0,  HL);        \
+        CONNECT_XOR_TO_XOR(xtb1, (offset1)+8,  xtb3, (offset3)+8,  HL);        \
+        CONNECT_XOR_TO_XOR(xtb1, (offset1)+12, xtb3, (offset3)+12, HL);        \
+        CONNECT_XOR_TO_XOR(xtb1, (offset1)+24, xtb3, (offset3)+24, HL);        }
+
 #define CONNECT_XOR_TO_XOR_H(xtb1, offset1, xtb3, offset3) CONNECT_XOR_TO_XOR(xtb1, offset1, xtb3, offset3, H)
 #define CONNECT_XOR_TO_XOR_L(xtb1, offset1, xtb3, offset3) CONNECT_XOR_TO_XOR(xtb1, offset1, xtb3, offset3, L)
+#define CONNECT_XOR_TO_XOR_128_H(xtb1, offset1, xtb3, offset3) CONNECT_XOR_TO_XOR_128(xtb1, offset1, xtb3, offset3, H)
+#define CONNECT_XOR_TO_XOR_128_L(xtb1, offset1, xtb3, offset3) CONNECT_XOR_TO_XOR_128(xtb1, offset1, xtb3, offset3, L)
 
 //
 // Connects 8bit output from 2 consecutive XOR tables to 8b input of W08x32 table
@@ -258,7 +320,7 @@ typedef struct _WBACR_AES_CODING_MAP {
 // 
 // Assembles 8bit number (BYTE / unsigned char) from bit representation in column vector. LSB first
 //
-#define ColBinaryVectorToByte(src,i,j) (                \
+#define ColBinaryVectorToByte(src,i,j) (                    \
                   ((src[(i)+0][(j)] == 1) ? 1<<0 : 0)       \
                 | ((src[(i)+1][(j)] == 1) ? 1<<1 : 0)       \
                 | ((src[(i)+2][(j)] == 1) ? 1<<2 : 0)       \
@@ -426,9 +488,17 @@ public:
  	// generates input output 128b coding
 	void generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES], bool identity=false);
 
+	// generates new externalEncoding
+	// takes flags WBAESGEN_EXTGEN_* determining which parts of ExtEncoding will be id.
+	void generateExtEncoding(ExtEncoding * extc, int flags);
+
 	//
-	// Generate random coding (bijections).
-	void generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, CODING8X8_TABLE* pCoding08x08, bool encrypt);
+	// Generate WB AES tables for encryption or decryption - MAIN method here
+	void generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, ExtEncoding * extc, bool encrypt);
+
+	//
+	// Helper method, generates only T1 tables from external encoding
+	void generateT1Tables(BYTE *key, enum keySize ksize, WBAES& genAES, ExtEncoding * extc, bool encrypt);
 
 	//
 	// Raw method for generating random bijections

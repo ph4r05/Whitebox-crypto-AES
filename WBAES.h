@@ -240,11 +240,13 @@ public:
 
 		
 	// XOR tables
-	W32XTB eXTab[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS];
+    W32XTB eXTab[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS];
+
+    // XOR tables for external encodings (input & output, connected to Type I tables)
+    W32XTB eXTabEx[2][15][4];		// 2 (input, output) * 15 (8,4,2,1) * 4 (32bit * 4 = 128bit)
 	
 	// Type I - just first round
-	// @deprecated - useless here
-	//AES_TB_TYPE1 eFirstRoundTab;
+	AES_TB_TYPE1 eTab1[2][N_BYTES];
 	
 	// Type II tables
     AES_TB_TYPE2 eTab2[N_ROUNDS][N_BYTES];

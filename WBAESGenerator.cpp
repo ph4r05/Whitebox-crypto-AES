@@ -69,18 +69,94 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCou
 	int r,i,cIdx=0;
 
 	// Encryption/Decryption dependent operation and tables
-	int (&shiftOp)[N_BYTES] 							 = encrypt ? (this->shiftRowsLBijection) : (this->shiftRowsLBijectionInv);
-	W08x32Coding  (&edT2)[N_ROUNDS][N_SECTIONS][4]		 = encrypt ? (map.eT2)  		  : (map.dT2);
-	W08x32Coding  (&edT3)[N_ROUNDS][N_SECTIONS][4]       = encrypt ? (map.eT3)   		  : (map.dT3);
-	CODING        (&edXOR1)[N_ROUNDS][N_SECTIONS][24]    = encrypt ? (map.eXOR1) 		  : (map.dXOR1);
-	CODING        (&edXOR2)[N_ROUNDS][N_SECTIONS][24]    = encrypt ? (map.eXOR2) 		  : (map.dXOR2);
+	int (&shiftOp)[N_BYTES]                           = encrypt ? (this->shiftRowsLBijection) : (this->shiftRowsLBijectionInv);
+	W08x128Coding (&edT1)[2][N_BYTES]                 = encrypt ? (map.eT1)                   : (map.dT1);
+	W08x32Coding  (&edT2)[N_ROUNDS][N_SECTIONS][4]    = encrypt ? (map.eT2)                   : (map.dT2);
+	W08x32Coding  (&edT3)[N_ROUNDS][N_SECTIONS][4]    = encrypt ? (map.eT3)                   : (map.dT3);
+	CODING        (&edXOR1)[N_ROUNDS][N_SECTIONS][24] = encrypt ? (map.eXOR1)                 : (map.dXOR1);
+	CODING        (&edXOR2)[N_ROUNDS][N_SECTIONS][24] = encrypt ? (map.eXOR2)                 : (map.dXOR2);
+	CODING        (&edXOR3)[2][XTB_CNT_T1]            = encrypt ? (map.eXOR3)                 : (map.dXOR3);
+
+	// At first allocate new bijections for T1 output tables
+	// Allocate encodings for XOR cascade summing output of T1 boxes
+	for(r=0;r<2;r++){
+		// T1 out
+		for(i=0; i<N_BYTES; i++){
+			ALLOCW08x128Coding(edT1[r][i], cIdx);
+		}
+
+		// XOR table cascade for T1 out sum, 8,4,2,1 = 15 XOR tables
+		for(i=0; i<XTB_CNT_T1; i+=32){
+			ALLOCXOR128Coding(edXOR3[r], i, cIdx);
+		}
+
+		// Now connect output of T1 table (edT1[0]) for first round of XOR cascade
+		// then connect whole XOR cascade together
+		for(i=0; i<N_BYTES; i+=2){
+			// first numerical argument is XOR table offset
+			// = (i/2 * 32); offset in global XOR3 table. It takes 32 XOR tables to SUM 2xT1.
+			// Thus in first level we have 8 pairs of T1, we need 8*32 = 256 XOR tables
+			int xtbId = i*16;
+
+			CONNECT_W08x32_TO_XOR_H_EX(edT1[r][i+0], edXOR3[r], xtbId+0,  0);  // HIGH part of XOR3_0 table IN connect to OUT of T1_0 table,  0..31 bit
+			CONNECT_W08x32_TO_XOR_L_EX(edT1[r][i+1], edXOR3[r], xtbId+0,  0);  // LOW  part of XOR3_0 table IN connect to OUT of T1_1 table,  0..31 bit
+
+			CONNECT_W08x32_TO_XOR_H_EX(edT1[r][i+0], edXOR3[r], xtbId+8,  4);  // HIGH part of XOR3_0 table IN connect to OUT of T1_0 table, 32..63 bit
+			CONNECT_W08x32_TO_XOR_L_EX(edT1[r][i+1], edXOR3[r], xtbId+8,  4);  // LOW  part of XOR3_0 table IN connect to OUT of T1_1 table, 32..63 bit
+
+			CONNECT_W08x32_TO_XOR_H_EX(edT1[r][i+0], edXOR3[r], xtbId+16,  8); // HIGH part of XOR3_0 table IN connect to OUT of T1_0 table, 64..95 bit
+			CONNECT_W08x32_TO_XOR_L_EX(edT1[r][i+1], edXOR3[r], xtbId+16,  8); // LOW  part of XOR3_0 table IN connect to OUT of T1_1 table, 64..95 bit
+
+			CONNECT_W08x32_TO_XOR_H_EX(edT1[r][i+0], edXOR3[r], xtbId+24, 12); // HIGH part of XOR3_0 table IN connect to OUT of T1_0 table, 96..127 bit
+			CONNECT_W08x32_TO_XOR_L_EX(edT1[r][i+1], edXOR3[r], xtbId+24, 12); // LOW  part of XOR3_0 table IN connect to OUT of T1_1 table, 96..127 bit
+		}
+
+		// Now connect XOR cascade 8->4, 4->2, 2->1
+		//
+		// They are starting at offsets           00   32   64   96  128   160    192    224
+		// We have 8*32 XOR tables, they sum T1: [01] [23] [45] [67] [89] [1011] [1213] [1415]
+		// The task is to connect                  \   /     \   /     \   /        \    /
+		//                                         [0123]    [4567]   [891011]    [12131415]
+		// On indexes                               256       288       320          352
+		//                                             \       /          \          /
+		//                                              \     /            \        /
+		//                                             [01234567]       [89101112131415]
+		// On indexes                                     384                 416
+		//                                                  \                 /
+		//                                                   \               /
+        //                                                [0123456789101112131415]
+		// On index                                                  448
+		//
+		for(i=0; i<4; i++){
+			// index of XOR tables we can use on 2. level
+			int xtbId = i*32+256;
+			CONNECT_XOR_TO_XOR_128_H(edXOR3[r], (i+0)*32, edXOR3[r], xtbId);
+			CONNECT_XOR_TO_XOR_128_L(edXOR3[r], (i+1)*32, edXOR3[r], xtbId);
+		}
+
+		// 4->2
+		CONNECT_XOR_TO_XOR_128_H(edXOR3[r], 256, edXOR3[r], 384);
+		CONNECT_XOR_TO_XOR_128_L(edXOR3[r], 288, edXOR3[r], 384);
+		CONNECT_XOR_TO_XOR_128_H(edXOR3[r], 320, edXOR3[r], 416);
+		CONNECT_XOR_TO_XOR_128_L(edXOR3[r], 352, edXOR3[r], 416);
+		// 2->1
+		CONNECT_XOR_TO_XOR_128_H(edXOR3[r], 384, edXOR3[r], 448);
+		CONNECT_XOR_TO_XOR_128_L(edXOR3[r], 416, edXOR3[r], 448);
+	}
+
+	// Now connect XOR3 tables form R=0 (sums T1 input table) to input of T2 tables
+	// Result is stored in last XOR table starting on 448 offset, result is stored in LOW value
+	for(i=0; i<N_BYTES; i++){
+		CONNECT_XOR_TO_W08x32(edXOR3[0], 448+i*2, edT2[0][i/4][i%4]);
+	}
 
 	//
-	// In the last round there is no 04x04 bijective output mapping.
-	// There are no XOR tables and T3 tables. Output from T2 tables is final and
-	// encoded by output 128bit encoding G (not allocated & connected here).
-	// Thus encode only round 1..9. Last round 9 output coding from XOR2 master table
-	// is connected to T2 input coding in round 10 to revert last bijection.
+	// In the last round there is only T1 table, with defined output mapping by user (external)
+	// so it is not allocated here. There are no XOR tables and T3 tables in 10. round.
+	//
+	// Thus encode only round 1..9.
+	// Last round 9 output coding from XOR2 master table
+	// is connected to T1[1] input coding in round 10.
 	for(r=0; r<(N_ROUNDS-1); r++){
 		// iterate over strips/MC cols
 		for(i=0; i<4; i++){
@@ -114,7 +190,7 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCou
 			//
 
 			// Connect T2 boxes to XOR input boxes
-			CONNECT_W08x32_TO_XOR_H(edT2[r][i][0], edXOR1[r][i], 0);	// HIGH part of XOR1_0 table IN connect to OUT of T2_0 table
+			CONNECT_W08x32_TO_XOR_H(edT2[r][i][0], edXOR1[r][i], 0);  // HIGH part of XOR1_0 table IN connect to OUT of T2_0 table
 			CONNECT_W08x32_TO_XOR_L(edT2[r][i][1], edXOR1[r][i], 0);  // LOW  part of XOR1_0 table IN connect to OUT of T2_1 table
 			CONNECT_W08x32_TO_XOR_H(edT2[r][i][2], edXOR1[r][i], 8);  // HIGH part of XOR1_1 table IN connect to OUT of T2_2 table
 			CONNECT_W08x32_TO_XOR_L(edT2[r][i][3], edXOR1[r][i], 8);  // LOW  part of XOR1_1 table IN connect to OUT of T2_3 table
@@ -140,15 +216,28 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP& map, int *codingCou
 			CONNECT_XOR_TO_XOR_L(edXOR2[r][i], 8, edXOR2[r][i], 16);  // LOW  part of XOR1_2 table IN connect to OUT of XOR1_1
 
 			int newIdx;
-			// Connect result XOR layer 4 to T2 boxes in next round
-			newIdx = shiftOp[4*i+0];
-			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
-			newIdx = shiftOp[4*i+1];
-			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
-			newIdx = shiftOp[4*i+2];
-			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
-			newIdx = shiftOp[4*i+3];
-			CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
+
+			if (r<(N_ROUNDS-2)){
+				// Connect result XOR layer 4 to T2 boxes in next round
+				newIdx = shiftOp[4*i+0];
+				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
+				newIdx = shiftOp[4*i+1];
+				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
+				newIdx = shiftOp[4*i+2];
+				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
+				newIdx = shiftOp[4*i+3];
+				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
+			} else {
+				// Connect result XOR layer 4 to T1 boxes in last round; r==8
+				newIdx = shiftOp[4*i+0];
+				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT1[1][newIdx]);
+				newIdx = shiftOp[4*i+1];
+				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT1[1][newIdx]);
+				newIdx = shiftOp[4*i+2];
+				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT1[1][newIdx]);
+				newIdx = shiftOp[4*i+3];
+				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT1[1][newIdx]);
+			}
 		}
 	}
 
@@ -197,7 +286,35 @@ void WBAESGenerator::generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES], boo
 	this->generate8X8Bijections((CODING8X8_TABLE*) &coding, N_BYTES, identity);
 }
 
-void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, CODING8X8_TABLE* pCoding08x08, bool encrypt){
+void WBAESGenerator::generateExtEncoding(ExtEncoding * extc, int flags){
+	int i,k;
+
+	// generate 8x8 bijections at first
+	for(k=0; k<2; k++){
+		bool identity = (k==0 && (flags & WBAESGEN_EXTGEN_fCID) > 0) || (k==1 && (flags & WBAESGEN_EXTGEN_lCID) > 0);
+		for(i=0; i<N_BYTES; i++){
+			this->generate8X8Bijections(&(extc->lfC[k][0]), N_BYTES, identity);
+		}
+	}
+
+	// generate mixing bijection
+	for(k=0; k<2; k++){
+		bool identity = (k==0 && (flags & WBAESGEN_EXTGEN_IDMID) > 0) || (k==1 && (flags & WBAESGEN_EXTGEN_ODMID) > 0);
+		if (identity){
+			generateMixingBijection(extc->IODM[k].mb, 128, 4);
+			extc->IODM[k].inv = inv(extc->IODM[k].mb);
+		} else {
+			ident(extc->IODM[k].mb,  128);
+			ident(extc->IODM[k].inv, 128);
+		}
+	}
+}
+
+void generateT1Tables(BYTE *key, enum keySize ksize, WBAES& genAES, ExtEncoding * extc, bool encrypt){
+
+}
+
+void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, ExtEncoding* pCoding08x08, bool encrypt){
 	WBACR_AES_CODING_MAP 		codingMap;
 	int 						codingCount;
 	int							i,j,r,b,k;
