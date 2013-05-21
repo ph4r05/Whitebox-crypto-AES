@@ -68,20 +68,34 @@ void WBAES::decrypt(W128b& state){
 	encdec(state, false);
 }
 
+
+
 void WBAES::encdec(W128b& state, bool encrypt){
 	int r=0, i=0;
-	W32b ires[N_BYTES];				// intermediate result for T-boxes
+	W32b  ires[N_BYTES];				// intermediate result for T2,T3-boxes
+	W128b ares[N_BYTES];				// intermediate result for T1-boxes
 
 	// encryption/decryption dependent operations and tables
-	int (&shiftOp)[N_BYTES] 							 = encrypt ? (this->shiftRows) : (this->shiftRowsInv);
-	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->eXTab) 	   : (this->dXTab);
-	AES_TB_TYPE2 (&edTab2)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->eTab2) 	   : (this->dTab2);
-	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->eTab3) 	   : (this->dTab3);
+	int (&shiftOp)[N_BYTES]                              = encrypt ? (this->shiftRows) : (this->shiftRowsInv);
+	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->eXTab)     : (this->dXTab);
+	W32XTB (&edXTabEx)[2][15][4]                         = encrypt ? (this->eXTabEx)   : (this->dXTabEx);
+	AES_TB_TYPE1 (&edTab1)[2][N_BYTES]                   = encrypt ? (this->eTab1)     : (this->dTab1);
+	AES_TB_TYPE2 (&edTab2)[N_ROUNDS][N_BYTES]            = encrypt ? (this->eTab2)     : (this->dTab2);
+	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]            = encrypt ? (this->eTab3)     : (this->dTab3);
 #ifdef AES_BGE_ATTACK
 	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (this->eOutputBijection) : (this->dOutputBijection);
 #endif
 
-	for(r=0; r<N_ROUNDS; r++){
+	// At first we have to put input to T1 boxes directly, no shift rows
+	// compute result to ares[16]
+	for(i=0; i<N_BYTES; i++){
+		W128CP(ares[i], edTab1[0][i][state.B[i]]);
+	}
+
+	// Now compute cascade of XOR tables
+
+	// Compute 9 rounds of T2 boxes
+	for(r=0; r<(N_ROUNDS-1); r++){
 		// Perform rest of the operations on 4 tuples.
 		for(i=0; i<N_BYTES; i+=4){
 			// Apply type 2 tables to all bytes, counting also shift rows selector.

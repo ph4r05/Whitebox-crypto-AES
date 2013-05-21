@@ -114,14 +114,17 @@ typedef XTB    W32XTB[8];
 
 // 32bit wide XOR, o1,o2 are of type W32b, xtb is of type W32XTB. 
 // Returns unsigned long int value directly.
-#define OP8XORlong(o1,o2,xtb) ((    HILO(xtb[0][OP2HI(o1[0], o2[0])] ,          \
-                                         xtb[1][OP2LO(o1[0], o2[0])] ))         \
-                                 | (HILO(xtb[2][OP2HI(o1[1], o2[1])] ,          \
-                                         xtb[3][OP2LO(o1[1], o2[1])] ) <<  8)   \
-                                 | (HILO(xtb[4][OP2HI(o1[2], o2[2])] ,          \
-                                         xtb[5][OP2LO(o1[2], o2[2])] ) << 16)   \
-                                 | (HILO(xtb[6][OP2HI(o1[3], o2[3])] ,          \
-                                         xtb[7][OP2LO(o1[3], o2[3])] ) << 24))  \
+#define OP8XORlong_EX(o1,of1,o2,of2,xtb,of3) (                             \
+		(    HILO(xtb[(of3)+0][OP2HI(o1[(of1)+0], o2[(of2)+0])] ,          \
+                  xtb[(of3)+1][OP2LO(o1[(of1)+0], o2[(of2)+0])] ))         \
+          | (HILO(xtb[(of3)+2][OP2HI(o1[(of1)+1], o2[(of2)+1])] ,          \
+                  xtb[(of3)+3][OP2LO(o1[(of1)+1], o2[(of2)+1])] ) <<  8)   \
+          | (HILO(xtb[(of3)+4][OP2HI(o1[(of1)+2], o2[(of2)+2])] ,          \
+                  xtb[(of3)+5][OP2LO(o1[(of1)+2], o2[(of2)+2])] ) << 16)   \
+          | (HILO(xtb[(of3)+6][OP2HI(o1[(of1)+3], o2[(of2)+3])] ,          \
+                  xtb[(of3)+7][OP2LO(o1[(of1)+3], o2[(of2)+3])] ) << 24))
+
+#define OP8XORlong(o1,o2,xtb)  OP8XORlong_EX(o1,0,o2,0,xtb,0)
 
 // Copies W32b data from destination (d) to source (s)
 #define W32CP_EX(d,doff,s,soff) {    \
@@ -145,15 +148,29 @@ typedef XTB    W32XTB[8];
 // O1, O2 are W32b operands. 
 // Result = O1 XOR O2
 //
-#define OP8XOR(o1, o2, xtb, res) {                                             \
-    res.B[0] = HILO(xtb[0][OP2HI(o1.B[0], o2.B[0])] ,                          \
-                    xtb[1][OP2LO(o1.B[0], o2.B[0])] );                         \
-    res.B[1] = HILO(xtb[2][OP2HI(o1.B[1], o2.B[1])] ,                          \
-                    xtb[3][OP2LO(o1.B[1], o2.B[1])] );                         \
-    res.B[2] = HILO(xtb[4][OP2HI(o1.B[2], o2.B[2])] ,                          \
-                    xtb[5][OP2LO(o1.B[2], o2.B[2])] );                         \
-    res.B[3] = HILO(xtb[6][OP2HI(o1.B[3], o2.B[3])] ,                          \
-                    xtb[7][OP2LO(o1.B[3], o2.B[3])] ); }
+#define OP8XOR_EX(o1, of1, o2, of2, xtb, of3, res, of4) {                         \
+    res.B[(of4)+0] = HILO(xtb[(of3)+0][OP2HI(o1.B[(of1)+0], o2.B[(of2)+0])] ,     \
+                          xtb[(of3)+1][OP2LO(o1.B[(of1)+0], o2.B[(of2)+0])] );    \
+    res.B[(of4)+1] = HILO(xtb[(of3)+2][OP2HI(o1.B[(of1)+1], o2.B[(of2)+1])] ,     \
+                          xtb[(of3)+3][OP2LO(o1.B[(of1)+1], o2.B[(of2)+1])] );    \
+    res.B[(of4)+2] = HILO(xtb[(of3)+4][OP2HI(o1.B[(of1)+2], o2.B[(of2)+2])] ,     \
+                          xtb[(of3)+5][OP2LO(o1.B[(of1)+2], o2.B[(of2)+2])] );    \
+    res.B[(of4)+3] = HILO(xtb[(of3)+6][OP2HI(o1.B[(of1)+3], o2.B[(of2)+3])] ,     \
+                          xtb[(of3)+7][OP2LO(o1.B[(of1)+3], o2.B[(of2)+3])] );    }
+
+#define OP8XOR(o1, o2, xtb, res) OP8XOR_EX(o1, 0, o2, 0, xtb, 0, res, 0)
+
+
+//
+// Simple 128bit wide XOR operation.
+// O1, O2 are W128b operands.   xtb has to be W32XTB[4]
+// Result = O1 XOR O2
+//
+#define OP8XOR_128(o1, o2, xtb, res) {                                           \
+	OP8XOR_EX(o1, 0,  o2, 0,  xtb[0], 0, res, 0);                                \
+	OP8XOR_EX(o1, 4,  o2, 4,  xtb[1], 0, res, 4);                                \
+	OP8XOR_EX(o1, 8,  o2, 8,  xtb[2], 0, res, 8);                                \
+	OP8XOR_EX(o1, 12, o2, 12, xtb[3], 0, res, 12);                               }
 
 // Switches indexing of state array from by-row to by-col and vice versa
 //
@@ -186,6 +203,18 @@ inline void op8xor(const W32b& o1, const W32b& o2, const W32XTB& xtb, W32b& res)
     	cout << "XOR warning!!! expected: " << CHEX(tmpRes.l) << " but got: " << CHEX(res.l) << " = " << CHEX(a1.l) << " ^ " << CHEX(a2.l) << endl;
     }
 #endif
+}
+
+
+/**
+ * Simple 128bit wide XOR operation.
+ * O1, O2 are W128b operands.
+ * Result = O1 XOR O2
+ *
+ * Typesafe wrapper for macro OP8XOR_128.
+ */
+inline void op8xor_128(const W128b& o1, const W128b& o2, const W32XTB * xtb, W32b& res){
+    OP8XOR_128(o1, o2, xtb, res);
 }
 
 inline void dumpW128b(W128b& a){
