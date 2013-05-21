@@ -211,10 +211,14 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	// Final round is special -> T1 boxes
 	//
 	for(i=0; i<N_BYTES; i+=4){
-		W128CP(ares[i/4+0*4], edTab1[1][i+0][state.B[shiftOp[i/4+0*4]]]);
-		W128CP(ares[i/4+1*4], edTab1[1][i+1][state.B[shiftOp[i/4+1*4]]]);
-		W128CP(ares[i/4+2*4], edTab1[1][i+2][state.B[shiftOp[i/4+2*4]]]);
-		W128CP(ares[i/4+3*4], edTab1[1][i+3][state.B[shiftOp[i/4+3*4]]]);
+		// Rules:
+		//   1. i-th T1 table stores to ares[i]
+		//   2. T1, T2 tables are indexed by column (0,1,2,3 = indexes for first column processing boxes)
+		//   3. state is indexed by rows!
+		W128CP(ares[i+0], edTab1[1][i+0][state.B[shiftOp[i/4+0*4]]]);
+		W128CP(ares[i+1], edTab1[1][i+1][state.B[shiftOp[i/4+1*4]]]);
+		W128CP(ares[i+2], edTab1[1][i+2][state.B[shiftOp[i/4+2*4]]]);
+		W128CP(ares[i+3], edTab1[1][i+3][state.B[shiftOp[i/4+3*4]]]);
 	}
 
 	// and finally compute XOR cascade again, now for T1[1] - output T1
@@ -233,8 +237,10 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	op8xor_128(ares[8],  ares[12], edXTabEx[1][13], ares[8]);  // 8 xor 12 --> 8
 	// 4. lvl - final stage. Result in ares[0]
 	op8xor_128(ares[0],  ares[8],  edXTabEx[1][14], ares[0]);  // 0 xor 8 --> 0
-	// Copy result from ares[0] to state
-	W128CP(state, ares[0]);
+	// Copy result from ares[0] to state, transpose, not W128CP(state, ares[0]);
+	for(i=0; i<N_BYTES; i++){
+		state.B[i] = ares[0].B[idxTranspose(i)];
+	}
 
 #ifdef AES_BGE_ATTACK
 	// If we are performing attack, we modified output bijection for 1 byte from 2 concatenated 4x4 bijections to one 8x8

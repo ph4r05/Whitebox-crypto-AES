@@ -136,7 +136,6 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 		for(i=0; i<4; i++){
 			// index of XOR tables we can use on 2. level
 			int xtbId = i*32+256;
-			cout << "xtb="<<xtbId<<endl;
 			CONNECT_XOR_TO_XOR_128_H(edXOR3[r], (i+0)*32, edXOR3[r], xtbId);
 			CONNECT_XOR_TO_XOR_128_L(edXOR3[r], (i+1)*32, edXOR3[r], xtbId);
 		}
@@ -154,10 +153,14 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 	// Now connect XOR3 tables form R=0 (sums T1 input table) to input of T2 tables
 	// Result is stored in last XOR table starting on 448 offset, result is stored in LOW value
 	// Note that ShiftRows is done here, every Sbox uses result of ShiftRows operation on its input
-	// NO ShiftRows operation here, just 1:1
+	//
+	// Connects last XOR:
+	// 00 01 02 03 | 04 05 06 07 | 08 09 10 11 | 12 13 14 15  -- classical numbering (according to enc. routine)
+	// 00 04 08 12 | 13 01 05 09 | 10 14 06 02 | 07 11 15 03  -- T2 boxes, indexed by column first (processed by cols in enc routine)
+	//
 	for(i=0; i<N_BYTES; i++){
-		int newIdx = shiftOp[i];
-		CONNECT_XOR_TO_W08x32(edXOR3[0], 448+i*2, edT2[0][newIdx/4][newIdx%4]);
+		int newIdx = shiftOp[idxTranspose(i)];
+		CONNECT_XOR_TO_W08x32(edXOR3[0], 448+i*2, edT2[0][newIdx/4][newIdx%4]);	// veryfied, OK
 	}
 
 	//
@@ -239,13 +242,18 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT2[r+1][ newIdx / 4 ][ newIdx % 4]);
 			} else {
 				// Connect result XOR layer 4 to T1 boxes in last round; r==8
+				// T1[1] are indexed by columns!
 				newIdx = shiftOp[4*i+0];
+				cout << "tralala; newIdx="<<newIdx<<endl;
 				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 16, edT1[1][newIdx]);
 				newIdx = shiftOp[4*i+1];
+				cout << "tralala; newIdx="<<newIdx<<endl;
 				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 18, edT1[1][newIdx]);
 				newIdx = shiftOp[4*i+2];
+				cout << "tralala; newIdx="<<newIdx<<endl;
 				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 20, edT1[1][newIdx]);
 				newIdx = shiftOp[4*i+3];
+				cout << "tralala; newIdx="<<newIdx<<endl;
 				CONNECT_XOR_TO_W08x32(edXOR2[r][i], 22, edT1[1][newIdx]);
 			}
 		}
@@ -641,8 +649,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 						// Transform bb to matrix, to perform mixing bijection operation (matrix multiplication)
 						mat_GF2 tmpMat2(INIT_SIZE, 128, 1);
 						// builds binary matrix [0 0 bb 0 0 0 0 0 0 0 0 0 0 0 0 0], if curByte==2
-						// NOTE: transpose data stored to 128-bit array here...
-						BYTE_to_matGF2(bb, tmpMat2, (j*N_SECTIONS + i)*8, 0);
+						BYTE_to_matGF2(bb, tmpMat2, (i*N_SECTIONS + j)*8, 0);
 						// Build MB multiplication result
 						tmpMat2 = extc->IODM[1].mb * tmpMat2;
 						// Encode 128-bit wide output to map result
@@ -650,12 +657,6 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 							mapResult128.B[jj] = matGF2_to_BYTE(tmpMat2, jj*8, 0);
 						}
 						// Encode mapResult with out encoding of T1 table
-						/*
-						cout << "i="<<i<<";j="<<j<<"; codingMapICH="<<codingMap_edT1[1][(i*N_SECTIONS + j)].IC.H << endl;
-						cout << "i="<<i<<";j="<<j<<"; codingMapICL="<<codingMap_edT1[1][(i*N_SECTIONS + j)].IC.L << endl;
-						cout << "i="<<i<<";j="<<j<<"; codingMapICH="<<codingMap_edT1[1][(i*N_SECTIONS + j)].OC[0].H << endl;
-						cout << "i="<<i<<";j="<<j<<"; codingMapICH="<<codingMap_edT1[1][(i*N_SECTIONS + j)].OC[0].H << endl;
-						*/
 						iocoding_encode128x128(mapResult128, mapResult128, codingMap_edT1[1][(i*N_SECTIONS + j)], false, pCoding04x04, pCoding08x08);
 						// Store result value to lookup table
 						W128CP(genAES_edTab1[1][(i*N_SECTIONS + j)][b], mapResult128);
@@ -896,7 +897,7 @@ int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
 		dumpVectorT(GenericAES::testVect128_key, 16);
 	}
 
-	//this->useIO04x04Identity=true;
+	this->useIO04x04Identity=true;
 	this->useIO08x08Identity=true;
 	this->useDualAESARelationsIdentity=true;
 	this->useDualAESIdentity=true;
