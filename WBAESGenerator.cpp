@@ -136,6 +136,7 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 		for(i=0; i<4; i++){
 			// index of XOR tables we can use on 2. level
 			int xtbId = i*32+256;
+			cout << "xtb="<<xtbId<<endl;
 			CONNECT_XOR_TO_XOR_128_H(edXOR3[r], (i+0)*32, edXOR3[r], xtbId);
 			CONNECT_XOR_TO_XOR_128_L(edXOR3[r], (i+1)*32, edXOR3[r], xtbId);
 		}
@@ -649,10 +650,12 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 							mapResult128.B[jj] = matGF2_to_BYTE(tmpMat2, jj*8, 0);
 						}
 						// Encode mapResult with out encoding of T1 table
+						/*
 						cout << "i="<<i<<";j="<<j<<"; codingMapICH="<<codingMap_edT1[1][(i*N_SECTIONS + j)].IC.H << endl;
 						cout << "i="<<i<<";j="<<j<<"; codingMapICL="<<codingMap_edT1[1][(i*N_SECTIONS + j)].IC.L << endl;
 						cout << "i="<<i<<";j="<<j<<"; codingMapICH="<<codingMap_edT1[1][(i*N_SECTIONS + j)].OC[0].H << endl;
 						cout << "i="<<i<<";j="<<j<<"; codingMapICH="<<codingMap_edT1[1][(i*N_SECTIONS + j)].OC[0].H << endl;
+						*/
 						iocoding_encode128x128(mapResult128, mapResult128, codingMap_edT1[1][(i*N_SECTIONS + j)], false, pCoding04x04, pCoding08x08);
 						// Store result value to lookup table
 						W128CP(genAES_edTab1[1][(i*N_SECTIONS + j)][b], mapResult128);
@@ -812,6 +815,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 				// every master XOR table consists of 8 small XOR tables
 				for(k=0; k<8; k++){
 					CODING & xorCoding = codingMap_edXOR3[r][32*i+8*j+k];
+					// TODO: for xor table 14 add external output encoding
 					//
 					//                                              ________________________ ROUND
 					//                                             |   _____________________ 0..14 8,4,2,1

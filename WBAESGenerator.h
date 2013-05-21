@@ -210,14 +210,14 @@ typedef struct _WBACR_AES_CODING_MAP {
 #define ALLOCW08x32CodingEx(cod, ofs, idx) {                  \
     cod.OC[(ofs)+0].type = COD_BITS_4; cod.OC[(ofs)+1].type = COD_BITS_4; \
     cod.OC[(ofs)+2].type = COD_BITS_4; cod.OC[(ofs)+3].type = COD_BITS_4; \
-    cod.OC[(ofs)+0].H = ++(idx);                                  \
-    cod.OC[(ofs)+0].L = ++(idx);                                  \
-    cod.OC[(ofs)+1].H = ++(idx);                                  \
-    cod.OC[(ofs)+1].L = ++(idx);                                  \
-    cod.OC[(ofs)+2].H = ++(idx);                                  \
-    cod.OC[(ofs)+2].L = ++(idx);                                  \
-    cod.OC[(ofs)+3].H = ++(idx);                                  \
-    cod.OC[(ofs)+3].L = ++(idx);                                  };
+    assert(cod.OC[(ofs)+0].H==UNASSIGNED_CODING); cod.OC[(ofs)+0].H = ++(idx);        \
+    assert(cod.OC[(ofs)+0].L==UNASSIGNED_CODING); cod.OC[(ofs)+0].L = ++(idx);        \
+    assert(cod.OC[(ofs)+1].H==UNASSIGNED_CODING); cod.OC[(ofs)+1].H = ++(idx);        \
+    assert(cod.OC[(ofs)+1].L==UNASSIGNED_CODING); cod.OC[(ofs)+1].L = ++(idx);        \
+    assert(cod.OC[(ofs)+2].H==UNASSIGNED_CODING); cod.OC[(ofs)+2].H = ++(idx);        \
+    assert(cod.OC[(ofs)+2].L==UNASSIGNED_CODING); cod.OC[(ofs)+2].L = ++(idx);        \
+    assert(cod.OC[(ofs)+3].H==UNASSIGNED_CODING); cod.OC[(ofs)+3].H = ++(idx);        \
+    assert(cod.OC[(ofs)+3].L==UNASSIGNED_CODING); cod.OC[(ofs)+3].L = ++(idx);        };
 
 #define ALLOCW08x32Coding(cod, idx) ALLOCW08x32CodingEx(cod, 0, idx)
 
@@ -235,14 +235,14 @@ typedef struct _WBACR_AES_CODING_MAP {
 // Recall that output of XOR is stored in LOW part, thus upper is unused -> no allocation for upper part.
 //
 #define ALLOCXORCoding(xtb, offset, idx) {                                                                           \
-    xtb[(offset)+0].OC.type = COD_BITS_4; xtb[(offset)+0].OC.H = UNUSED_CODING; xtb[(offset)+0].OC.L = ++(idx);      \
-    xtb[(offset)+1].OC.type = COD_BITS_4; xtb[(offset)+1].OC.H = UNUSED_CODING; xtb[(offset)+1].OC.L = ++(idx);      \
-    xtb[(offset)+2].OC.type = COD_BITS_4; xtb[(offset)+2].OC.H = UNUSED_CODING; xtb[(offset)+2].OC.L = ++(idx);      \
-    xtb[(offset)+3].OC.type = COD_BITS_4; xtb[(offset)+3].OC.H = UNUSED_CODING; xtb[(offset)+3].OC.L = ++(idx);      \
-    xtb[(offset)+4].OC.type = COD_BITS_4; xtb[(offset)+4].OC.H = UNUSED_CODING; xtb[(offset)+4].OC.L = ++(idx);      \
-    xtb[(offset)+5].OC.type = COD_BITS_4; xtb[(offset)+5].OC.H = UNUSED_CODING; xtb[(offset)+5].OC.L = ++(idx);      \
-    xtb[(offset)+6].OC.type = COD_BITS_4; xtb[(offset)+6].OC.H = UNUSED_CODING; xtb[(offset)+6].OC.L = ++(idx);      \
-    xtb[(offset)+7].OC.type = COD_BITS_4; xtb[(offset)+7].OC.H = UNUSED_CODING; xtb[(offset)+7].OC.L = ++(idx);      };
+    xtb[(offset)+0].OC.type = COD_BITS_4; xtb[(offset)+0].OC.H = UNUSED_CODING; assert(xtb[(offset)+0].OC.L==UNASSIGNED_CODING); xtb[(offset)+0].OC.L = ++(idx);      \
+    xtb[(offset)+1].OC.type = COD_BITS_4; xtb[(offset)+1].OC.H = UNUSED_CODING; assert(xtb[(offset)+1].OC.L==UNASSIGNED_CODING); xtb[(offset)+1].OC.L = ++(idx);      \
+    xtb[(offset)+2].OC.type = COD_BITS_4; xtb[(offset)+2].OC.H = UNUSED_CODING; assert(xtb[(offset)+2].OC.L==UNASSIGNED_CODING); xtb[(offset)+2].OC.L = ++(idx);      \
+    xtb[(offset)+3].OC.type = COD_BITS_4; xtb[(offset)+3].OC.H = UNUSED_CODING; assert(xtb[(offset)+3].OC.L==UNASSIGNED_CODING); xtb[(offset)+3].OC.L = ++(idx);      \
+    xtb[(offset)+4].OC.type = COD_BITS_4; xtb[(offset)+4].OC.H = UNUSED_CODING; assert(xtb[(offset)+4].OC.L==UNASSIGNED_CODING); xtb[(offset)+4].OC.L = ++(idx);      \
+    xtb[(offset)+5].OC.type = COD_BITS_4; xtb[(offset)+5].OC.H = UNUSED_CODING; assert(xtb[(offset)+5].OC.L==UNASSIGNED_CODING); xtb[(offset)+5].OC.L = ++(idx);      \
+    xtb[(offset)+6].OC.type = COD_BITS_4; xtb[(offset)+6].OC.H = UNUSED_CODING; assert(xtb[(offset)+6].OC.L==UNASSIGNED_CODING); xtb[(offset)+6].OC.L = ++(idx);      \
+    xtb[(offset)+7].OC.type = COD_BITS_4; xtb[(offset)+7].OC.H = UNUSED_CODING; assert(xtb[(offset)+7].OC.L==UNASSIGNED_CODING); xtb[(offset)+7].OC.L = ++(idx);      };
 
 //
 // Allocates XOR table 128-bit wide
@@ -259,14 +259,14 @@ typedef struct _WBACR_AES_CODING_MAP {
 // mapping from one particular W32box we are using either HIGH or LOW parts. 
 //
 #define CONNECT_W08x32_TO_XOR_EX(cod, xtb, HL, offsetL, offsetR) { \
-    xtb[(offsetL)+0].IC.HL = cod.OC[(offsetR)+0].H;                \
-    xtb[(offsetL)+1].IC.HL = cod.OC[(offsetR)+0].L;                \
-    xtb[(offsetL)+2].IC.HL = cod.OC[(offsetR)+1].H;                \
-    xtb[(offsetL)+3].IC.HL = cod.OC[(offsetR)+1].L;                \
-    xtb[(offsetL)+4].IC.HL = cod.OC[(offsetR)+2].H;                \
-    xtb[(offsetL)+5].IC.HL = cod.OC[(offsetR)+2].L;                \
-    xtb[(offsetL)+6].IC.HL = cod.OC[(offsetR)+3].H;                \
-    xtb[(offsetL)+7].IC.HL = cod.OC[(offsetR)+3].L;                }
+	assert(xtb[(offsetL)+0].IC.HL==UNASSIGNED_CODING); xtb[(offsetL)+0].IC.HL = cod.OC[(offsetR)+0].H;                \
+	assert(xtb[(offsetL)+1].IC.HL==UNASSIGNED_CODING); xtb[(offsetL)+1].IC.HL = cod.OC[(offsetR)+0].L;                \
+	assert(xtb[(offsetL)+2].IC.HL==UNASSIGNED_CODING); xtb[(offsetL)+2].IC.HL = cod.OC[(offsetR)+1].H;                \
+	assert(xtb[(offsetL)+3].IC.HL==UNASSIGNED_CODING); xtb[(offsetL)+3].IC.HL = cod.OC[(offsetR)+1].L;                \
+	assert(xtb[(offsetL)+4].IC.HL==UNASSIGNED_CODING); xtb[(offsetL)+4].IC.HL = cod.OC[(offsetR)+2].H;                \
+	assert(xtb[(offsetL)+5].IC.HL==UNASSIGNED_CODING); xtb[(offsetL)+5].IC.HL = cod.OC[(offsetR)+2].L;                \
+	assert(xtb[(offsetL)+6].IC.HL==UNASSIGNED_CODING); xtb[(offsetL)+6].IC.HL = cod.OC[(offsetR)+3].H;                \
+	assert(xtb[(offsetL)+7].IC.HL==UNASSIGNED_CODING); xtb[(offsetL)+7].IC.HL = cod.OC[(offsetR)+3].L;                }
 
 #define CONNECT_W08x32_TO_XOR_H_EX(cod, xtb, offsetL, offsetR)   CONNECT_W08x32_TO_XOR_EX(cod, xtb, H, offsetL, offsetR)
 #define CONNECT_W08x32_TO_XOR_L_EX(cod, xtb, offsetL, offsetR)   CONNECT_W08x32_TO_XOR_EX(cod, xtb, L, offsetL, offsetR)
@@ -288,19 +288,19 @@ typedef struct _WBACR_AES_CODING_MAP {
 //
 // This macro accepts XOR tables 32bit wide.
 #define CONNECT_XOR_TO_XOR(xtb1, offset1, xtb3, offset3, HL) {                  \
-    xtb3[(offset3)+0].IC.HL = xtb1[(offset1)+0].OC.L;                           \
-    xtb3[(offset3)+1].IC.HL = xtb1[(offset1)+1].OC.L;                           \
-    xtb3[(offset3)+2].IC.HL = xtb1[(offset1)+2].OC.L;                           \
-    xtb3[(offset3)+3].IC.HL = xtb1[(offset1)+3].OC.L;                           \
-    xtb3[(offset3)+4].IC.HL = xtb1[(offset1)+4].OC.L;                           \
-    xtb3[(offset3)+5].IC.HL = xtb1[(offset1)+5].OC.L;                           \
-    xtb3[(offset3)+6].IC.HL = xtb1[(offset1)+6].OC.L;                           \
-    xtb3[(offset3)+7].IC.HL = xtb1[(offset1)+7].OC.L;                           }
+    assert(xtb3[(offset3)+0].IC.HL==UNASSIGNED_CODING); xtb3[(offset3)+0].IC.HL = xtb1[(offset1)+0].OC.L;                          \
+    assert(xtb3[(offset3)+1].IC.HL==UNASSIGNED_CODING); xtb3[(offset3)+1].IC.HL = xtb1[(offset1)+1].OC.L;                           \
+    assert(xtb3[(offset3)+2].IC.HL==UNASSIGNED_CODING); xtb3[(offset3)+2].IC.HL = xtb1[(offset1)+2].OC.L;                           \
+    assert(xtb3[(offset3)+3].IC.HL==UNASSIGNED_CODING); xtb3[(offset3)+3].IC.HL = xtb1[(offset1)+3].OC.L;                           \
+    assert(xtb3[(offset3)+4].IC.HL==UNASSIGNED_CODING); xtb3[(offset3)+4].IC.HL = xtb1[(offset1)+4].OC.L;                           \
+    assert(xtb3[(offset3)+5].IC.HL==UNASSIGNED_CODING); xtb3[(offset3)+5].IC.HL = xtb1[(offset1)+5].OC.L;                           \
+    assert(xtb3[(offset3)+6].IC.HL==UNASSIGNED_CODING); xtb3[(offset3)+6].IC.HL = xtb1[(offset1)+6].OC.L;                           \
+    assert(xtb3[(offset3)+7].IC.HL==UNASSIGNED_CODING); xtb3[(offset3)+7].IC.HL = xtb1[(offset1)+7].OC.L;                           }
 
 #define CONNECT_XOR_TO_XOR_128(xtb1, offset1, xtb3, offset3, HL) {             \
         CONNECT_XOR_TO_XOR(xtb1, (offset1)+0,  xtb3, (offset3)+0,  HL);        \
         CONNECT_XOR_TO_XOR(xtb1, (offset1)+8,  xtb3, (offset3)+8,  HL);        \
-        CONNECT_XOR_TO_XOR(xtb1, (offset1)+12, xtb3, (offset3)+12, HL);        \
+        CONNECT_XOR_TO_XOR(xtb1, (offset1)+16, xtb3, (offset3)+16, HL);        \
         CONNECT_XOR_TO_XOR(xtb1, (offset1)+24, xtb3, (offset3)+24, HL);        }
 
 #define CONNECT_XOR_TO_XOR_H(xtb1, offset1, xtb3, offset3) CONNECT_XOR_TO_XOR(xtb1, offset1, xtb3, offset3, H)
@@ -313,6 +313,8 @@ typedef struct _WBACR_AES_CODING_MAP {
 //
 #define CONNECT_XOR_TO_W08x32(xtb, offset, cod) {                             \
     cod.IC.type = xtb[(offset)+0].OC.type;                                    \
+    assert(cod.IC.H==UNASSIGNED_CODING);                                      \
+    assert(cod.IC.L==UNASSIGNED_CODING);                                      \
     cod.IC.H = xtb[(offset)+0].OC.L;                                          \
     cod.IC.L = xtb[(offset)+1].OC.L;                                          }
 
