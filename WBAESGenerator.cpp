@@ -893,7 +893,10 @@ int WBAESGenerator::generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject
 int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
 	// generate table implementation for given key
 	ExtEncoding extc;
-	generateExtEncoding(&extc, WBAESGEN_EXTGEN_ID);
+
+	//
+	// Demonstrate also use of external encodings in practice
+	generateExtEncoding(&extc,0); //WBAESGEN_EXTGEN_fCID | WBAESGEN_EXTGEN_lCID |  WBAESGEN_EXTGEN_IDMID|   WBAESGEN_EXTGEN_lCID  WBAESGEN_EXTGEN_ODMID
 	if (coutOutput){
 		cout << "Generating table implementation for testvector key: " << endl;
 		dumpVectorT(GenericAES::testVect128_key, 16);
@@ -913,6 +916,58 @@ int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
 	return this->testComputedVectors(coutOutput, genAES, &extc);
 }
 
+void WBAESGenerator::applyExternalEnc(W128b& state, ExtEncoding * extc, bool input){
+	assert(extc!=NULL);
+	if (input){
+		// If input -> at first apply linear transformation 128 x 128, then bijection
+		// Now we use output encoding G and quit, no MixColumn or Mixing bijections here.
+
+		//
+		// Mixing bijection 128x128
+		//
+		mat_GF2 tmpMat2(INIT_SIZE, 128, 1);
+		for(int jj=0; jj<16; jj++){
+			BYTE_to_matGF2(state.B[jj], tmpMat2, jj*8, 0);
+		}
+		tmpMat2 = extc->IODM[0].mb * tmpMat2;
+
+		for(int jj=0; jj<16; jj++){
+			state.B[jj] = matGF2_to_BYTE(tmpMat2, jj*8, 0);
+		}
+
+		//
+		// IO bijection
+		//
+		for(int jj=0; jj<16; jj++){
+			int tt = idxTranspose(jj);
+			state.B[jj] = HILO(extc->lfC[0][2*tt+0].coding[HI(state.B[jj])], extc->lfC[0][2*tt+1].coding[LO(state.B[jj])]);
+		}
+	} else {
+		// Output -> decode bijections
+
+		//
+		// IO bijection
+		//
+		for(int jj=0; jj<16; jj++){
+			int tt = idxTranspose(jj);
+			state.B[jj] = HILO(extc->lfC[1][2*tt+0].invCoding[HI(state.B[jj])], extc->lfC[1][2*tt+1].invCoding[LO(state.B[jj])]);
+		}
+
+		//
+		// Mixing bijection 128x128
+		//
+		mat_GF2 tmpMat2(INIT_SIZE, 128, 1);
+		for(int jj=0; jj<16; jj++){
+			BYTE_to_matGF2(state.B[jj], tmpMat2, idxTranspose(jj)*8, 0);
+		}
+		tmpMat2 = extc->IODM[1].inv * tmpMat2;
+
+		for(int jj=0; jj<16; jj++){
+			state.B[jj] = matGF2_to_BYTE(tmpMat2, idxTranspose(jj)*8, 0);
+		}
+	}
+}
+
 int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES &genAES, ExtEncoding * extc){
 	int i, err=0;
 
@@ -928,7 +983,9 @@ int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES &genAES, ExtEncod
 		arr_to_W128b(GenericAES::testVect128_cipher[i], 0, cipher);
 
 		// encryption
+		applyExternalEnc(state, extc, true);
 		genAES.encrypt(state);
+		applyExternalEnc(state, extc, false);
 		if (coutOutput){
 			cout << "Testvector index: " << i << endl;
 			cout << "=====================" << endl;
@@ -949,7 +1006,9 @@ int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES &genAES, ExtEncod
 			if (coutOutput) cout << "[ ERROR ]:  Enc(plaintext) != ciphertext_test" << endl;
 		}
 
+		applyExternalEnc(state, extc, true);
 		genAES.decrypt(state);
+		applyExternalEnc(state, extc, false);
 		if (coutOutput){
 			cout << "Dec(Enc(plaintext_test)): " << endl;
 			dumpW128b(state); cout << endl;

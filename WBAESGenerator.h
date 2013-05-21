@@ -509,6 +509,10 @@ public:
 	void generateXorTable(CODING * xorCoding, XTB * xtb);
 
 	//
+	// Applies external encoding - after this, state can be passed to WB AES using this external encoding
+	void applyExternalEnc(W128b& state, ExtEncoding * extc, bool input);
+
+	//
 	// Raw method for generating random bijections
 	int generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size, bool identity=false);
 	int generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size, bool identity=false);
