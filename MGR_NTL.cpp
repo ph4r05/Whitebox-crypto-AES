@@ -41,9 +41,11 @@ int main(void) {
 
 	// Invert test
 	BGEAttack atk;
-	cout << "Testing cipher inversion;" << endl;
-	atk.invertCipherTest();
-	exit(3);
+
+	// Cipher inversion
+	//cout << "Testing cipher inversion;" << endl;
+	//atk.invertCipherTest();
+	//exit(3);
 
 	// BGE attack
 	cout << "Starting an attack! Obj: " << endl;

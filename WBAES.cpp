@@ -211,10 +211,10 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	// Final round is special -> T1 boxes
 	//
 	for(i=0; i<N_BYTES; i+=4){
-		W128CP(ares[i+0], edTab1[1][i+0][state.B[shiftOp[i/4+0*4]]]);
-		W128CP(ares[i+1], edTab1[1][i+1][state.B[shiftOp[i/4+1*4]]]);
-		W128CP(ares[i+2], edTab1[1][i+2][state.B[shiftOp[i/4+2*4]]]);
-		W128CP(ares[i+3], edTab1[1][i+3][state.B[shiftOp[i/4+3*4]]]);
+		W128CP(ares[i/4+0*4], edTab1[1][i+0][state.B[shiftOp[i/4+0*4]]]);
+		W128CP(ares[i/4+1*4], edTab1[1][i+1][state.B[shiftOp[i/4+1*4]]]);
+		W128CP(ares[i/4+2*4], edTab1[1][i+2][state.B[shiftOp[i/4+2*4]]]);
+		W128CP(ares[i/4+3*4], edTab1[1][i+3][state.B[shiftOp[i/4+3*4]]]);
 	}
 
 	// and finally compute XOR cascade again, now for T1[1] - output T1
