@@ -335,6 +335,8 @@ void WBAESGenerator::generateT1Tables(WBAES& genAES, ExtEncoding * extc, bool en
 
 	// At first initialize T1[0]
 	for(i=0; i<N_BYTES; i++){
+		// i-th T1 table, indexed by cols
+
 		// Build tables - for each byte
 		for(b=0; b<256; b++){
 			W128b mapResult;
@@ -344,7 +346,7 @@ void WBAESGenerator::generateT1Tables(WBAES& genAES, ExtEncoding * extc, bool en
 			// Transform bb to matrix, to perform mixing bijection operation (matrix multiplication)
 			mat_GF2 tmpMat(INIT_SIZE, 128, 1);
 			// builds binary matrix [0 0 bb 0 0 0 0 0 0 0 0 0 0 0 0 0], if i==2
-			BYTE_to_matGF2(bb, tmpMat, i*8, 0);
+			BYTE_to_matGF2(bb, tmpMat, idxTranspose(i)*8, 0);
 			// Build MB multiplication result
 			tmpMat = extc->IODM[0].inv * tmpMat;
 			// Encode 128-bit wide output to map result

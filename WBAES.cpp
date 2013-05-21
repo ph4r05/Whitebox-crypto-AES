@@ -89,7 +89,8 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	// At first we have to put input to T1 boxes directly, no shift rows
 	// compute result to ares[16]
 	for(i=0; i<N_BYTES; i++){
-		W128CP(ares[i], edTab1[0][i][state.B[i]]);
+		// Note: Tbox is indexed by cols, state by rows - transpose needed here
+		W128CP(ares[i], edTab1[0][i][state.B[idxTranspose(i)]]);
 	}
 
 	// Now compute cascade of XOR tables
