@@ -447,7 +447,12 @@ public:
     // Input output coding - for each byte of state array.
     // It is necessary to know this mappings to use ciphers, since cipher assumes plaintext/ciphertext is encoded
     // using this bijections.
-    CODING8X8_TABLE coding08x08[16];
+
+    //
+    // Coding map generated for lookup table network
+    WBACR_AES_CODING_MAP *codingMap;
+    CODING4X4_TABLE      *pCoding04x04;
+    CODING8X8_TABLE      *pCoding08x08;
 
     //
     // Input/output bijection encoding
@@ -472,7 +477,7 @@ public:
     //
     // Encryption and decryption has same set of tables - we can use same procedure.
     //
-    void generateCodingMap(WBACR_AES_CODING_MAP& pCodingMap, int *codingCount, bool encrypt);
+    void generateCodingMap(WBACR_AES_CODING_MAP* pCodingMap, int *codingCount, bool encrypt);
 
 	//
 	// Generate random mixing bijections and their inverses
@@ -485,9 +490,6 @@ public:
 			bool MB08x08Identity=false, bool MB32x32Identity=false);
 	int generateMixingBijections(bool identity=false);
 
- 	// generates input output 128b coding
-	void generateIO128Coding(CODING8X8_TABLE (&coding)[N_BYTES], bool identity=false);
-
 	// generates new externalEncoding
 	// takes flags WBAESGEN_EXTGEN_* determining which parts of ExtEncoding will be id.
 	void generateExtEncoding(ExtEncoding * extc, int flags);
@@ -498,7 +500,11 @@ public:
 
 	//
 	// Helper method, generates only T1 tables from external encoding
-	void generateT1Tables(BYTE *key, enum keySize ksize, WBAES& genAES, ExtEncoding * extc, bool encrypt);
+	void generateT1Tables(WBAES& genAES, ExtEncoding * extc, bool encrypt);
+
+	//
+	// Helper method, generates XOR table
+	void generateXorTable(CODING * xorCoding, XTB * xtb);
 
 	//
 	// Raw method for generating random bijections
@@ -509,7 +515,7 @@ public:
  	
 	// test whitebox implementation with test vectors
 	int testWithVectors(bool coutOutput, WBAES &genAES);
-	int testComputedVectors(bool coutOutput, WBAES &genAES, CODING8X8_TABLE * iocoding);
+	int testComputedVectors(bool coutOutput, WBAES &genAES, ExtEncoding * extc);
 
 	inline void BYTEArr_to_vec_GF2E(const BYTE * arr, size_t len, NTL::vec_GF2E& dst){
 		charArr_to_vec_GF2E(arr, len, dst);
@@ -555,6 +561,7 @@ public:
                 	USE_IDENTITY_CODING(hl.H) ? HI(src) : tbl4[hl.H].coding[HI(src)],
                 	USE_IDENTITY_CODING(hl.L) ? LO(src) : tbl4[hl.L].coding[LO(src)]);
         } else if (hl.type == COD_BITS_8){
+        	assert(tbl8 != NULL);
             return inverse ?
                   (USE_IDENTITY_CODING(hl.L) ? src : tbl8[hl.L].invCoding[src])
                 : (USE_IDENTITY_CODING(hl.L) ? src : tbl8[hl.L].coding[src]);
@@ -582,6 +589,19 @@ public:
 			dst.B[3] = iocoding_encode08x08(src.B[3], coding.OC[3], encodeInput, tbl4, tbl8);
 		}
     }
+
+    inline void iocoding_encode128x128(W128b& dst, W128b& src, W08x128Coding& coding, bool encodeInput, CODING4X4_TABLE* tbl4, CODING8X8_TABLE* tbl8){
+		// encoding input - special case, input is just 8bit wide
+		if (encodeInput){
+			for(int i=0; i<16; i++){
+				dst.B[i] = iocoding_encode08x08(src.B[i], coding.IC, encodeInput, tbl4, tbl8);
+			}
+		} else {
+			for(int i=0; i<16; i++){
+				dst.B[i] = iocoding_encode08x08(src.B[i], coding.OC[i], encodeInput, tbl4, tbl8);
+			}
+		}
+}
 };
 
 #endif /* WBAESGENERATOR_H_ */

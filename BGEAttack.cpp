@@ -901,7 +901,7 @@ int BGEAttack::run(void) {
 #endif
 
 	WBAESGenerator generator;
-	CODING8X8_TABLE coding[16];
+	ExtEncoding    coding;
 	W128b state;
 	cout << "Generating AES..." << endl;
 	bool encrypt = true;
@@ -912,14 +912,14 @@ int BGEAttack::run(void) {
 	generator.useIO08x08Identity=true;
 	generator.useMB08x08Identity=true;
 	generator.useMB32x32Identity=true;
-	generator.generateIO128Coding(coding, true);
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, true);  cout << "AES ENC generated" << endl;
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
+	generator.generateExtEncoding(&coding, WBAESGEN_EXTGEN_ID);
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, true);  cout << "AES ENC generated" << endl;
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, false); cout << "AES DEC generated" << endl;
 	int (&nextTbox)[N_BYTES]     = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
 
 	// WBAES changed to state with affine matching bijections at round boundaries.
 	cout << "Going to test WBAES before modifying tables" << endl;
-	generator.testComputedVectors(true, this->wbaes, coding);
+	generator.testComputedVectors(true, this->wbaes, &coding);
 
 	// The aim of this attack is to extract round keys, so generate them here to be able to compare results
 	vec_GF2E defaultKey;						// key for default AES in GF2E representation
@@ -1195,7 +1195,7 @@ int BGEAttack::run(void) {
 
 	// WBAES changed to state with affine matching bijections at round boundaries.
 	cout << "Going to test WBAES after modifying tables" << endl;
-	generator.testComputedVectors(true, this->wbaes, coding);
+	generator.testComputedVectors(true, this->wbaes, &coding);
 
 	//
 	// Attack, proceeding to phase 2 - removing affine parts for output encoding
@@ -1525,10 +1525,10 @@ int BGEAttack::invertCipherTest(){
 #endif
 
 	WBAESGenerator generator;
-	CODING8X8_TABLE coding[16];
+	ExtEncoding    coding;
 
 	cout << "Generating AES..." << endl;
-	bool encrypt = true;
+	//bool encrypt = true;
 	generator.useDualAESARelationsIdentity=true;	// this attack works only on basic form
 	generator.useDualAESIdentity=true;
 	generator.useDualAESSimpeAlternate=false;
@@ -1536,14 +1536,14 @@ int BGEAttack::invertCipherTest(){
 	generator.useIO08x08Identity=false;
 	generator.useMB08x08Identity=false;
 	generator.useMB32x32Identity=false;
-	generator.generateIO128Coding(coding, true);
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, true);  cout << "AES ENC generated" << endl;
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, coding, false); cout << "AES DEC generated" << endl;
-	int (&nextTbox)[N_BYTES]     = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
+	generator.generateExtEncoding(&coding, WBAESGEN_EXTGEN_ID);
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, true);  cout << "AES ENC generated" << endl;
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, false); cout << "AES DEC generated" << endl;
+	//int (&nextTbox)[N_BYTES]     = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
 
 	// WBAES changed to state with affine matching bijections at round boundaries.
 	cout << "Going to test WBAES before modifying tables" << endl;
-	generator.testComputedVectors(true, this->wbaes, coding);
+	generator.testComputedVectors(true, this->wbaes, &coding);
 
 	// Encrypt test vector and then try to decrypt it by inverting encryption tables
 	W128b plain, cipher, state;
@@ -1572,7 +1572,7 @@ int BGEAttack::invertCipherTest(){
 	//	 is independent in one round of each other.
 	//
 	for(int r=9; r>=0; r--){
-		W128b prevState, prevState2, prevStateFinal;
+		W128b prevState2, prevStateFinal;
 		int foundCols=0;
 		unsigned long long int col = 0;	// represents whole state array column
 		int colMask2compute = 15; // start with full mask

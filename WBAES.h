@@ -124,10 +124,21 @@ typedef XTB    W32XTB[8];
                                          xtb[7][OP2LO(o1[3], o2[3])] ) << 24))  \
 
 // Copies W32b data from destination (d) to source (s)
-#define W32CP(s,d) { s.l = d.l; }
-	
+#define W32CP_EX(d,doff,s,soff) {    \
+	d.B[(doff)+0] = s.B[(soff)+0];   \
+	d.B[(doff)+1] = s.B[(soff)+1];   \
+	d.B[(doff)+2] = s.B[(soff)+2];   \
+	d.B[(doff)+3] = s.B[(soff)+3];   }
+
+// Copies W32b data from destination (d) to source (s)
+#define W32CP(d,s) W32CP_EX(d,0,s,0)
+
 // Copies W128b data from destination (d) to source (s)
-#define W128CP(d,s) { d.l[0]  = s.l[0];   d.l[1] = s.l[1];  d.l[2] = s.l[2];  d.l[3] = s.l[3]; }
+#define W128CP(d,s) {                \
+    W32CP_EX(d,0,s,0);               \
+    W32CP_EX(d,4,s,4);               \
+    W32CP_EX(d,8,s,8);               \
+    W32CP_EX(d,12,s,12);             }
 
 // 
 // Simple 32bit wide XOR operation.
@@ -268,6 +279,12 @@ public:
     //
     // XOR tables
     W32XTB dXTab[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS];
+
+    // XOR tables for external encodings (input & output, connected to Type I tables)
+    W32XTB dXTabEx[2][15][4];		// 2 (input, output) * 15 (8,4,2,1) * 4 (32bit * 4 = 128bit)
+
+	// Type I - just first round
+	AES_TB_TYPE1 dTab1[2][N_BYTES];
 
     // Type II tables
     AES_TB_TYPE2 dTab2[N_ROUNDS][N_BYTES];

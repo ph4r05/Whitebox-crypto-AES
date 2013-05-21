@@ -108,9 +108,9 @@ int main(int argc, const char * argv[]) {
 	WBAESGenerator generator;
 	WBAES genAES;
 	BYTE aesKey[16]; memset(aesKey, 0, sizeof(BYTE)*16);
-	CODING8X8_TABLE coding[16];
- 	generator.generateIO128Coding(coding);
- 	generator.generateTables(aesKey, KEY_SIZE_16, genAES, coding, true);
+	ExtCoding coding;
+ 	generator.generateExtCoding(&coding, WBAESGEN_EXTGEN_ID);
+ 	generator.generateTables(aesKey, KEY_SIZE_16, genAES, &coding, true);
 
  	cout << "WBAES generated! ; size: " << sizeof(genAES) << endl;
  	cout << "Going to encrypt..." << endl;
