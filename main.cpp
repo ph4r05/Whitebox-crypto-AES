@@ -15,6 +15,10 @@
 #include <iomanip>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
+#include <vector>
+#include <iostream>
+#include <fstream>
 
 #define WBAES_BOOTS_SERIALIZATION 1
 
@@ -26,18 +30,13 @@
 #include <NTL/GF2EX.h>
 #include <NTL/mat_GF2.h>
 #include <NTL/vec_long.h>
-#include <math.h>
-#include <vector>
+
 #include "GenericAES.h"
 #include "NTLUtils.h"
 #include "MixingBijections.h"
 #include "WBAES.h"
 #include "WBAESGenerator.h"
 #include "BGEAttack.h"
-#include <iostream>
-#include <fstream>
-#include <time.h>
-#include <math.h>
 NTL_CLIENT
 
 #include <boost/program_options/options_description.hpp>
@@ -137,7 +136,7 @@ int main(int argc, const char * argv[]) {
 		delete genAES;
 		time_t total = end-start;
 
-		cout << "Benchmark finished! Total time = " << (total) << "; on average = " << (total / (float)benchgen) << endl;
+		cout << "Benchmark finished! Total time = " << (total) << " s; on average = " << (total / (float)benchgen) << " s" << endl;
     }
 
     //
@@ -182,7 +181,7 @@ int main(int argc, const char * argv[]) {
 		delete genAES;
 		delete atk;
 		delete tmpAES;
-		cout << "Benchmark finished! Total time = " << (total) << "; on average = " << (total / (float)benchbge) << endl;
+		cout << "Benchmark finished! Total time = " << (total) << " s; on average = " << (total / (float)benchbge) << " s" << endl;
     }
 
 

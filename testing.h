@@ -27,7 +27,7 @@
 #include <NTL/GF2EX.h>
 #include <NTL/mat_GF2.h>
 #include <NTL/vec_long.h>
-#include <math.h>
+#include <cmath>
 #include <vector>
 
 #include "GenericAES.h"

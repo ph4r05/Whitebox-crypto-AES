@@ -3,13 +3,13 @@
 // Author      : Dusan Klinec (ph4r05)
 // Version     :
 // Copyright   : Your copyright notice
-// Description : Hello World in C, Ansi-style
+// Description : Tests for implemented routines. Tests MixingBijection generator,
+//				   A1A2 relations generator and BGE attack
 // *  Author: Dusan Klinec (ph4r05)
 // *
 // *  License: GPLv3 [http://www.gnu.org/licenses/gpl-3.0.html]
 //============================================================================
-#include "MGR_NTL.h"
-#include <time.h>
+#include "testing.h"
 
 // hardcoded elements
 // http://stackoverflow.com/questions/2236197/c-easiest-way-to-initialize-an-stl-vector-with-hardcoded-elements
