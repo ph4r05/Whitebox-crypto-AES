@@ -845,7 +845,7 @@ void WBAESGenerator::generateXorTable(CODING * xorCoding, XTB * xtb){
 }
 
 int WBAESGenerator::generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size, bool identity){
-	unsigned long int i,c;
+	unsigned long int i=0,c=0;
 	for(i=0; i<size; i++){
 		// HINT: if you are debugging IO problems, try to turn on and off some bijections,
 		// you can very easily localize the problem.
@@ -858,7 +858,7 @@ int WBAESGenerator::generate4X4Bijections(CODING4X4_TABLE * tbl, size_t size, bo
 }
 
 int WBAESGenerator::generate8X8Bijections(CODING8X8_TABLE * tbl, size_t size, bool identity){
-	unsigned int i,c;
+	unsigned int i=0,c=0;
 	for(i=0; i<size; i++){
 		c |= generate8X8Bijection(&tbl[i].coding, &tbl[i].invCoding, identity);
 	}

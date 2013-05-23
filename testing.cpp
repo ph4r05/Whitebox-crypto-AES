@@ -151,7 +151,7 @@ int A1A2relationsGenerator(void){
 			dumpA.flush();
 
 			cout << "+";
-			int ii,qq,probAll;
+			int ii=0,qq=0,probAll=0;
 			for(qq=0;qq<8; qq++){
 				cout << ".";
 				for(ii=1;ii<256;ii++){
@@ -350,7 +350,7 @@ int dualAESTest(void){
 
 
 	cout << "A1 and A2 relations, testing all possible" << endl;
-	int ii,qq,probAll;
+	int ii=0,qq=0,probAll=0;
 	for(qq=0;qq<8; qq++){
 		for(ii=1;ii<256;ii++){
 			int problems=0;

@@ -1,4 +1,5 @@
-CXXFLAGS = -O0 -g3 -Wall -fmessage-length=0 -L -lntl -lm -std=c++0x
+#CXXFLAGS = -O0 -g3 -Wall -fmessage-length=0 -L -lntl -lm -std=c++0x
+CXXFLAGS = -O2 -g0 -Wall -fmessage-length=0 -L -lntl -lm -std=c++0x
 
 OBJS = md5.o GenericAES.o NTLUtils.o MixingBijections.o WBAES.o WBAESGenerator.o LinearAffineEq.o BGEAttack.o
 
