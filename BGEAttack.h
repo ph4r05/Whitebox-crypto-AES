@@ -192,11 +192,30 @@ public:
 	virtual ~BGEAttack();
 
 	// AES to attack on
-	WBAES wbaes;
+	WBAES * wbaes;
 
+	// External coding of the AES above, just to test conversion to affine transformation [OPTIONAL]
+	ExtEncoding * coding;
+
+	//
+	// Demonstration of an attack - generates new WB AES instance and calls attack()
 	int run(void);
+
+	//
+	// Main entry point
+	// Performs the whole BGE attack on this->wbaes
+	int attack(void);
+
+	//
+	// round function using AES this->wbaes instance
 	void Rbox(W128b& state, bool encrypt=true, int r=1, bool noShift=false, int colMask2compute=15);
+
+	//
+	// Recovers PSI isomorphism from (S,o) -> (GF(2^8), +) according to the paper
 	void recoverPsi(Sset_t & set);
+
+	//
+	// Derives set B from the BGE attack from MixColumn matrix coefficients
 	int deriveBset(Bset & bset, GenericAES & aes, bool permissive=true);
 
 	// Computes characteristic polynomial of matrix with coefficients from GF2.
@@ -269,8 +288,8 @@ public:
 	int invertCipherTest();
 
 	// just identity on 16 elements - used when shift rows operation ignored
-	static int shiftIdentity[16];
-	static int shiftT2[16];
+	const static int shiftIdentity[16];
+	const static int shiftT2[16];
 
 protected:
 	// used internally for comptuting characteristic polynomial

@@ -180,7 +180,7 @@ typedef XTB    W32XTB[8];
 // 12 13 14 15        03 07 11 15
 //
 #define IDX_TRANSPOSE(i) ( 4*((i)%4) + ((i)/4) )
-inline int idxTranspose(int i) { return IDX_TRANSPOSE(i); };
+inline int idxTranspose(int i) { return IDX_TRANSPOSE(i); }
 
 /**
  * Simple 32bit wide XOR operation.
@@ -235,6 +235,8 @@ inline void dumpW32b(W32b& a){
 
 // Reads character vector to W128b, by columns - required format for encryption input
 void arr_to_W128b(unsigned char * src, size_t offset, W128b& dst);
+void arr_to_W128b(char * src, size_t offset, W128b& dst);
+void W128b_to_arr(char * dst, size_t offset, W128b& src);
 bool compare_W128b(const W128b& src, const W128b& dst);
 
 class WBAES {
@@ -268,7 +270,7 @@ public:
 	// | 02 06 10 14 |  (cyclic left shift)     | 10 14 02 06 |
 	// | 03 07 11 15 |                          | 15 03 07 11 |
 	//
-	static int shiftRows[N_BYTES];
+	const static int shiftRows[N_BYTES];
 
     // Inverse ShiftRows()
     // | 00 04 08 12 |                          | 00 04 08 12 |
@@ -276,7 +278,7 @@ public:
 	// | 02 06 10 14 |  (cyclic left right)     | 10 14 02 06 |
 	// | 03 07 11 15 |                          | 07 11 15 03 |
 	//
-    static int shiftRowsInv[N_BYTES];
+	const static int shiftRowsInv[N_BYTES];
 
 		
 	// XOR tables
@@ -352,7 +354,7 @@ namespace boost{ namespace serialization {
 template<class Archive> inline void serialize(Archive &ar, union _W32B &i, const unsigned version){
    ar & make_nvp("l",i.l);
 
-}}};
+}}}
 
 namespace boost{ namespace serialization {
 template<class Archive> inline void serialize(Archive &ar, union _W128B &i, const unsigned version){
@@ -360,7 +362,7 @@ template<class Archive> inline void serialize(Archive &ar, union _W128B &i, cons
    ar & i.l[1];
    ar & i.l[2];
    ar & i.l[3];
-}}};
+}}}
 
 BOOST_CLASS_IMPLEMENTATION(union _W32B ,boost::serialization::object_serializable);
 BOOST_CLASS_IMPLEMENTATION(union _W128 ,boost::serialization::object_serializable);

@@ -18,8 +18,8 @@ namespace wbacr {
 namespace attack {
 
 BGEAttack::BGEAttack() {
-	;
-
+	this->coding = NULL;
+	this->wbaes = NULL;
 }
 
 BGEAttack::~BGEAttack() {
@@ -32,8 +32,8 @@ using namespace boost;
 using namespace wbacr::attack;
 using namespace wbacr::laeqv;
 
-int BGEAttack::shiftIdentity[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
-int BGEAttack::shiftT2[16] =
+const int BGEAttack::shiftIdentity[16] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+const int BGEAttack::shiftT2[16] =
 		{0,  4,  8, 12,
 	    13,  1,  5,  9,
 	    10, 14,  2,  6,
@@ -63,14 +63,14 @@ void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift, int colMas
 	W128b ares[N_BYTES];				// intermediate result for T1-boxes
 
 	// encryption/decryption dependent operations and tables
-	int (&shiftOp)[N_BYTES]  = noShift ? this->shiftIdentity : (encrypt ? (this->wbaes.shiftRows)   : (this->wbaes.shiftRowsInv));
-	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->wbaes.eXTab) 	   : (this->wbaes.dXTab);
-	W32XTB (&edXTabEx)[2][15][4]                         = encrypt ? (this->wbaes.eXTabEx)     : (this->wbaes.dXTabEx);
-	AES_TB_TYPE1 (&edTab1)[2][N_BYTES]                   = encrypt ? (this->wbaes.eTab1)       : (this->wbaes.dTab1);
-	AES_TB_TYPE2 (&edTab2)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes.eTab2) 	   : (this->wbaes.dTab2);
-	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes.eTab3) 	   : (this->wbaes.dTab3);
+	const int (&shiftOp)[N_BYTES] = noShift ? this->shiftIdentity : (encrypt ? (this->wbaes->shiftRows)   : (this->wbaes->shiftRowsInv));
+	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->wbaes->eXTab) 	         : (this->wbaes->dXTab);
+	W32XTB (&edXTabEx)[2][15][4]                         = encrypt ? (this->wbaes->eXTabEx)          : (this->wbaes->dXTabEx);
+	AES_TB_TYPE1 (&edTab1)[2][N_BYTES]                   = encrypt ? (this->wbaes->eTab1)            : (this->wbaes->dTab1);
+	AES_TB_TYPE2 (&edTab2)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes->eTab2) 	         : (this->wbaes->dTab2);
+	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes->eTab3) 	         : (this->wbaes->dTab3);
 #ifdef AES_BGE_ATTACK
-	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (this->wbaes.eOutputBijection) : (this->wbaes.dOutputBijection);
+	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (this->wbaes->eOutputBijection) : (this->wbaes->dOutputBijection);
 #endif
 	// Last round = special case. Just T1 boxes && 128-bot XOR cascade
 	if (r==(N_ROUNDS-1)){
@@ -938,10 +938,7 @@ int BGEAttack::run(void) {
 #endif
 
 	WBAESGenerator generator;
-	ExtEncoding    coding;
-	W128b state;
 	cout << "Generating AES..." << endl;
-	bool encrypt = true;
 
 	generator.useDualAESARelationsIdentity=false;
 	generator.useDualAESIdentity=false;
@@ -950,18 +947,45 @@ int BGEAttack::run(void) {
 	generator.useIO08x08Identity=false;
 	generator.useMB08x08Identity=false;
 	generator.useMB32x32Identity=false;
-	generator.generateExtEncoding(&coding, WBAESGEN_EXTGEN_ID);
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, true);  cout << "AES ENC generated" << endl;
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, false); cout << "AES DEC generated" << endl;
-	int (&nextTbox)[N_BYTES]     = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
+
+
+	this->wbaes  = new WBAES;
+	this->coding = new ExtEncoding;
+	generator.generateExtEncoding(this->coding, WBAESGEN_EXTGEN_ID);
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, this->coding, true);  cout << "AES ENC generated" << endl;
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, this->coding, false); cout << "AES DEC generated" << endl;
 
 	// WBAES changed to state with affine matching bijections at round boundaries.
 	cout << "Going to test WBAES before modifying tables" << endl;
-	generator.testComputedVectors(true, this->wbaes, &coding);
+	generator.testComputedVectors(true, this->wbaes, this->coding);
 
+	cout << "Starting the BGE attack" << endl;
+	int toReturn = this->attack();
+
+	delete this->wbaes;
+	delete this->coding;
+
+	this->wbaes  = NULL;
+	this->coding = NULL;
+
+	return toReturn;
+}
+
+int BGEAttack::attack(void) {
 	// The aim of this attack is to extract round keys, so generate them here to be able to compare results
+
+	GenericAES defAES;
+	defAES.init(0x11B, 0x03);
+
+	bool encrypt = true;
+	WBAESGenerator generator;
+	W128b state;
+
+	assert(this->wbaes!=NULL);
+
 	vec_GF2E defaultKey;						// key for default AES in GF2E representation
 	vec_GF2E expandedKey;						// expanded key for default AES
+	const int (&nextTbox)[N_BYTES] = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
 	generator.BYTEArr_to_vec_GF2E(GenericAES::testVect128_key, KEY_SIZE_16, defaultKey);			// convert BYTE key to GF2E key
 	defAES.expandKey(expandedKey, defaultKey, KEY_SIZE_16);	// key schedule for default AES
 	cout << "Expanded key: " << endl;
@@ -1177,10 +1201,10 @@ int BGEAttack::run(void) {
 			// In WBAES implementation, shift rows will follow, thus first 4 T2boxes will be feeded by indexes of state array:
 			// state[0,7,10,13]; next 4 T2 boxes will be feeded by state[4,1,14,11]
 			// The point is that nextTbox \ocirc shiftRows (during evaluation) = identity
-			AES_TB_TYPE2 & curT2     = this->wbaes.eTab2[(r+1)][nextTbox[i]];    // T2 table in next round connected to particular HILO(xtb1, xtb2)
-			XTB & curXtb1            = this->wbaes.eXTab[r][i%4][5][2*(i/4)+0];  // 3.rd index - XOR table number 5, last in round
-			XTB & curXtb2            = this->wbaes.eXTab[r][i%4][5][2*(i/4)+1];
-			GF256_func_t & outBiject = this->wbaes.eOutputBijection[r][i];
+			AES_TB_TYPE2 & curT2     = this->wbaes->eTab2[(r+1)][nextTbox[i]];    // T2 table in next round connected to particular HILO(xtb1, xtb2)
+			XTB & curXtb1            = this->wbaes->eXTab[r][i%4][5][2*(i/4)+0];  // 3.rd index - XOR table number 5, last in round
+			XTB & curXtb2            = this->wbaes->eXTab[r][i%4][5][2*(i/4)+1];
+			GF256_func_t & outBiject = this->wbaes->eOutputBijection[r][i];
 
 			// Copy original values of tables to be consistent in changes, not to change value that will be
 			// needed in future in original form (before application of transformation)
@@ -1236,7 +1260,13 @@ int BGEAttack::run(void) {
 
 	// WBAES changed to state with affine matching bijections at round boundaries.
 	cout << "Going to test WBAES after modifying tables" << endl;
-	generator.testComputedVectors(true, this->wbaes, &coding);
+	if (this->coding != NULL) {
+		generator.testComputedVectors(true, this->wbaes, this->coding);
+	} else {
+		ExtEncoding tmpCoding;
+		generator.generateExtEncoding(&tmpCoding, WBAESGEN_EXTGEN_ID);
+		generator.testComputedVectors(true, this->wbaes, &tmpCoding);
+	}
 
 	//
 	// Attack, proceeding to phase 2 - removing affine parts for output encoding
@@ -1580,6 +1610,8 @@ int BGEAttack::invertCipherTest(){
 	generator.useMB08x08Identity=false;
 	generator.useMB32x32Identity=false;
 	generator.generateExtEncoding(&coding, WBAESGEN_EXTGEN_ID);
+
+	this->wbaes = new WBAES;
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, true);  cout << "AES ENC generated" << endl;
 	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, false); cout << "AES DEC generated" << endl;
 	//int (&nextTbox)[N_BYTES]     = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
@@ -1595,7 +1627,7 @@ int BGEAttack::invertCipherTest(){
 	arr_to_W128b(GenericAES::testVect128_cipher[0], 0, cipher);
 
 	// encryption
-	this->wbaes.encrypt(state);
+	this->wbaes->encrypt(state);
 	cout << "=====================" << endl;
 	cout << "InvertTest plaintext: " << endl;
 	dumpW128b(plain); cout << endl;
@@ -1697,7 +1729,7 @@ int BGEAttack::invertCipherTest(){
 	}
 
 
-
+	delete this->wbaes;
 	return 0;
 }
 

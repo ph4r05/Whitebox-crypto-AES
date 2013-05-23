@@ -22,14 +22,14 @@ NTL_CLIENT
 
 
 // Shift rows selector
-int WBAES::shiftRows[N_BYTES] = {
+const int WBAES::shiftRows[N_BYTES] = {
 		 0,  1,  2,  3,
 		 5,  6,  7,  4,
 		10, 11,  8,  9,
 		15, 12, 13, 14
 };
 
-int WBAES::shiftRowsInv[N_BYTES] = {
+const int WBAES::shiftRowsInv[N_BYTES] = {
 		 0,  1,  2,  3,
 		 7,  4,  5,  6,
 		10, 11,  8,  9,
@@ -40,6 +40,20 @@ void arr_to_W128b(unsigned char * src, size_t offset, W128b& dst){
 	int i=0;
 	for(i=0; i<16; i++){
 		dst.B[idxTranspose(i)] = src[offset+i];
+	}
+}
+
+void arr_to_W128b(char * src, size_t offset, W128b& dst){
+	int i=0;
+	for(i=0; i<16; i++){
+		dst.B[idxTranspose(i)] = src[offset+i];
+	}
+}
+
+void W128b_to_arr(char * dst, size_t offset, W128b& src){
+	int i=0;
+	for(i=0; i<16; i++){
+		dst[offset+i] = src.B[idxTranspose(i)];
 	}
 }
 
@@ -76,7 +90,7 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	W128b ares[N_BYTES];				// intermediate result for T1-boxes
 
 	// encryption/decryption dependent operations and tables
-	int (&shiftOp)[N_BYTES]                              = encrypt ? (this->shiftRows) : (this->shiftRowsInv);
+	const int (&shiftOp)[N_BYTES]                        = encrypt ? (this->shiftRows) : (this->shiftRowsInv);
 	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->eXTab)     : (this->dXTab);
 	W32XTB (&edXTabEx)[2][15][4]                         = encrypt ? (this->eXTabEx)   : (this->dXTabEx);
 	AES_TB_TYPE1 (&edTab1)[2][N_BYTES]                   = encrypt ? (this->eTab1)     : (this->dTab1);

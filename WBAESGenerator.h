@@ -498,11 +498,11 @@ public:
 
 	//
 	// Generate WB AES tables for encryption or decryption - MAIN method here
-	void generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, ExtEncoding * extc, bool encrypt);
+	void generateTables(BYTE *key, enum keySize ksize, WBAES * genAES, ExtEncoding * extc, bool encrypt);
 
 	//
 	// Helper method, generates only T1 tables from external encoding
-	void generateT1Tables(WBAES& genAES, ExtEncoding * extc, bool encrypt);
+	void generateT1Tables(WBAES * genAES, ExtEncoding * extc, bool encrypt);
 
 	//
 	// Helper method, generates XOR table
@@ -520,8 +520,8 @@ public:
 	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject, bool identity=false);
  	
 	// test whitebox implementation with test vectors
-	int testWithVectors(bool coutOutput, WBAES &genAES);
-	int testComputedVectors(bool coutOutput, WBAES &genAES, ExtEncoding * extc);
+	int testWithVectors(bool coutOutput, WBAES * genAES);
+	int testComputedVectors(bool coutOutput, WBAES * genAES, ExtEncoding * extc);
 
 	inline void BYTEArr_to_vec_GF2E(const BYTE * arr, size_t len, NTL::vec_GF2E& dst){
 		charArr_to_vec_GF2E(arr, len, dst);

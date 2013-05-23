@@ -9,6 +9,7 @@
 // *  License: GPLv3 [http://www.gnu.org/licenses/gpl-3.0.html]
 //============================================================================
 #include "MGR_NTL.h"
+#include <time.h>
 
 // hardcoded elements
 // http://stackoverflow.com/questions/2236197/c-easiest-way-to-initialize-an-stl-vector-with-hardcoded-elements
@@ -26,6 +27,8 @@ using namespace wbacr::attack;
 
 int main(void) {
 	// very poor PRNG seeding, but just for now
+	time_t start, end;
+
 	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
@@ -34,7 +37,7 @@ int main(void) {
 	defAES.init(0x11B, 0x03);
 	defAES.printAll();
 	WBAESGenerator generator;
-	WBAES genAES;
+	WBAES * genAES = new WBAES;
 
 	// Test WB AES with test vectors.
 	// This test also demonstrates usage of external encodings by wrapping AES
@@ -44,8 +47,14 @@ int main(void) {
 	BGEAttack atk;
 
 	// BGE attack
+	time(&start);
 	cout << "Starting an attack! Obj: " << endl;
 	atk.run();
+
+	time(&end);
+	cout << "Computation took: " << (end - start) << " seconds." << endl;
+	delete genAES;
+
 	exit(3);
 
 	// Cipher inversion - works only without external encodings,

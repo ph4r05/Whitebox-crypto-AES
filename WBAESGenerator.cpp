@@ -314,13 +314,13 @@ void WBAESGenerator::generateExtEncoding(ExtEncoding * extc, int flags){
 	}
 }
 
-void WBAESGenerator::generateT1Tables(WBAES& genAES, ExtEncoding * extc, bool encrypt){
+void WBAESGenerator::generateT1Tables(WBAES * genAES, ExtEncoding * extc, bool encrypt){
 	// To initialize T1[1] map, coding map is needed, since it takes input from last round, for this we need key material
 	// to add S-box to T1[1], so it is not done here...
 	int i,j,b;
 
 	// Encryption/Decryption dependent operation and tables
-	AES_TB_TYPE1  (&genAES_edTab1)[2][N_BYTES]  = encrypt ? genAES.eTab1                 : genAES.dTab1;
+	AES_TB_TYPE1  (&genAES_edTab1)[2][N_BYTES]  = encrypt ? genAES->eTab1                : genAES->dTab1;
 	W08x128Coding (&codingMap_edT1)[2][N_BYTES] = encrypt ? codingMap->eT1               : codingMap->dT1;
 
 	// At first initialize T1[0]
@@ -351,7 +351,7 @@ void WBAESGenerator::generateT1Tables(WBAES& genAES, ExtEncoding * extc, bool en
 	}
 }
 
-void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES, ExtEncoding* extc, bool encrypt){
+void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES * genAES, ExtEncoding* extc, bool encrypt){
 	int 						codingCount;
 	int							i,j,r,b,k;
 	GenericAES					defaultAES;
@@ -372,11 +372,11 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 	// Encryption/Decryption dependent functions and tables
 	int (&nextTbox)[N_BYTES]     = encrypt ? (this->shiftRowsLBijection) : (this->shiftRowsLBijectionInv);
 	int (&shiftRowsOp)[N_BYTES]  = encrypt ? (this->shiftRows)    		 : (this->shiftRowsInv);
-	W32XTB        (&genAES_edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS]  = encrypt ? genAES.eXTab    : genAES.dXTab;
-	W32XTB        (&genAES_edXTabEx)[2][15][4]                          = encrypt ? genAES.eXTabEx  : genAES.dXTabEx;
-	AES_TB_TYPE1  (&genAES_edTab1)[2][N_BYTES]			 		        = encrypt ? genAES.eTab1    : genAES.dTab1;
-	AES_TB_TYPE2  (&genAES_edTab2)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES.eTab2    : genAES.dTab2;
-	AES_TB_TYPE3  (&genAES_edTab3)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES.eTab3    : genAES.dTab3;
+	W32XTB        (&genAES_edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS]  = encrypt ? genAES->eXTab   : genAES->dXTab;
+	W32XTB        (&genAES_edXTabEx)[2][15][4]                          = encrypt ? genAES->eXTabEx : genAES->dXTabEx;
+	AES_TB_TYPE1  (&genAES_edTab1)[2][N_BYTES]			 		        = encrypt ? genAES->eTab1   : genAES->dTab1;
+	AES_TB_TYPE2  (&genAES_edTab2)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES->eTab2   : genAES->dTab2;
+	AES_TB_TYPE3  (&genAES_edTab3)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES->eTab3   : genAES->dTab3;
 	W08x128Coding (&codingMap_edT1)[2][N_BYTES]					        = encrypt ? codingMap->eT1  : codingMap->dT1;
 	W08x32Coding  (&codingMap_edT2)[N_ROUNDS][N_SECTIONS][4]	        = encrypt ? codingMap->eT2  : codingMap->dT2;
 	W08x32Coding  (&codingMap_edT3)[N_ROUNDS][N_SECTIONS][4]            = encrypt ? codingMap->eT3  : codingMap->dT3;
@@ -389,7 +389,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES& genAES
 
 #ifdef AES_BGE_ATTACK
 	// If there are 8x8 output bijections, just generate identities
-	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (genAES.eOutputBijection) : (genAES.dOutputBijection);
+	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (genAES->eOutputBijection) : (genAES->dOutputBijection);
 	for(r=0;r<N_ROUNDS;r++){
 		for(i=0;i<N_BYTES;i++){
 			for(k=0;k<GF256;k++){
@@ -890,7 +890,7 @@ int WBAESGenerator::generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject
 	}
 }
 
-int WBAESGenerator::testWithVectors(bool coutOutput, WBAES &genAES){
+int WBAESGenerator::testWithVectors(bool coutOutput, WBAES * genAES){
 	// generate table implementation for given key
 	ExtEncoding extc;
 
@@ -968,7 +968,7 @@ void WBAESGenerator::applyExternalEnc(W128b& state, ExtEncoding * extc, bool inp
 	}
 }
 
-int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES &genAES, ExtEncoding * extc){
+int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES * genAES, ExtEncoding * extc){
 	int i, err=0;
 
 	// see [http://csrc.nist.gov/publications/fips/fips197/fips-197.pdf]
@@ -984,7 +984,7 @@ int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES &genAES, ExtEncod
 
 		// encryption
 		applyExternalEnc(state, extc, true);
-		genAES.encrypt(state);
+		genAES->encrypt(state);
 		applyExternalEnc(state, extc, false);
 		if (coutOutput){
 			cout << "Testvector index: " << i << endl;
@@ -1007,7 +1007,7 @@ int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES &genAES, ExtEncod
 		}
 
 		applyExternalEnc(state, extc, true);
-		genAES.decrypt(state);
+		genAES->decrypt(state);
 		applyExternalEnc(state, extc, false);
 		if (coutOutput){
 			cout << "Dec(Enc(plaintext_test)): " << endl;
