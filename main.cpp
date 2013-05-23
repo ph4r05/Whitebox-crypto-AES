@@ -163,6 +163,9 @@ int main(int argc, const char * argv[]) {
 		WBAES     * tmpAES = new WBAES;
 		BGEAttack * atk = new BGEAttack;
 
+		clock_t pstart, pend;
+		clock_t pacc = 0;
+
 		generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &coding, true);
 		generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &coding, false);
 		cout << "Tables generated, starting with the attack; size of the AES struct = " << sizeof(WBAES) << endl;
@@ -171,17 +174,24 @@ int main(int argc, const char * argv[]) {
 			atk->wbaes = tmpAES;
 
 			cout << "Starting round="<<i<<endl;
+
 			time(&start);
+			pstart = clock();
+
 			atk->attack();
+
+			pend = clock();
 			time(&end);
 
 			total += end-start;
+			pacc  += pend - pstart;
 		}
 
 		delete genAES;
 		delete atk;
 		delete tmpAES;
-		cout << "Benchmark finished! Total time = " << (total) << " s; on average = " << (total / (float)benchbge) << " s" << endl;
+		cout << "Benchmark finished! Total time = " << (total) << " s; on average = " << (total / (float)benchbge) << " s"
+				<< "; clocktime=" << ((float) pacc / CLOCKS_PER_SEC) << " s;" << endl;
     }
 
 
@@ -234,7 +244,7 @@ int main(int argc, const char * argv[]) {
 		// read the file
 		const int buffSize       = 4096;
 		const long int iters     = buffSize / N_BYTES;
-		unsigned long blockCount = 0;
+		unsigned long long blockCount = 0;
 		char * memblock          = new char[buffSize];
 		char blockbuff[N_BYTES];
 
@@ -247,6 +257,9 @@ int main(int argc, const char * argv[]) {
 		// time measurement of just the cipher operation
 		time_t cstart, cend;
 		time_t cacc=0;
+
+		clock_t pstart, pend;
+		clock_t pacc = 0;
 
 		// measure the time here
 		time(&start);
@@ -272,9 +285,13 @@ int main(int argc, const char * argv[]) {
 				if (useExternal) generator.applyExternalEnc(state, &coding, true);
 
 				time(&cstart);
+				pstart = clock();
 				genAES->encrypt(state);
+				pend = clock();
 				time(&cend);
-				cacc += (cend-cstart);
+
+				cacc += (cend - cstart);
+				pacc += (pend - pstart);
 
 				if (useExternal) generator.applyExternalEnc(state, &coding, false);
 
@@ -282,6 +299,10 @@ int main(int argc, const char * argv[]) {
 				if (writeOut){
 					W128b_to_arr(blockbuff, 0, state);
 					out.write(blockbuff, N_BYTES);
+				}
+
+				if ((blockCount % 320) == 0){
+
 				}
 			}
 
@@ -293,7 +314,8 @@ int main(int argc, const char * argv[]) {
 		time(&end);
 
 		time_t total = end-start;
-		cout << "Encryption ended in ["<<total<<"]s; Pure encryption took ["<<cacc<<"]s; encrypted ["<<blockCount<<"] blocks" << endl;
+		cout << "Encryption ended in ["<<total<<"]s; Pure encryption took ["<<((float) pacc / CLOCKS_PER_SEC)
+					<<"] s (clock call); time: ["<<cacc<<"] s; encrypted ["<<blockCount<<"] blocks" << endl;
 
 		// free allocated memory
 		delete genAES;
