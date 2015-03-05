@@ -275,11 +275,11 @@ int main(int argc, const char * argv[]) {
 			}
 
 			// here we have data in the buffer - lets encrypt them
-			W128b plain, state;
-			long int iter2comp = max(iters, (long int) ceil((float)bRead / N_BYTES));
+			W128b state;
+			long int iter2comp = min(iters, (long int) ceil((float)bRead / N_BYTES));
 
 			for(int k = 0; k < iter2comp; k++, blockCount++){
-				arr_to_W128b(memblock, N_BYTES * 16, plain);
+				arr_to_W128b(memblock, k * 16, state);
 
 				// encryption
 				if (useExternal) generator.applyExternalEnc(state, &coding, true);
