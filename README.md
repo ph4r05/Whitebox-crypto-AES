@@ -1,42 +1,33 @@
 Whitebox-crypto-AES
 ===================
 
-Whitebox context attack resitant AES implementation
+Whitebox cryptography AES implementation.
 
-For more info see sources:
+This repository contains a C++ implementation of:
+ *  Complete whitebox [AES]-128 scheme introduced by [Chow] et al [2]. Implements/uses input/output encodings, mixing bijections, external encodings.
+ * Complete whitebox [AES]-128 scheme introduced by [Karroumi] [3] which uses an idea of dual AES ciphers (using a different generating polynomial for AES cipher) for creating a stronger AES whitebox scheme.
+ * Implementation of the [BGE] Attack on [Chow]'s AES whitebox implementation found by [Billet] et al [4]. Attack uses whitebox AES generator to create a random instance of whitebox AES scheme with secret key K embedded in the implementation. The attack then recovers the secret key K from the tables representing the given instance. This BGE attack also breaks scheme proposed by [Karroumi] what I found out while working on my [diploma] thesis.
+ 
+The implementation contains:
+ * Whitebox AES code generator in both [Chow] and [Karroumi] schemes. It generates a randomized whitebox AES instance with embedded encryption key K which can be used either for encryption or for decryption. 
+ * Code for running generated whitebox AES instance for encryption/decryption.
+ * Unit tests.
+ 
+You also might be interested in my [Java] implementation of the Chow's whitebox AES scheme.
+In my [diploma] thesis I suggest modifications and improvements for a new whitebox-suited symmetric-key encryption algorithm based on AES.
 
-http://csrc.nist.gov/archive/aes/rijndael/Rijndael-ammended.pdf
+[AES]: http://csrc.nist.gov/archive/aes/rijndael/Rijndael-ammended.pdf
+[Chow]: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.59.7710
+[Karroumi]: http://dl.acm.org/citation.cfm?id=2041060
+[Billet]: http://bo.blackowl.org/s/papers/waes.pdf
+[diploma]: http://is.muni.cz/th/325219/fi_m/thesis.pdf
+[Java]: https://github.com/ph4r05/Whitebox-crypto-AES-java
 
-http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.59.7710
+[2]: Stanley Chow, Phil Eisen, Harold Johnson, and Paul C. Van Oorschot. White-box cryptography and an AES implementation. In Proceedings of the Ninth Workshop on Selected Areas in Cryptography (SAC 2002, pages 250–270. Springer-Verlag, 2002.
 
-    @INPROCEEDINGS{Chow02white-boxcryptography,
-        author = {S. Chow and P. Eisen and H. Johnson and P. C. Van Oorschot},
-        title = {White-Box Cryptography and an AES Implementation},
-        booktitle = {Proceedings of the Ninth Workshop on Selected Areas in Cryptography (SAC 2002},
-        year = {2002},
-        pages = {250--270},
-        publisher = {Springer-Verlag}
-    }
+[3]: Mohamed Karroumi. Protecting white-box AES with dual ciphers. In Proceedings of the 13th international conference on Information security and cryptology, ICISC’10, pages 278–291, Berlin, Heidelberg, 2011. Springer-Verlag. ISBN 978-3-642-24208-3. 
 
-http://dl.acm.org/citation.cfm?id=2041060
-
-    @inproceedings{Karroumi:2010:PWA:2041036.2041060,
-     author = {Karroumi, Mohamed},
-     title = {Protecting white-box AES with dual ciphers},
-     booktitle = {Proceedings of the 13th international conference on Information security and cryptology},
-     series = {ICISC'10},
-     year = {2011},
-     isbn = {978-3-642-24208-3},
-     location = {Seoul, Korea},
-     pages = {278--291},
-     numpages = {14},
-     url = {http://dl.acm.org/citation.cfm?id=2041036.2041060},
-     acmid = {2041060},
-     publisher = {Springer-Verlag},
-     address = {Berlin, Heidelberg},
-     keywords = {AES, block ciphers, dual cipher, implementation, white-box cryptography},
-    } 
-
+[4]: Olivier Billet, Henri Gilbert, and Charaf Ech-Chatbi. Cryptanalysis of a white box AES implementation. In Proceedings of the 11th international conference on Selected Areas in Cryptography, SAC’04, pages 227–240, Berlin, Heidelberg, 2005. Springer-Verlag. ISBN 3-540-24327-5, 978-3-540-24327-4. doi: 10.1007/978-3-540-30564-4_16.
 
 License
 =======
