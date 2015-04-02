@@ -9,12 +9,14 @@ This repository contains a C++ implementation of:
  * Implementation of the [BGE] Attack on [Chow]'s AES whitebox implementation found by [Billet] et al [4]. Attack uses whitebox AES generator to create a random instance of whitebox AES scheme with secret key K embedded in the implementation. The attack then recovers the secret key K from the tables representing the given instance. This BGE attack also breaks scheme proposed by [Karroumi] what I found out while working on my [diploma] thesis.
  
 The implementation contains:
- * Whitebox AES code generator in both [Chow] and [Karroumi] schemes. It generates a randomized whitebox AES instance with embedded encryption key K which can be used either for encryption or for decryption. 
+ * Whitebox AES code generator in both [Chow] and [Karroumi] schemes. It generates a randomized whitebox AES instance with embedded encryption key K which can be used either for encryption or for decryption. Instance can be serialized to a file. 
  * Code for running generated whitebox AES instance for encryption/decryption.
+ * BGE key recovery attack on a generated whitebox AES instance.
  * Unit tests.
  
 You also might be interested in my [Java] implementation of the Chow's whitebox AES scheme.
 In my [diploma] thesis I suggest modifications and improvements for a new whitebox-suited symmetric-key encryption algorithm based on AES.
+
 
 [AES]: http://csrc.nist.gov/archive/aes/rijndael/Rijndael-ammended.pdf
 [Chow]: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.59.7710
@@ -29,6 +31,17 @@ In my [diploma] thesis I suggest modifications and improvements for a new whiteb
 
 [4]: Olivier Billet, Henri Gilbert, and Charaf Ech-Chatbi. Cryptanalysis of a white box AES implementation. In Proceedings of the 11th international conference on Selected Areas in Cryptography, SAC’04, pages 227–240, Berlin, Heidelberg, 2005. Springer-Verlag. ISBN 3-540-24327-5, 978-3-540-24327-4. doi: 10.1007/978-3-540-30564-4_16.
 
+Dependencies
+=======
+* Implementation uses C++ 11,
+* [NTL] math library is used for computation in finite fields & algebra. NTL is licensed under GPL thus this implementation also has to be GPL.
+* Boost library for serialization of the scheme instance & program input parameters parsing.
+ *  boost_iostreams
+ *  boost_serialization
+ *  boost_program_options
+
+[NTL]: http://www.shoup.net/ntl/
+
 License
 =======
 Code is published under license: GPLv3 [http://www.gnu.org/licenses/gpl-3.0.html]. This license holds from the first commit.
@@ -37,4 +50,8 @@ I also require to include my copyright header in files if you decide to use my s
 Using GPL in short means that if you incorporate this source code to your application, it has to be also published under GPLv3. Also if you make any improvement to my source code and you will use improved version you are obliged to publish improved version as well.
 
 If this license does not fit to you, drop me an email, I am sure we can negotiate somehow.
+
+Contributing
+=======
+If you want to improve my code by extending it to AES-256 or implementing other whitebox AES schemes do not hesitate to submit a pull request. Please also consider it if you find some bug in the code. I am not actively developing this code at the moment but I will review the pull requests. Thanks!
 
