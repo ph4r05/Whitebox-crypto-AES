@@ -14,7 +14,7 @@
 #include <cstdlib>
 #include <ctime>
 
-#define WBAES_BOOTS_SERIALIZATION 1
+#define WBAES_BOOST_SERIALIZATION 1
 
 // NTL dependencies
 namespace wbacr {
