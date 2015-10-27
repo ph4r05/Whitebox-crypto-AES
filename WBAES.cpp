@@ -271,7 +271,7 @@ void WBAES::encdec(W128b& state, bool encrypt){
 }
 
 int WBAES::save(char * filename){
-#ifdef WBAES_BOOTS_SERIALIZATION
+#ifdef WBAES_BOOST_SERIALIZATION
 	std::ofstream ofs(filename);
 	boost::archive::binary_oarchive oa(ofs);
 	oa << this;
@@ -279,13 +279,13 @@ int WBAES::save(char * filename){
 
 	return 0;
 #else
-	cerr << "WBAES::save: Boost is not enabled, use WBAES_BOOTS_SERIALIZATION" << endl;
+	cerr << "WBAES::save: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
 	return -1;
 #endif
 }
 
 int WBAES::load(char * filename){
-#ifdef WBAES_BOOTS_SERIALIZATION
+#ifdef WBAES_BOOST_SERIALIZATION
 	// open the archive
 	std::ifstream ifs(filename);
 	boost::archive::binary_iarchive ia(ifs);
@@ -296,7 +296,7 @@ int WBAES::load(char * filename){
 	ifs.close();
 	return 0;
 #else
-	cerr << "WBAES::load: Boost is not enabled, use WBAES_BOOTS_SERIALIZATION" << endl;
+	cerr << "WBAES::load: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
 	return -1;
 #endif
 }
