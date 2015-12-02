@@ -31,21 +31,24 @@ add_executable(main ${SOURCE_FILES} main.cpp)
 add_executable(testing ${SOURCE_FILES} testing.cpp testing.h)
 
 # NTL
-find_library(NTL_LIB ntl /usr/local /opt/local $ENV{HOME}/ntl)
+message("HOME: $ENV{HOME}")
+find_path(NTL_INCLUDE_PATH NTL/mat_GF2.h PATHS /usr/local /opt/local $ENV{HOME}/ntl)
+message("NTL_INCLUDE_PATH: ${NTL_INCLUDE_PATH}")
+
+find_library(NTL_LIB ntl PATHS /usr/local /opt/local $ENV{HOME}/ntl)
 if(NOT NTL_LIB)
     message(FATAL_ERROR "ntl library not found.  Rerun cmake with -DCMAKE_PREFIX_PATH=\"<path to lib1>;<path to lib2>\"")
 endif()
 message("NTL_LIB: ${NTL_LIB}")
+include_directories(${NTL_INCLUDE_PATH})
 
-link_directories("/usr/local/lib")
-include_directories("/usr/local/include")
-include_directories($ENV{HOME}/ntl)
-
+# BOOST
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost REQUIRED COMPONENTS program_options serialization iostreams)
 include_directories(${Boost_INCLUDE_DIRS})
 
+# Linking
 target_link_libraries(main ${NTL_LIB} ${Boost_LIBRARIES})
 target_link_libraries(testing ${NTL_LIB} ${Boost_LIBRARIES})
