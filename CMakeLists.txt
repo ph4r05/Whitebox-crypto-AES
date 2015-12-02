@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 2.8)
 project(Whitebox_crypto_AES)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -46,5 +46,5 @@ set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost REQUIRED COMPONENTS program_options serialization iostreams)
 include_directories(${Boost_INCLUDE_DIRS})
 
-target_link_libraries(main /usr/local/lib/libntl.a ${Boost_LIBRARIES})
-target_link_libraries(testing /usr/local/lib/libntl.a ${Boost_LIBRARIES})
+target_link_libraries(main ${NTL_LIB} ${Boost_LIBRARIES})
+target_link_libraries(testing ${NTL_LIB} ${Boost_LIBRARIES})
