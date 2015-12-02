@@ -224,7 +224,7 @@ int main(int argc, const char * argv[]) {
 		for(int i = 0; i < benchbge; i++){
 			// Copy generated AES with serialization.
 			tmpAES->loadString(serialized);
-			atk->wbaes = genAES;
+			atk->wbaes = tmpAES;
 
 			// Self-test on the first round.
 			if (i == 0 && keyToUse == GenericAES::testVect128_key){
