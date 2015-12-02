@@ -1204,7 +1204,9 @@ int BGEAttack::attack(void) {
 			AES_TB_TYPE2 & curT2     = this->wbaes->eTab2[(r+1)][nextTbox[i]];    // T2 table in next round connected to particular HILO(xtb1, xtb2)
 			XTB & curXtb1            = this->wbaes->eXTab[r][i%4][5][2*(i/4)+0];  // 3.rd index - XOR table number 5, last in round
 			XTB & curXtb2            = this->wbaes->eXTab[r][i%4][5][2*(i/4)+1];
+#ifdef AES_BGE_ATTACK
 			GF256_func_t & outBiject = this->wbaes->eOutputBijection[r][i];
+#endif
 
 			// Copy original values of tables to be consistent in changes, not to change value that will be
 			// needed in future in original form (before application of transformation)
@@ -1247,10 +1249,12 @@ int BGEAttack::attack(void) {
 			//
 			int y=0;
 			for(y=0; y<GF256; y++){
+#ifdef AES_BGE_ATTACK
 				for(x=0; x<GF256; x++){
 					BYTE newXtbX = HILO(curXtb1[x], curXtb2[y]);
 					outBiject[newXtbX] = bijectionFinv[newXtbX];	// this will be repeated 256 times, but with same value, so OK
 				}
+#endif
 
 				// For updating T2 boxes we only need 1 for loop iterating over field since function is 8->8
 				curT2[y].l = tmpT2[bijectionF[y]].l;

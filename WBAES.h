@@ -78,7 +78,7 @@ typedef BYTE          BITS4;                // FORM OF BITS4 is 0000xxxx, ONLY L
 typedef BYTE    MCSTRIP[4];                 // partitional strip obtained by multiplication with MC            
 
 // unary function over GF256 (1D lookup table)
-typedef BYTE GF256_func_t[256];
+typedef BYTE GF256_func_t[GF256];
 
 typedef union _W32B{
     BYTE B[4];
@@ -260,11 +260,20 @@ public:
 		ar & dTab1;
 		ar & dTab2;
 		ar & dTab3;
+#ifdef AES_BGE_ATTACK
+        ar & eOutputBijection;
+        ar & dOutputBijection;
+#endif
+        ar & dumpEachRound;
 	}
 #endif
 	
-	int save(char * filename);
-	int load(char * filename);
+	int save(const char * filename);
+	int load(const char * filename);
+    int save(ostream& out);
+    int load(istream& ins);
+    std::string save();
+    int loadString(std::string serialized);
 
 	// How shift rows affects state array - indexes.
 	// Selector to state array in the beggining of encryption round

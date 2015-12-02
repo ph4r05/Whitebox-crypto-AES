@@ -20,8 +20,6 @@
 #include <iostream>
 #include <fstream>
 
-#define WBAES_BOOST_SERIALIZATION 1
-
 // NTL dependencies
 #include <NTL/GF2.h>
 #include <NTL/GF2X.h>

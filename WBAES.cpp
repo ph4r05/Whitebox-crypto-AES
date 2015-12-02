@@ -270,12 +270,35 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	}
 }
 
-int WBAES::save(char * filename){
+int WBAES::save(const char * filename){
 #ifdef WBAES_BOOST_SERIALIZATION
 	std::ofstream ofs(filename);
-	boost::archive::binary_oarchive oa(ofs);
-	oa << this;
+	int code = save(ofs);
 	ofs.close();
+
+	return code;
+#else
+	cerr << "WBAES::save: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
+	return -1;
+#endif
+}
+
+int WBAES::load(const char * filename){
+#ifdef WBAES_BOOST_SERIALIZATION
+	std::ifstream ifs(filename);
+	int code = load(ifs);
+	ifs.close();
+	return code;
+#else
+	cerr << "WBAES::load: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
+	return -1;
+#endif
+}
+
+int WBAES::save(ostream& out){
+#ifdef WBAES_BOOST_SERIALIZATION
+	boost::archive::binary_oarchive oa(out);
+	oa << *this;
 
 	return 0;
 #else
@@ -284,19 +307,40 @@ int WBAES::save(char * filename){
 #endif
 }
 
-int WBAES::load(char * filename){
+int WBAES::load(istream& ins){
 #ifdef WBAES_BOOST_SERIALIZATION
 	// open the archive
-	std::ifstream ifs(filename);
-	boost::archive::binary_iarchive ia(ifs);
+	boost::archive::binary_iarchive ia(ins);
 
 	// restore the schedule from the archive
 	ia >> *this;
 
-	ifs.close();
 	return 0;
 #else
 	cerr << "WBAES::load: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
+	return -1;
+#endif
+}
+
+
+std::string WBAES::save() {
+#ifdef WBAES_BOOST_SERIALIZATION
+	std::ostringstream out;
+	save(out);
+	return out.str();
+#else
+	cerr << "WBAES::save: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
+	return -1;
+#endif
+}
+
+int WBAES::loadString(std::string serialized) {
+#ifdef WBAES_BOOST_SERIALIZATION
+	std::istringstream inf(serialized);
+	int code = load(inf);
+	return code;
+#else
+	cerr << "WBAES::save: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
 	return -1;
 #endif
 }
