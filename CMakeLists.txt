@@ -31,14 +31,15 @@ add_executable(main ${SOURCE_FILES} main.cpp)
 add_executable(testing ${SOURCE_FILES} testing.cpp testing.h)
 
 # NTL
-find_library(NTL_LIB ntl)
+find_library(NTL_LIB ntl /usr/local /opt/local $ENV{HOME}/ntl)
 if(NOT NTL_LIB)
     message(FATAL_ERROR "ntl library not found.  Rerun cmake with -DCMAKE_PREFIX_PATH=\"<path to lib1>;<path to lib2>\"")
 endif()
-message(NTL_LIB)
+message("NTL_LIB: ${NTL_LIB}")
 
 link_directories("/usr/local/lib")
 include_directories("/usr/local/include")
+include_directories($ENV{HOME}/ntl)
 
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
