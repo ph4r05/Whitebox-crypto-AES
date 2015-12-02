@@ -1,0 +1,35 @@
+# see http://about.travis-ci.org/docs/user/languages/cpp/ for more hints
+language: cpp
+
+# Use container based infrastructure for Travis
+sudo: false
+
+# Test against both compilers
+compiler:
+  - clang
+  - gcc
+
+cache:
+  directories:
+  - $HOME/ntl
+
+# https://docs.travis-ci.com/user/migrating-from-legacy
+addons:
+  apt:
+    packages:
+    - build-essential
+    - autoconf
+    - cmake
+    - libboost-program-options-dev
+    - libboost-serialization-dev
+    - libboost-iostreams-dev
+
+before_install:
+  - echo $LANG
+  - echo $LC_ALL
+  - bash install-ntl-cached.sh
+
+script:
+  - ls -las
+  - ./build.sh
+
