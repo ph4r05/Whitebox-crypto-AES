@@ -22,7 +22,6 @@ using namespace wbacr;
 using namespace wbacr::laeqv;
 using namespace wbacr::attack;
 
-#define WBAES_BOOST_SERIALIZATION 1
 #define GENERIC_AES_DEBUG 1
 
 int main(void) {
