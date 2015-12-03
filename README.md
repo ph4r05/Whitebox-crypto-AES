@@ -1,10 +1,11 @@
 Whitebox-crypto-AES
 ===================
+[![Build Status](https://travis-ci.org/ph4r05/Whitebox-crypto-AES.svg?branch=master)](https://travis-ci.org/ph4r05/Whitebox-crypto-AES)
 
 Whitebox cryptography AES implementation.
 
 This repository contains a C++ implementation of:
- *  Complete whitebox [AES]-128 scheme introduced by [Chow] et al [2]. Implements/uses input/output encodings, mixing bijections, external encodings.
+ * Complete whitebox [AES]-128 scheme introduced by [Chow] et al [2]. Implements/uses input/output encodings, mixing bijections, external encodings.
  * Complete whitebox [AES]-128 scheme introduced by [Karroumi] [3] which uses an idea of dual AES ciphers (using a different generating polynomial for AES cipher) for creating a stronger AES whitebox scheme.
  * Implementation of the [BGE] Attack on [Chow]'s AES whitebox implementation found by [Billet] et al [4]. Attack uses whitebox AES generator to create a random instance of whitebox AES scheme with secret key K embedded in the implementation. The attack then recovers the secret key K from the tables representing the given instance. This BGE attack also breaks scheme proposed by [Karroumi] what I found out while working on my [diploma] thesis.
  
@@ -33,14 +34,28 @@ In my [diploma] thesis I suggest modifications and improvements for a new whiteb
 
 Dependencies
 =======
-* Implementation uses C++ 11,
-* [NTL] math library is used for computation in finite fields & algebra. Version 6.0.0+. NTL is licensed under GPL thus this implementation also has to be GPL.
-* Boost library for serialization of the scheme instance & program input parameters parsing.
- *  boost_iostreams
- *  boost_serialization
- *  boost_program_options
+* C++0x
+* CMake 2.8+
+* [NTL] 6.0.0+
+* boost_iostreams 1.55+
+* boost_serialization 1.55+
+* boost_program_options 1.55+
+
+Description:
+* [NTL] math library is used for computation in finite fields & algebra. NTL is licensed under GPL thus this implementation also has to be GPL.
+* Boost library for serialization of the scheme instance & program input parameters parsing. Version 1.55
 
 [NTL]: http://www.shoup.net/ntl/
+
+Building
+=======
+* Travis is configured for the project so in case of any problems please refer to the travis configuration file.
+* Install dependencies. For installing NTL you can use provided scripts `install-ntl.sh` or `install-ntl-cached.sh`
+* Use cmake to build
+```bash
+cmake .
+make
+```
 
 License
 =======

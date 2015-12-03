@@ -3,9 +3,6 @@ project(Whitebox_crypto_AES)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
-#find_package(Ntl)
-#include_directories(${Ntl_INCLUDE_DIRS})
-
 set(SOURCE_FILES
     base.h
     BGEAttack.cpp
