@@ -34,7 +34,7 @@ In my [diploma] thesis I suggest modifications and improvements for a new whiteb
 Dependencies
 =======
 * Implementation uses C++ 11,
-* [NTL] math library is used for computation in finite fields & algebra. NTL is licensed under GPL thus this implementation also has to be GPL.
+* [NTL] math library is used for computation in finite fields & algebra. Version 6.0.0+. NTL is licensed under GPL thus this implementation also has to be GPL.
 * Boost library for serialization of the scheme instance & program input parameters parsing.
  *  boost_iostreams
  *  boost_serialization
