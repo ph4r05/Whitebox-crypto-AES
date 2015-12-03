@@ -54,5 +54,5 @@ before_install:
 script:
   - ls -las
   - ls -las $HOME/ntl
-  - ./build.sh
+  - bash build.sh
 
