@@ -34,6 +34,23 @@ before_install:
   - echo $LC_ALL
   - bash install-ntl-cached.sh
 
+# Coverity
+ env:
+   global:
+    # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+    #   via the "travis encrypt" command using the project repo's public key
+    - secure: "GSE2YzuQSL5Rqs9zp+bgZG+PVKsfJ6PDMncHbU0zcGBN9cWQcilxH6ABH3SVWjMIMszHWHWm9j9Sq5JYm5Uvp5M9xAS4OdkvqXa/J/1jg1Joydo3d6RzfsDB1pFkR+I4NSR4AfP7STzM3wLP4a4JhnfMj6AQXa1gVqT68ITA4VT3Uj24wvJe9CosEbVd26bi2uJAHX1XJ5mIYUKw8E1faGoUMIYUJz21OBYukHqhim+x96JUnIaJ9atUh1+3wXnJlIRcvBw/50FJezGhYcLkTi787LJ+nkbcpeJO4uXDt8vnRjxq1KJA3naoTqA2SE3qp35G4kMGJRF2Y5QD9QeJQ4HN+nS/pftjnBFrz54PERPMxnCepaszU5BUjTf/lzUfu6wCn/v/+TlRSaLB/CPv6vUxCPI7pyDpc+4vHVd4R/fy4S9e2hrVRBQrvXZh0OJKdWX75vqz/PsXw94g6I7pwcjFl25JiWQdyGAw7bTCIPTeHd/Yhq8CKJJbCTtj0vTuZZB/9DbaIlBpjuPB4Xnirkz0F5tY0/7kruDesfJoXEVh3Cv21N2DLCCGk929WL4mJh7uxm4gjDrg2t9n8Od4gHXXuPn5uO210/cChjTcq0oP43lib+wCUV5cfljXfm/f2czHSa9WGy2wGOPwyb3vu88EeTuWeEV5tSdAsLJQbwA="
+
+ addons:
+   coverity_scan:
+     project:
+       name: "ph4r05/Whitebox-crypto-AES"
+       description: "Whitebox AES implementation"
+     notification_email: ph4r05@gmail.com
+     build_command_prepend: bash install-ntl-cached.sh
+     build_command:   bash build.sh
+     branch_pattern: coverity_scan
+
 script:
   - ls -las
   - ls -las $HOME/ntl
