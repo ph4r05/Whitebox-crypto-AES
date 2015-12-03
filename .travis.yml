@@ -13,6 +13,13 @@ cache:
   directories:
   - $HOME/ntl
 
+# Coverity
+env:
+  global:
+   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "GjngtCbY8kqx9z5Aq9miC94Ya6siaEDJd0kKnUm5wsXvyvDBsBoNdWgE9tPk3KAtbavp5BPbMfZhAfDq0L68cDwDYwkO4l47Q4BDC5xRXHfT88TVOJMj+0QCYPtsvXwDGbQVYtPIfaNqnbYs92LZtZnlIXwkPu9Upf09apY1u6JJFfbziGuRnkV27JV9P9KanLg28m5666+33OoFK7wIzTFXE2bwX7Um9pyx1j2i376ULvTexZ21Y6NJL2z0hv+DKQfFRLA1Hf80FtkcPgssGhlQpPMCPuxDgt3MLaGkunfGRijJFOYlzyWwjlwv7rodai1oFYGJACDTRLDgEWHUGZ5X0m4hW7yYwkjYMgZEZeL78AnvIjHQSc6sdyqEy39rwWc3Celi26ut1xwm9Qbi6WAZxMqsHT4nE6sry1H5j+Y942xBL0i62Xn7iuPo6kbZN2ehZS3JeAn7BmoV0i533cUaKyDFUe/mmkKF+GETTdNYzlQnxZoxDWwjdFWRHXTxYh2C/J7sAC4RJ5Bo4L6/bEwSgjvqHdKNTWce5Y4c+h+UL80ZWr4QM4MrpI/hELqUSMlcFhq6i7Hep0gr3za7GEKf3oL+jmQa+Ip5GnWcX9F9rBAMbLQhMY4fSOBDOTvyaSa9UdpUbzNACBFf1G9tjvMQReObuL/IbowBy1zTcjA="
+
 # https://docs.travis-ci.com/user/migrating-from-legacy
 addons:
   apt:
@@ -28,28 +35,19 @@ addons:
     - libboost-program-options1.55-dev
     - libboost-serialization1.55-dev
     - libboost-iostreams1.55-dev
+  coverity_scan:
+      project:
+        name: "ph4r05/Whitebox-crypto-AES"
+        description: "<Your project description here>"
+      notification_email: ph4r05@gmail.com
+      build_command_prepend: bash install-ntl-cached.sh
+      build_command:   bash build.sh
+      branch_pattern: coverity_scan
 
 before_install:
   - echo $LANG
   - echo $LC_ALL
   - bash install-ntl-cached.sh
-
-# Coverity
-env:
-  global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   #   via the "travis encrypt" command using the project repo's public key
-   - secure: "GjngtCbY8kqx9z5Aq9miC94Ya6siaEDJd0kKnUm5wsXvyvDBsBoNdWgE9tPk3KAtbavp5BPbMfZhAfDq0L68cDwDYwkO4l47Q4BDC5xRXHfT88TVOJMj+0QCYPtsvXwDGbQVYtPIfaNqnbYs92LZtZnlIXwkPu9Upf09apY1u6JJFfbziGuRnkV27JV9P9KanLg28m5666+33OoFK7wIzTFXE2bwX7Um9pyx1j2i376ULvTexZ21Y6NJL2z0hv+DKQfFRLA1Hf80FtkcPgssGhlQpPMCPuxDgt3MLaGkunfGRijJFOYlzyWwjlwv7rodai1oFYGJACDTRLDgEWHUGZ5X0m4hW7yYwkjYMgZEZeL78AnvIjHQSc6sdyqEy39rwWc3Celi26ut1xwm9Qbi6WAZxMqsHT4nE6sry1H5j+Y942xBL0i62Xn7iuPo6kbZN2ehZS3JeAn7BmoV0i533cUaKyDFUe/mmkKF+GETTdNYzlQnxZoxDWwjdFWRHXTxYh2C/J7sAC4RJ5Bo4L6/bEwSgjvqHdKNTWce5Y4c+h+UL80ZWr4QM4MrpI/hELqUSMlcFhq6i7Hep0gr3za7GEKf3oL+jmQa+Ip5GnWcX9F9rBAMbLQhMY4fSOBDOTvyaSa9UdpUbzNACBFf1G9tjvMQReObuL/IbowBy1zTcjA="
-
-addons:
-  coverity_scan:
-    project:
-      name: "ph4r05/Whitebox-crypto-AES"
-      description: "<Your project description here>"
-    notification_email: ph4r05@gmail.com
-    build_command_prepend: bash install-ntl-cached.sh
-    build_command:   bash build.sh
-    branch_pattern: coverity_scan
 
 script:
   - ls -las
