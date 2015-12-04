@@ -40,6 +40,7 @@ NTL_CLIENT
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/parsers.hpp>
 #include <boost/program_options/variables_map.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 namespace po = boost::program_options;
 
 using namespace std;
@@ -49,7 +50,17 @@ using namespace wbacr;
 using namespace wbacr::laeqv;
 using namespace wbacr::attack;
 
+int tryMain(int argc, const char * argv[]);
 int main(int argc, const char * argv[]) {
+	try {
+		return tryMain(argc, argv);
+	}  catch(...) {
+		std::clog << boost::current_exception_diagnostic_information() << std::endl;
+		return -1;
+	}
+}
+
+int tryMain(int argc, const char * argv[]) {
 	time_t start=0, end=0;
 	bool useExternal = false;
 	int benchgen=0;
@@ -424,6 +435,8 @@ int main(int argc, const char * argv[]) {
 			out.close();
 		}
 	}
+
+	return 0;
 }
 
 int A1A2relationsGenerator(void){

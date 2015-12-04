@@ -804,13 +804,16 @@ int BGEAttack::recoverQj(GenericAES & aes, int r, int col, int row, const mat_GF
 	GF2 determinant;
 	NTL::inv(determinant, AjInv, Aj);
 	if (determinant == GF2::zero()){
-		cout << "Cannot compute inverse - should never happen!!" << endl; return -2;
+		cout << "Cannot compute inverse - should never happen!!" << endl;
+		return -2;
 	}
 
 	prop3struct_t * prop3 = new prop3struct_t;
 	int prop3result = proposition3(prop3, aes, r, col, row, AjInv);
 	if (prop3result != 0xf) {
-		cout << "some problem with proposition 3 in recover Qj occurred. result="<<prop3result<<endl; return -3;
+		delete prop3;
+		cout << "some problem with proposition 3 in recover Qj occurred. result="<<prop3result<<endl;
+		return -3;
 	}
 
 	// We don't really care about delta, important is, that Aj should be correct, so we
@@ -985,7 +988,7 @@ int BGEAttack::attack(void) {
 
 	vec_GF2E defaultKey;						// key for default AES in GF2E representation
 	vec_GF2E expandedKey;						// expanded key for default AES
-	const int (&nextTbox)[N_BYTES] = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
+	const int * nextTbox = shiftT2;             // attack is not yet implemented for decryption
 	generator.BYTEArr_to_vec_GF2E(GenericAES::testVect128_key, KEY_SIZE_16, defaultKey);			// convert BYTE key to GF2E key
 	defAES.expandKey(expandedKey, defaultKey, KEY_SIZE_16);	// key schedule for default AES
 	cout << "Expanded key: " << endl;
