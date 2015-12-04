@@ -314,7 +314,7 @@ int BGEAttack::deriveBset(Bset & bset, GenericAES & aes, bool permissive){
 	return 0;
 }
 
-NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2X_t m){
+NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2X_t & m){
 	// This is recursive function, so if size is 2, return result directly
 	if (m.n==1){
 		return m.x[0][0];	// should never reach this point, but lets be defensive

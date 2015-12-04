@@ -28,6 +28,7 @@ using namespace NTL;
 
 void dumpArray(ostream& out, const char * input, size_t len){
 	size_t i;
+	boost::io::ios_flags_saver ifs(out);
 	for (i=0; i<len; i++) {
 		out << setw(2) << setfill('0') << hex << ((unsigned int)input[i]&0xff) << " ";
 	}
@@ -35,6 +36,7 @@ void dumpArray(ostream& out, const char * input, size_t len){
 
 void dumpVector(NTL::vec_GF2E& a){
 	unsigned int i, len = a.length();
+	boost::io::ios_flags_saver ifs(cout);
 	for (i=0; i<len; i++){
 		cout << " " << GF2EHEX(a[i]) << " ";
 		if (((i+1) % 16) == 0) cout << endl;

@@ -27,6 +27,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <boost/io/ios_state.hpp>
 #include "md5.h"
 NTL_CLIENT
 
@@ -199,6 +200,7 @@ std::string dumpVector2str(NTL::vec_GF2E& a);
 
 template<typename T> void dumpVectorT(T * a, size_t len){
 	unsigned int i;
+	boost::io::ios_flags_saver ifs(cout);
 	for (i=0; i<len; i++){
 		cout << " " << CHEX(a[i]) << " ";
 		if (((i+1) % 16) == 0) cout << endl;

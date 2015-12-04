@@ -293,7 +293,7 @@ public:
 
 protected:
 	// used internally for comptuting characteristic polynomial
-	GF2X characteristicPolynomial(mat_GF2X_t m);
+	GF2X characteristicPolynomial(mat_GF2X_t & m);
 };
 
 } /* namespace attack */
