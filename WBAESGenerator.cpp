@@ -663,9 +663,9 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES * genAE
 
 					// Multiply with MC matrix from our AES dedicated for this round, only in 1..9 rounds (not in last round)
 					if (encrypt){
-						mcres = r<(N_ROUNDS-1) ? this->AESCipher[r*4 + i].mixColMat * zj : zj;
+						mcres = this->AESCipher[r*4 + i].mixColMat * zj;
 					} else {
-						mcres = r<(N_ROUNDS-1) ? this->AESCipher[r*4 + i].mixColInvMat * zj : zj;
+						mcres = this->AESCipher[r*4 + i].mixColInvMat * zj;
 					}
 					// Encryption:
 					// Dual AES, apply A1 for next round here.
