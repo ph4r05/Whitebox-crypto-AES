@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <cstdlib>
 #include <ctime>
+#include <boost/io/ios_state.hpp>
 
 #define WBAES_BOOST_SERIALIZATION 1
 
@@ -369,6 +370,7 @@ int LinearAffineEq::findAffineEquivalences(bsetElem * S1t,   bsetElem * S1invt,
 	bsetElem * S1inv = new bsetElem[size];
 	bsetElem * S2inv = new bsetElem[size];
 
+	boost::io::ios_flags_saver ifs(cout);
 	unordered_set<std::string> hashes;
 	unsigned long int total = 0;
 	bsetElem a,b,i;

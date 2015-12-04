@@ -19,6 +19,8 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
+#include <boost/io/ios_state.hpp>
+
 NTL_CLIENT
 
 using namespace std;
@@ -64,6 +66,7 @@ void dumpVector(long * a, size_t len){
 
 void dumpVector(GF2E * a, size_t len){
 	unsigned int i;
+	boost::io::ios_flags_saver ifs(cout);
 	for (i=0; i<len; i++){
 		cout << " " << GF2EHEX(a[i]) << " ";
 		if (((i+1) % 16) == 0) cout << endl;
@@ -73,6 +76,7 @@ void dumpVector(GF2E * a, size_t len){
 
 void dumpMatrix(NTL::mat_GF2E& a){
 	unsigned int i,j, n = a.NumRows(), m=a.NumCols();
+	boost::io::ios_flags_saver ifs(cout);
 	for (i=0; i<n; i++){
 		for(j=0; j<m; j++){
 			cout << " " << GF2EHEX(a[i][j]) << " ";
@@ -83,6 +87,7 @@ void dumpMatrix(NTL::mat_GF2E& a){
 }
 
 void dumpMatrix(ostream& out, NTL::mat_GF2& a, bool newLine){
+	boost::io::ios_flags_saver ifs(out);
 	int i,j, n = a.NumRows(), m=a.NumCols();
 	for (i=0; i<n; i++){
 		for(j=0; j<m; j++){
@@ -128,6 +133,7 @@ int initMatrix(mat_GF2& M, long *data){
 
 void dumpMatrix(ostream& out, NTL::mat_GF2E& a){
 	unsigned int i,j, n = a.NumRows(), m=a.NumCols();
+	boost::io::ios_flags_saver ifs(out);
 	for (i=0; i<n; i++){
 		for(j=0; j<m; j++){
 			out << GF2EHEX(a[i][j]) << ",";
@@ -138,6 +144,7 @@ void dumpMatrix(ostream& out, NTL::mat_GF2E& a){
 
 void dumpVector(ostream& out, NTL::vec_GF2E& a){
 	unsigned int i, len = a.length();
+	boost::io::ios_flags_saver ifs(out);
 	for (i=0; i<len; i++){
 		out << GF2EHEX(a[i]) << ",";
 	}
@@ -151,6 +158,7 @@ std::string dumpVector2str(NTL::vec_GF2E& a){
 
 void dumpVector(ostream& out, NTL::GF2E * a, size_t len){
 	unsigned int i;
+	boost::io::ios_flags_saver ifs(out);
 	for (i=0; i<len; i++){
 		out << GF2EHEX(a[i]) << ",";
 	}
