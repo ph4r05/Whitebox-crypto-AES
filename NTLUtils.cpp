@@ -24,6 +24,13 @@ NTL_CLIENT
 using namespace std;
 using namespace NTL;
 
+void dumpArray(ostream& out, const char * input, size_t len){
+	size_t i;
+	for (i=0; i<len; i++) {
+		out << setw(2) << setfill('0') << hex << ((unsigned int)input[i]&0xff) << " ";
+	}
+}
+
 void dumpVector(NTL::vec_GF2E& a){
 	unsigned int i, len = a.length();
 	for (i=0; i<len; i++){
@@ -224,4 +231,35 @@ std::string hashLookupTable(vec_GF2E s){
 std::string hashMatrix(mat_GF2 m){
 	std::string inputBuffer = dumpMatrix2str(m, false);
 	return hashString(inputBuffer);
+}
+
+int char2int(char input) {
+	if(input >= '0' && input <= '9')
+		return input - '0';
+	if(input >= 'A' && input <= 'F')
+		return input - 'A' + 10;
+	if(input >= 'a' && input <= 'f')
+		return input - 'a' + 10;
+	throw std::invalid_argument("Invalid input string");
+}
+
+// This function assumes src to be a zero terminated sanitized string with
+// an even number of [0-9a-f] characters, and target to be sufficiently large
+size_t hex2bin(const char* src, char* target, size_t maxLen) {
+	size_t i;
+	for(i = 0; *src && src[1] && i < maxLen;){
+		if (*src==' '){
+			src+=1;
+			continue;
+		}
+		*(target++) = (char2int(*src)<<4) + char2int(src[1]);
+		src += 2;
+		i++;
+	}
+
+	return i;
+}
+
+size_t hexstr2bin(std::string hex, char * target, size_t maxLen){
+	return hex2bin(hex.c_str(), target, maxLen);
 }

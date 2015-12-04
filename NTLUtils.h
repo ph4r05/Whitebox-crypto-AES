@@ -181,6 +181,7 @@ inline void mat_GF2_to_char(NTL::mat_GF2& src, unsigned char * dst){
 	}
 }
 
+void dumpArray(ostream& out, const char * input, size_t len);
 void dumpVector(NTL::vec_GF2E& a);
 void dumpVector(NTL::vec_GF2X& a);
 void dumpVector(NTL::vec_GF2& a);
@@ -230,6 +231,8 @@ void applyLookupTable(vec_GF2E& ltable, mat_GF2E& tgt);
  */
 int initMatrix(mat_GF2& M, long *data);
 
+size_t hex2bin(const char* src, char* target, size_t maxLen);
+size_t hexstr2bin(std::string hex, char * target, size_t maxLen);
 
 /**
  * Hashes input string with MD5 hash

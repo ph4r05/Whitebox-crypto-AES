@@ -20,8 +20,6 @@
 #include <iostream>
 #include <fstream>
 
-#define WBAES_BOOTS_SERIALIZATION 1
-
 // NTL dependencies
 #include <NTL/GF2.h>
 #include <NTL/GF2X.h>
@@ -56,7 +54,14 @@ int main(int argc, const char * argv[]) {
 	bool useExternal = false;
 	int benchgen=0;
 	int benchbge=0;
+	bool randomKey=false;
+	bool decrypt=false;
 	std::string outFile = "";
+	std::string outTables = "";
+	std::string inTables = "";
+	std::string aesKey = "";
+	unsigned char keyFromString[AES_BYTES];
+	unsigned char * keyToUse = GenericAES::testVect128_key;
 
 	// very poor PRNG seeding, but just for now
 	srand((unsigned)time(0));
@@ -73,6 +78,10 @@ int main(int argc, const char * argv[]) {
 		("out-file,o",     po::value<std::string>(),                                       "Output file to write encrypted data")
 		("input-files",    po::value<std::vector<std::string>>(),                          "Input files")
 		("create-table",   po::value<std::string>(),                                       "Create encryption/decryption tables")
+		("create-random",  po::value<bool>()->default_value(false)->implicit_value(false), "Create tables with random key")
+		("use-key",        po::value<std::string>(),                                       "Create encryption/decryption with given hex-coded key")
+		("load-tables",    po::value<std::string>(),                                       "Loads encryption/decryption tables from given file")
+		("decrypt",        po::value<bool>()->default_value(false)->implicit_value(false), "Should perfom encryption or decryption")
 		("version,v",                                                                      "Display the version number");
 
 
@@ -99,8 +108,40 @@ int main(int argc, const char * argv[]) {
     	std::cout << "Output file given: " << outFile << endl;
     }
 
+	if (vm.count("load-tables")){
+		inTables = vm["load-tables"].as<std::string>();
+		std::cout << "Table input file given: " << inTables << endl;
+	}
+
+	if (vm.count("use-key")){
+		aesKey = vm["use-key"].as<std::string>();
+		size_t bytes = hexstr2bin(aesKey, (char*)keyFromString, AES_BYTES);
+
+		if (bytes != AES_BYTES){
+			std::cerr << "Invalid AES key size, expected " << AES_BYTES << " bytes" << std::endl;
+			return -1;
+		}
+
+		keyToUse = keyFromString;
+	}
+
+	// use random key?
+	randomKey = vm["create-random"].as<bool>();
+	if (randomKey){
+		for(int i=0; i<AES_BYTES; i++){
+			keyFromString[i] = rand() % 0x100;
+		}
+
+		keyToUse = keyFromString;
+	}
+
+	std::cout << "AES key to use: ";
+	dumpArray(std::cout, (char *)keyToUse, AES_BYTES);
+	std::cout << std::endl;
+
     // use external coding ?
     useExternal = vm["extEnc"].as<bool>();
+    decrypt = vm["decrypt"].as<bool>();
 
     //
     // AES generator benchmark
@@ -126,8 +167,8 @@ int main(int argc, const char * argv[]) {
 
 		WBAES * genAES = new WBAES;
 		for(int i=0; i<benchgen; i++){
-			generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &coding, true);
-			generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &coding, false);
+			generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, true);
+			generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, false);
 
 			time(&end);
 			cout << "Done i="<<i<<"; time elapsed=" << (end-start) << endl;
@@ -154,6 +195,14 @@ int main(int argc, const char * argv[]) {
 		defAES.init(0x11B, 0x03);
 
 		WBAESGenerator generator;
+		generator.useDualAESARelationsIdentity=false;
+		generator.useDualAESIdentity=false;
+		generator.useDualAESSimpeAlternate=false;
+		generator.useIO04x04Identity=false;
+		generator.useIO08x08Identity=false;
+		generator.useMB08x08Identity=false;
+		generator.useMB32x32Identity=false;
+
 		ExtEncoding coding;
 		generator.generateExtEncoding(&coding, WBAESGEN_EXTGEN_ID);
 
@@ -166,12 +215,22 @@ int main(int argc, const char * argv[]) {
 		clock_t pstart, pend;
 		clock_t pacc = 0;
 
-		generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &coding, true);
-		generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &coding, false);
+		generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, true);
+		generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, false);
+		std::string serialized = genAES->save();
+
 		cout << "Tables generated, starting with the attack; size of the AES struct = " << sizeof(WBAES) << endl;
+		cout << "Serialized length: " << serialized.length() << endl;
 		for(int i = 0; i < benchbge; i++){
-			memcpy(tmpAES, genAES, sizeof(WBAES));
+			// Copy generated AES with serialization.
+			tmpAES->loadString(serialized);
 			atk->wbaes = tmpAES;
+
+			// Self-test on the first round.
+			if (i == 0 && keyToUse == GenericAES::testVect128_key){
+				cout << "Going to test WBAES before modifying tables" << endl;
+				generator.testComputedVectors(true, tmpAES, &coding);
+			}
 
 			cout << "Starting round="<<i<<endl;
 
@@ -194,6 +253,33 @@ int main(int argc, const char * argv[]) {
 				<< "; clocktime=" << ((float) pacc / CLOCKS_PER_SEC) << " s;" << endl;
     }
 
+	//
+	// Create tables & dump to a file
+	//
+	if (vm.count("create-table")){
+		outTables = vm["create-table"].as<std::string>();
+		std::cout << "Table output file given: " << outTables << endl;
+
+		GenericAES defAES;
+		defAES.init(0x11B, 0x03);
+
+		WBAESGenerator generator;
+		WBAES * genAES = new WBAES;
+
+		cout << "External coding will be used: " << useExternal << endl;
+		ExtEncoding coding;
+		generator.generateExtEncoding(&coding, useExternal ? 0 : WBAESGEN_EXTGEN_ID);
+
+		cout << "Generating WB-AES instance (encryption)..." << endl;
+		time(&start);
+		generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, true);
+		cout << "Generating WB-AES instance (decryption)..." << endl;
+		generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, false);
+		time(&end);
+		cout << "Generating AES tables took: ["<<(end-start)<<"] seconds" << endl;
+
+		genAES->save(outTables.c_str());
+	}
 
     //
     // AES encryption - encrypt input files with table representation
@@ -212,21 +298,30 @@ int main(int argc, const char * argv[]) {
 
 		WBAESGenerator generator;
 		WBAES * genAES = new WBAES;
+		ExtEncoding coding;
 
 		cout << "External coding will be used: " << useExternal << endl;
-		ExtEncoding coding;
 		generator.generateExtEncoding(&coding, useExternal ? 0 : WBAESGEN_EXTGEN_ID);
 
-		cout << "Generating WB-AES instance..." << endl;
-		time(&start);
-		generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &coding, true);
-		generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, genAES, &coding, false);
-		time(&end);
-		cout << "Generating AES tables took: ["<<(end-start)<<"] seconds" << endl;
+		if (inTables.empty()) {
+			cout << "Generating WB-AES instance..." << endl;
+			time(&start);
+			generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, true);
+			generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, false);
+			time(&end);
+			cout << "Generating AES tables took: [" << (end - start) << "] seconds" << endl;
+
+		} else {
+			cout << "Loading stored AES tables: " << useExternal << endl;
+			time(&start);
+			genAES->load(inTables.c_str());
+			time(&end);
+			cout << "Loading AES tables took: [" << (end - start) << "] seconds" << endl;
+		}
 
 		// open the given file
 		std::string fileName = files[0];
-		cout << "Going to encrypt file ["<<fileName<<"] with WBAES" << endl;
+		cout << "Going to " << (decrypt ? "decrypt":"encrypt") << " file ["<<fileName<<"] with WBAES" << endl;
 
 		bool writeOut = !outFile.empty();
 		ofstream out;
@@ -275,18 +370,23 @@ int main(int argc, const char * argv[]) {
 			}
 
 			// here we have data in the buffer - lets encrypt them
-			W128b plain, state;
-			long int iter2comp = max(iters, (long int) ceil((float)bRead / N_BYTES));
+			W128b state;
+			long int iter2comp = min(iters, (long int) ceil((float)bRead / N_BYTES));
 
 			for(int k = 0; k < iter2comp; k++, blockCount++){
-				arr_to_W128b(memblock, N_BYTES * 16, plain);
+				arr_to_W128b(memblock, k * 16UL, state);
 
 				// encryption
 				if (useExternal) generator.applyExternalEnc(state, &coding, true);
 
 				time(&cstart);
 				pstart = clock();
-				genAES->encrypt(state);
+				if (decrypt){
+					genAES->decrypt(state);
+				} else {
+					genAES->encrypt(state);
+				}
+
 				pend = clock();
 				time(&cend);
 
@@ -299,10 +399,6 @@ int main(int argc, const char * argv[]) {
 				if (writeOut){
 					W128b_to_arr(blockbuff, 0, state);
 					out.write(blockbuff, N_BYTES);
-				}
-
-				if ((blockCount % 320) == 0){
-
 				}
 			}
 

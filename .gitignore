@@ -11,3 +11,8 @@
 *.lai
 *.la
 *.a
+.idea/
+ntl-**
+CMakeFiles
+Makefile
+CMakeCache.txt
