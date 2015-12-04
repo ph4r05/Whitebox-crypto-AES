@@ -220,7 +220,7 @@ public:
 
 	// Computes characteristic polynomial of matrix with coefficients from GF2.
 	// Uses recursive coMatrices algorithm.
-	GF2X characteristicPolynomial(mat_GF2 m);
+	GF2X characteristicPolynomial(mat_GF2 & m);
 
 	// Proposition 1 solver - finding affine equivalences between (yi, yj)
 	// yi is computed with Rbox() function using current wbaes.
