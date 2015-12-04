@@ -561,7 +561,7 @@ int GenericAES::testMixColumn(){
 }
 
 void GenericAES::generateA1A2Relations(vec_GF2E& A1, vec_GF2E& A2){
-	generateA1A2Relations(A1, A2, (rand() % 255) + 1, rand() % 8);
+	generateA1A2Relations(A1, A2, (phrand() % 255) + 1, phrand() % 8);
 }
 
 void GenericAES::generateA1A2Relations(vec_GF2E& A1, vec_GF2E& A2, int a, int q){

@@ -613,7 +613,7 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 				// Chose new X and pick value for it
 				// Keep in mind linearity of mapping, so avoid duplicities.
 				if (randomizeXGuess){
-					int rnd = rand() % Ua.size();
+					int rnd = phrand() % Ua.size();
 					it1 = Ua.begin(); for(i=0; i<rnd; ++i, ++it1);
 					x = *it1; Ua.erase(it1);
 					Na.insert(x);

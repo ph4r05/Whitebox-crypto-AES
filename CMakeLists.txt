@@ -5,6 +5,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 set(SOURCE_FILES
     base.h
+    base.cpp
     BGEAttack.cpp
     BGEAttack.h
     BGEAttack_test.cpp
@@ -43,7 +44,7 @@ include_directories(${NTL_INCLUDE_PATH})
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost REQUIRED COMPONENTS program_options serialization iostreams)
+find_package(Boost REQUIRED COMPONENTS program_options serialization iostreams random)
 include_directories(${Boost_INCLUDE_DIRS})
 
 # Linking

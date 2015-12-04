@@ -30,7 +30,7 @@ long generateInvertiblePM(mat_GF2& M, int p){
 		// Fill matrix with random values and then compute determinant.
 		for(i=0; i<p; i++){
 			for(j=0; j<p; j++){
-				M.put(i,j,rand()%2);
+				M.put(i,j,phrand()%2);
 			}
 		}
 
@@ -371,7 +371,7 @@ int generateMixingBijection(mat_GF2& RES, int t, int p){
 
 		// 1. X matrix - p x t matrix, generated from M matrix using some row
 		X.SetDims(p, curT);
-		tmp = rand() % pBlocksInM;		// current row
+		tmp = phrand() % pBlocksInM;		// current row
 		for(i=p*tmp,k=0; k<p; i++, k++){
 			for(j=0; j<curT; j++){
 				X.put(k,j, M.get(i,j));
@@ -380,7 +380,7 @@ int generateMixingBijection(mat_GF2& RES, int t, int p){
 
 		// 2. Y matrix - t x p matrix, generated from M matrix using some column
 		Y.SetDims(curT, p);
-		tmp = rand() % pBlocksInM;
+		tmp = phrand() % pBlocksInM;
 		for(i=0; i<curT; i++){
 			for(j=p*tmp,k=0; k<p; j++, k++){
 				Y.put(i,k, M.get(i,j));
@@ -460,7 +460,7 @@ int generateRandomBijection(vec_GF2X& bijection, vec_GF2X& inverse, int size, in
 	// yes, we start from second element on purpose, to produce uniform distribution
 	for(i=1; i<size; i++){
 		// rnd is index from interval [0, i]
-		int rnd = rand() % (i+1);
+		int rnd = phrand() % (i+1);
 		swap(inverse[getLong(bijection[i])], inverse[getLong(bijection[rnd])]);
 		swap(bijection[i], bijection[rnd]);
 	}

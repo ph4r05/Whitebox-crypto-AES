@@ -28,7 +28,6 @@ int main(void) {
 	// very poor PRNG seeding, but just for now
 	time_t start, end;
 
-	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
 
@@ -111,8 +110,6 @@ int main(void) {
 }
 
 int A1A2relationsGenerator(void){
-	// very poor PRNG seeding, but just for now
-	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
 
@@ -298,8 +295,6 @@ int A1A2relationsGenerator(void){
 }
 
 int dualAESTest(void){
-	// very poor PRNG seeding, but just for now
-	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
 
@@ -375,7 +370,7 @@ int dualAESTest(void){
 
 	vec_GF2E A1;
 	vec_GF2E A2;
-	dualAES.generateA1A2Relations(A1, A2, 1+(rand() % 0xfe), rand() % 7);
+	dualAES.generateA1A2Relations(A1, A2, 1+(phrand() % 0xfe), phrand() % 7);
 	cout << "Testing relations A1 A2: Problems = " << dualAES.testA1A2Relations(A1, A2) << endl;
 
 	cout << "A1: " << endl;

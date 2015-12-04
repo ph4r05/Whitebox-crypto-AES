@@ -12,5 +12,6 @@
 #define WBAES_BOOST_SERIALIZATION 1
 #define FORCE_DETERMINISM 1
 
+int phrand();
 
 #endif /* BASE_H_ */

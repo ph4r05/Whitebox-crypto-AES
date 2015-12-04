@@ -41,6 +41,7 @@ Dependencies
 * boost_iostreams 1.55+
 * boost_serialization 1.55+
 * boost_program_options 1.55+
+* boost_random 1.55+
 
 Description:
 * [NTL] math library is used for computation in finite fields & algebra. NTL is licensed under GPL thus this implementation also has to be GPL.

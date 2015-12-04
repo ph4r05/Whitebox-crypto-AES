@@ -85,7 +85,7 @@ template<typename T> int randomPermutationT(T * bijection, int size, int init){
 	// yes, we start from second element on purpose, to produce uniform distribution
 	for(i=1; i<size; i++){
 		// rnd is index from interval [0, i]
-		int rnd = rand() % (i+1);
+		int rnd = phrand() % (i+1);
 
 		// swap values
 		T tmp = bijection[rnd];
@@ -108,7 +108,7 @@ template<typename T> int generateRandomBijectionT(T * bijection, T * inverse, in
 	// yes, we start from second element on purpose, to produce uniform distribution
 	for(i=1; i<size; i++){
 		// rnd is index from interval [0, i]
-		int rnd = rand() % (i+1);
+		int rnd = phrand() % (i+1);
 
 		// swap indexes
 		T idx = inverse[bijection[rnd]];

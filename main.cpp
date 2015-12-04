@@ -74,8 +74,6 @@ int tryMain(int argc, const char * argv[]) {
 	unsigned char keyFromString[AES_BYTES];
 	unsigned char * keyToUse = GenericAES::testVect128_key;
 
-	// very poor PRNG seeding, but just for now
-	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
 
@@ -140,7 +138,7 @@ int tryMain(int argc, const char * argv[]) {
 	randomKey = vm["create-random"].as<bool>();
 	if (randomKey){
 		for(int i=0; i<AES_BYTES; i++){
-			keyFromString[i] = rand() % 0x100;
+			keyFromString[i] = phrand() % 0x100;
 		}
 
 		keyToUse = keyFromString;
@@ -440,8 +438,6 @@ int tryMain(int argc, const char * argv[]) {
 }
 
 int A1A2relationsGenerator(void){
-	// very poor PRNG seeding, but just for now
-	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
 
@@ -515,8 +511,6 @@ int A1A2relationsGenerator(void){
 }
 
 int dualAESTest(void){
-	// very poor PRNG seeding, but just for now
-	srand((unsigned)time(0));
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
 	GF2E::init(defaultModulus);
 
@@ -586,7 +580,7 @@ int dualAESTest(void){
 
 	vec_GF2E A1;
 	vec_GF2E A2;
-	dualAES.generateA1A2Relations(A1, A2, 1+(rand() % 0xfe), rand() % 7);
+	dualAES.generateA1A2Relations(A1, A2, 1+(phrand() % 0xfe), phrand() % 7);
 	cout << "Testing relations A1 A2: Problems = " << dualAES.testA1A2Relations(A1, A2) << endl;
 
 	cout << "A1: " << endl;

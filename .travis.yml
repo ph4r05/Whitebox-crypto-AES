@@ -35,6 +35,7 @@ addons:
     - libboost-program-options1.55-dev
     - libboost-serialization1.55-dev
     - libboost-iostreams1.55-dev
+    - libboost-random1.55-dev
   coverity_scan:
       project:
         name: "ph4r05/Whitebox-crypto-AES"

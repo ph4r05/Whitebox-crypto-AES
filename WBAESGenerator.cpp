@@ -416,10 +416,10 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES * genAE
 	defaultAES.expandKey(expandedKey, defaultKey, ksize);	// key schedule for default AES
 	backupKey = expandedKey;								// backup default AES expanded key for test routine
 	for(i=0; i<N_ROUNDS * N_SECTIONS; i++){
-		int rndPolynomial = useDualAESIdentity ? 0 : rand() % AES_IRRED_POLYNOMIALS;
-		int rndGenerator  = useDualAESIdentity ? 0 : rand() % AES_GENERATORS;
-		genA[i]			  = useDualAESARelationsIdentity ? 1 : (rand() % 255) + 1;
-		genI[i]			  = useDualAESARelationsIdentity ? 0 : rand() % 8;
+		int rndPolynomial = useDualAESIdentity ? 0 : phrand() % AES_IRRED_POLYNOMIALS;
+		int rndGenerator  = useDualAESIdentity ? 0 : phrand() % AES_GENERATORS;
+		genA[i]			  = useDualAESARelationsIdentity ? 1 : (phrand() % 255) + 1;
+		genI[i]			  = useDualAESARelationsIdentity ? 0 : phrand() % 8;
 		if (useDualAESSimpeAlternate && !useDualAESIdentity){
 			rndPolynomial = (i)%2 == 0 ? 0: AES_IRRED_POLYNOMIALS-1;
 			rndGenerator  = (i)%2 == 0 ? 0: AES_GENERATORS-1;
