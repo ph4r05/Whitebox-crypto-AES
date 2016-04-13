@@ -19,6 +19,7 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
 #include <boost/io/ios_state.hpp>
 
 NTL_CLIENT
