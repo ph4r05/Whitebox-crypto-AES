@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project(Whitebox_crypto_AES)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+option(NTL_NO_DEFAULT_PATH "Using just given paths when searching for NTL" OFF)
 
 set(SOURCE_FILES
     base.h
@@ -29,11 +30,15 @@ add_executable(main ${SOURCE_FILES} main.cpp)
 add_executable(testing ${SOURCE_FILES} testing.cpp testing.h)
 
 # NTL
+if (NTL_NO_DEFAULT_PATH)
+    set(NTL_MODIF NO_DEFAULT_PATH)
+    message("Not using default paths for NTL search, ${NTL_MODIF}")
+endif (NTL_NO_DEFAULT_PATH)
 message("HOME: $ENV{HOME}")
-find_path(NTL_INCLUDE_PATH NAMES NTL/mat_GF2.h PATHS $ENV{HOME}/ntl $ENV{HOME}/ntl/include /usr/local /opt/local /usr) #NO_DEFAULT_PATH
+find_path(NTL_INCLUDE_PATH NAMES NTL/mat_GF2.h PATHS $ENV{HOME}/ntl $ENV{HOME}/ntl/include /usr/local /opt/local /usr ${NTL_MODIF})
 message("NTL_INCLUDE_PATH: ${NTL_INCLUDE_PATH}")
 
-find_library(NTL_LIB ntl PATHS ${CMAKE_CURRENT_SOURCE_DIR} $ENV{HOME}/ntl $ENV{HOME}/ntl/lib /usr/local /opt/local /usr)  #NO_DEFAULT_PATH
+find_library(NTL_LIB ntl PATHS ${CMAKE_CURRENT_SOURCE_DIR} $ENV{HOME}/ntl $ENV{HOME}/ntl/lib /usr/local /opt/local /usr ${NTL_MODIF})
 if(NOT NTL_LIB)
     message(FATAL_ERROR "ntl library not found.  Rerun cmake with -DCMAKE_PREFIX_PATH=\"<path to lib1>;<path to lib2>\"")
 endif()
