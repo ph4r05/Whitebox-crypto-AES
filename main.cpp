@@ -342,7 +342,7 @@ int tryMain(int argc, const char * argv[]) {
 		}
 
 		// Open reading file
-		ifstream inf(fileName.c_str(), ios::in | ios::binary | ios::ate);
+		ifstream inf(fileName.c_str(), ios::in | ios::binary);
 		if (inf.is_open()==false){
 			cerr << "Cannot open specified input file" << endl;
 			exit(3);
@@ -354,12 +354,6 @@ int tryMain(int argc, const char * argv[]) {
 		unsigned long long blockCount = 0;
 		char * memblock          = new char[buffSize];
 		char blockbuff[N_BYTES];
-
-		ifstream::pos_type size;
-		// get file size - ios::ate => we are at the end of the file
-		size = inf.tellg();
-		// move on the beginning
-		inf.seekg(0, ios::beg);
 
 		// time measurement of just the cipher operation
 		time_t cstart, cend;
