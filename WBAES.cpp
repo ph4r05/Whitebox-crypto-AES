@@ -298,7 +298,7 @@ int WBAES::load(const char * filename){
 int WBAES::save(ostream& out){
 #ifdef WBAES_BOOST_SERIALIZATION
 	boost::archive::binary_oarchive oa(out);
-	oa << *this;
+	save(oa);
 
 	return 0;
 #else
@@ -309,11 +309,8 @@ int WBAES::save(ostream& out){
 
 int WBAES::load(istream& ins){
 #ifdef WBAES_BOOST_SERIALIZATION
-	// open the archive
 	boost::archive::binary_iarchive ia(ins);
-
-	// restore the schedule from the archive
-	ia >> *this;
+	load(ia);
 
 	return 0;
 #else
@@ -321,7 +318,6 @@ int WBAES::load(istream& ins){
 	return -1;
 #endif
 }
-
 
 std::string WBAES::save() {
 #ifdef WBAES_BOOST_SERIALIZATION
@@ -333,6 +329,18 @@ std::string WBAES::save() {
 	return -1;
 #endif
 }
+
+#ifdef WBAES_BOOST_SERIALIZATION
+int WBAES::load(boost::archive::binary_iarchive& ins){
+	ins >> *this;
+	return 0;
+}
+
+int WBAES::save(boost::archive::binary_oarchive& out){
+	out << *this;
+	return 0;
+}
+#endif
 
 int WBAES::loadString(std::string serialized) {
 #ifdef WBAES_BOOST_SERIALIZATION

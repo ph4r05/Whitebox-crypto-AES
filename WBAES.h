@@ -270,6 +270,11 @@ public:
 	int load(const char * filename);
     int save(ostream& out);
     int load(istream& ins);
+#ifdef WBAES_BOOST_SERIALIZATION
+    int save(boost::archive::binary_oarchive& out);
+    int load(boost::archive::binary_iarchive& ins);
+#endif
+
     std::string save();
     int loadString(std::string serialized);
 
