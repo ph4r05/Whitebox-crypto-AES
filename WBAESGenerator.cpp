@@ -1028,3 +1028,62 @@ int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES * genAES, ExtEnco
 
 	return err;
 }
+
+int WBAESGenerator::save(const char * filename, WBAES * aes, ExtEncoding * extCoding){
+#ifdef WBAES_BOOST_SERIALIZATION
+	std::ofstream ofs(filename);
+	int code = save(ofs, aes, extCoding);
+	ofs.close();
+
+	return code;
+#else
+	cerr << "WBAESGenerator::save: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
+	return -1;
+#endif
+}
+
+int WBAESGenerator::load(const char * filename, WBAES * aes, ExtEncoding * extCoding){
+#ifdef WBAES_BOOST_SERIALIZATION
+	std::ifstream ifs(filename);
+	int code = load(ifs, aes, extCoding);
+	ifs.close();
+	return code;
+#else
+	cerr << "WBAESGenerator::load: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
+	return -1;
+#endif
+}
+
+int WBAESGenerator::save(ostream& out, WBAES * aes, ExtEncoding * extCoding){
+#ifdef WBAES_BOOST_SERIALIZATION
+	boost::archive::binary_oarchive oa(out);
+	if (aes) {
+		aes->save(oa);
+	}
+	if (extCoding) {
+		oa << *extCoding;
+	}
+
+	return 0;
+#else
+	cerr << "WBAESGenerator::save: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
+	return -1;
+#endif
+}
+
+int WBAESGenerator::load(istream& ins, WBAES * aes, ExtEncoding * extCoding){
+#ifdef WBAES_BOOST_SERIALIZATION
+	boost::archive::binary_iarchive ia(ins);
+	if (aes) {
+		aes->load(ia);
+	}
+	if (extCoding){
+		ia >> *extCoding;
+	}
+
+	return 0;
+#else
+	cerr << "WBAESGenerator::load: Boost is not enabled, use WBAES_BOOST_SERIALIZATION" << endl;
+	return -1;
+#endif
+}
