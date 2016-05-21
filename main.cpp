@@ -120,6 +120,7 @@ int tryMain(int argc, const char * argv[]) {
 	if (vm.count("load-tables")){
 		inTables = vm["load-tables"].as<std::string>();
 		std::cout << "Table input file given: " << inTables << endl;
+		keyToUse = NULL;
 	}
 
 	if (vm.count("use-key")){
@@ -138,15 +139,17 @@ int tryMain(int argc, const char * argv[]) {
 	randomKey = vm["create-random"].as<bool>();
 	if (randomKey){
 		for(int i=0; i<AES_BYTES; i++){
-			keyFromString[i] = phrand() % 0x100;
+			keyFromString[i] = (unsigned char)(phrand() % 0x100);
 		}
 
 		keyToUse = keyFromString;
 	}
 
-	std::cout << "AES key to use: ";
-	dumpArray(std::cout, (char *)keyToUse, AES_BYTES);
-	std::cout << std::endl;
+    if (keyToUse != NULL){
+	    std::cout << "AES key to use: ";
+	    dumpArray(std::cout, (char *)keyToUse, AES_BYTES);
+	    std::cout << std::endl;
+	}
 
     // use external coding ?
     useExternal = vm["extEnc"].as<bool>();
@@ -156,7 +159,7 @@ int tryMain(int argc, const char * argv[]) {
     // AES generator benchmark
     //
     benchgen = vm["bench-gen"].as<int>();
-    if (benchgen > 0){
+    if (benchgen > 0 && keyToUse != NULL){
     	cout << "Benchmark of the WB-AES generator is starting..." << endl;
 
     	//
@@ -193,7 +196,7 @@ int tryMain(int argc, const char * argv[]) {
 	//BGE benchmark
 	//
     benchbge = vm["bench-bge"].as<int>();
-    if (benchbge > 0){
+    if (benchbge > 0 && keyToUse != NULL){
     	cout << "Benchmark of the BGE attack is starting..." << endl;
 
     	//
@@ -265,7 +268,7 @@ int tryMain(int argc, const char * argv[]) {
 	//
 	// Create tables & dump to a file
 	//
-	if (vm.count("create-table")){
+	if (vm.count("create-table") && keyToUse != NULL){
 		outTables = vm["create-table"].as<std::string>();
 		std::cout << "Table output file given: " << outTables << endl;
 
@@ -312,7 +315,7 @@ int tryMain(int argc, const char * argv[]) {
 		cout << "External coding will be used: " << useExternal << endl;
 		generator.generateExtEncoding(&coding, useExternal ? 0 : WBAESGEN_EXTGEN_ID);
 
-		if (inTables.empty()) {
+		if (inTables.empty() && keyToUse != NULL) {
 			cout << "Generating WB-AES instance..." << endl;
 			time(&start);
 			generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, true);
