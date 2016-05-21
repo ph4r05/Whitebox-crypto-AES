@@ -667,11 +667,11 @@ namespace boost { namespace serialization {
 		}
 		template<class Archive> void save(Archive & ar, const NTL::GF2 & t, unsigned int version)
 		{
-			ar & ((uint8_t)rep(t)); // rep returns long, space optimization, store as 1B (GF2 is boolean)
+			ar & ((char)rep(t)); // rep returns long, space optimization, store as 1B (GF2 is boolean)
 		}
 		template<class Archive> void load(Archive & ar, NTL::GF2 & t, unsigned int version)
 		{
-			uint8_t cur = 0;
+			char cur = 0;
 			ar & cur;
 			t = (long)cur;
 		}
