@@ -55,7 +55,9 @@ Building
 * Install dependencies. For installing NTL you can use provided scripts `install-ntl.sh` or `install-ntl-cached.sh`
 * Use cmake to build
 ```bash
-cmake .
+mkdir build-debug
+cd build-debug
+cmake -DCMAKE_BUILD_TYPE=Debug ..
 make
 ```
 
