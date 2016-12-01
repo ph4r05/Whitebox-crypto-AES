@@ -311,6 +311,9 @@ int tryMain(int argc, const char * argv[]) {
 		WBAESGenerator generator;
 		WBAES * genAES = new WBAES;
 		ExtEncoding coding;
+		// Generate new encoding.
+		cout << "Generating External encoding, identity: " << useExternal << "..." << endl;
+		generator.generateExtEncoding(&coding, useExternal ? 0 : WBAESGEN_EXTGEN_ID);
 
 		if (inTables.empty() && keyToUse != NULL) {
 			cout << "Generating WB-AES instance..." << endl;
@@ -319,11 +322,6 @@ int tryMain(int argc, const char * argv[]) {
 			generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, false);
 			time(&end);
 			cout << "Generating AES tables took: [" << (end - start) << "] seconds" << endl;
-
-			// Generate new encoding.
-			cout << "Generating External encoding, identity: " << useExternal << "..." << endl;
-			generator.generateExtEncoding(&coding, useExternal ? 0 : WBAESGEN_EXTGEN_ID);
-
 		} else {
 			cout << "Loading stored AES tables: " << useExternal << endl;
 			time(&start);
