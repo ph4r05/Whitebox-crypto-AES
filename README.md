@@ -35,7 +35,7 @@ In my [diploma] thesis I suggest modifications and improvements for a new whiteb
 
 Dependencies
 =======
-* C++0x
+* C++0x and higher
 * CMake 2.8+
 * [NTL] 6.0.0+
 * boost_iostreams 1.55+
@@ -44,10 +44,9 @@ Dependencies
 * boost_random 1.55+
 
 Description:
-* [NTL] math library is used for computation in finite fields & algebra. NTL is licensed under GPL thus this implementation also has to be GPL.
+* [NTL] math library is used for computation in finite fields & algebra. ~~NTL is licensed under GPL thus this implementation also has to be GPL.~~
 * Boost library for serialization of the scheme instance & program input parameters parsing. Version 1.55
 
-[NTL]: http://www.shoup.net/ntl/
 
 Building
 =======
@@ -70,7 +69,26 @@ Using GPL in short means that if you incorporate this source code to your applic
 
 If this license does not fit to you, drop me an email, I am sure we can negotiate somehow.
 
+** UPDATE 31.01.2017 **
+[NTL] is now licensed under LGPL v2.1+ so I can relicense the code to LGPL v2.1+ by a written permission.
+So the code is by default GPLv3 licensed, but if you drop me an email I will give you LGPL v2.1+ license.
+I am also free to talk about other licensing options.
+
+Donating
+========
+
+This implementation is an open source. If you like the code or you do find it useful please feel free to donate to the
+author whatever amount you would like by clicking on the paypal button below.
+And if you don't feel like donating, that's OK too.
+
+[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=XK6RLD768RGGJ&lc=SK&item_name=ph4r05&item_number=Whitebox%2dcrypto%2dAES%2egit&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted)
+
+Bitcoin:
+
+[1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E](https://deadcode.me/btc-whitebox.png)<br />1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E
+
 Contributing
 =======
 If you want to improve my code by extending it to AES-256 or implementing other whitebox AES schemes do not hesitate to submit a pull request. Please also consider it if you find some bug in the code. I am not actively developing this code at the moment but I will review the pull requests. Thanks!
 
+[NTL]: http://www.shoup.net/ntl/
