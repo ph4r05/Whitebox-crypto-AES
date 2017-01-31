@@ -70,6 +70,7 @@ Using GPL in short means that if you incorporate this source code to your applic
 If this license does not fit to you, drop me an email, I am sure we can negotiate somehow.
 
 ** UPDATE 31.01.2017 **
+<br/>
 [NTL] is now licensed under LGPL v2.1+ so I can relicense the code to LGPL v2.1+ by a written permission.
 So the code is by default GPLv3 licensed, but if you drop me an email I will give you LGPL v2.1+ license.
 I am also free to talk about other licensing options.
@@ -85,7 +86,7 @@ And if you don't feel like donating, that's OK too.
 
 Bitcoin:
 
-[1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E](https://deadcode.me/btc-whitebox.png)<br />1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E
+![1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E](https://deadcode.me/btc-whitebox.png)<br />1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E
 
 Contributing
 =======
