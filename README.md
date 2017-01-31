@@ -82,11 +82,11 @@ This implementation is an open source. If you like the code or you do find it us
 author whatever amount you would like by clicking on the paypal button below.
 And if you don't feel like donating, that's OK too.
 
-[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=XK6RLD768RGGJ&lc=SK&item_name=ph4r05&item_number=Whitebox%2dcrypto%2dAES%2egit&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted)
+[![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=XK6RLD768RGGJ&lc=SK&item_name=ph4r05&item_number=kismet%2ddeauth%2dwpa2%2dhandshake%2dplugin&currency_code=EUR&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted)
 
 Bitcoin:
 
-![1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E](https://deadcode.me/btc-whitebox.png)<br />1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E
+![19MNw2vgnvymQK66AUEtCDpR3UPjnenqwj](https://deadcode.me/btc-kismet.png)<br />19MNw2vgnvymQK66AUEtCDpR3UPjnenqwj
 
 Contributing
 =======
