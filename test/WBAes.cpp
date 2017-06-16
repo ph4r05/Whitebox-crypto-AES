@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include <wbaes/WBAES.h>
-#include <wbaes/WBAESGenerator.h>
+#include <WBAES.h>
+#include <WBAESGenerator.h>
 
 using namespace std;
 

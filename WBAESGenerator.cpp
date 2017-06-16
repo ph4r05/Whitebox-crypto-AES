@@ -75,13 +75,13 @@ void WBAESGenerator::generateCodingMap(WBACR_AES_CODING_MAP* map, int *codingCou
 	assert(codingCount!=NULL);
 
 	// Encryption/Decryption dependent operation and tables
-	int (&shiftOp)[N_BYTES]                           = encrypt ? (this->shiftRowsLBijection) : (this->shiftRowsLBijectionInv);
-	W08x128Coding (&edT1)[2][N_BYTES]                 = encrypt ? (map->eT1)                  : (map->dT1);
-	W08x32Coding  (&edT2)[N_ROUNDS][N_SECTIONS][4]    = encrypt ? (map->eT2)                  : (map->dT2);
-	W08x32Coding  (&edT3)[N_ROUNDS][N_SECTIONS][4]    = encrypt ? (map->eT3)                  : (map->dT3);
-	CODING        (&edXOR1)[N_ROUNDS][N_SECTIONS][24] = encrypt ? (map->eXOR1)                : (map->dXOR1);
-	CODING        (&edXOR2)[N_ROUNDS][N_SECTIONS][24] = encrypt ? (map->eXOR2)                : (map->dXOR2);
-	CODING        (&edXOR3)[2][XTB_CNT_T1]            = encrypt ? (map->eXOR3)                : (map->dXOR3);
+	int (&shiftOp)[N_BYTES]                 = encrypt ? (this->shiftRowsLBijection) : (this->shiftRowsLBijectionInv);
+	W08x128Coding (*edT1)[N_BYTES]          = encrypt ? (map->eT1)                  : (map->dT1);
+	W08x32Coding  (*edT2)[N_SECTIONS][4]    = encrypt ? (map->eT2)                  : (map->dT2);
+	W08x32Coding  (*edT3)[N_SECTIONS][4]    = encrypt ? (map->eT3)                  : (map->dT3);
+	CODING        (*edXOR1)[N_SECTIONS][24] = encrypt ? (map->eXOR1)                : (map->dXOR1);
+	CODING        (*edXOR2)[N_SECTIONS][24] = encrypt ? (map->eXOR2)                : (map->dXOR2);
+	CODING        (*edXOR3)[XTB_CNT_T1]     = encrypt ? (map->eXOR3)                : (map->dXOR3);
 
 	// At first allocate new bijections for T1 output tables
 	// Allocate encodings for XOR cascade summing output of T1 boxes
@@ -320,8 +320,8 @@ void WBAESGenerator::generateT1Tables(WBAES * genAES, ExtEncoding * extc, bool e
 	int i,j,b;
 
 	// Encryption/Decryption dependent operation and tables
-	AES_TB_TYPE1  (&genAES_edTab1)[2][N_BYTES]  = encrypt ? genAES->eTab1                : genAES->dTab1;
-	W08x128Coding (&codingMap_edT1)[2][N_BYTES] = encrypt ? codingMap->eT1               : codingMap->dT1;
+	AES_TB_TYPE1  (*genAES_edTab1)[N_BYTES]  = encrypt ? genAES->eTab1                : genAES->dTab1;
+	W08x128Coding (*codingMap_edT1)[N_BYTES] = encrypt ? codingMap->eT1               : codingMap->dT1;
 
 	// At first initialize T1[0]
 	for(i=0; i<N_BYTES; i++){
@@ -372,24 +372,24 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES * genAE
 	// Encryption/Decryption dependent functions and tables
 	int (&nextTbox)[N_BYTES]     = encrypt ? (this->shiftRowsLBijection) : (this->shiftRowsLBijectionInv);
 	int (&shiftRowsOp)[N_BYTES]  = encrypt ? (this->shiftRows)    		 : (this->shiftRowsInv);
-	W32XTB        (&genAES_edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS]  = encrypt ? genAES->eXTab   : genAES->dXTab;
-	W32XTB        (&genAES_edXTabEx)[2][15][4]                          = encrypt ? genAES->eXTabEx : genAES->dXTabEx;
-	AES_TB_TYPE1  (&genAES_edTab1)[2][N_BYTES]			 		        = encrypt ? genAES->eTab1   : genAES->dTab1;
-	AES_TB_TYPE2  (&genAES_edTab2)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES->eTab2   : genAES->dTab2;
-	AES_TB_TYPE3  (&genAES_edTab3)[N_ROUNDS][N_BYTES]			 		= encrypt ? genAES->eTab3   : genAES->dTab3;
-	W08x128Coding (&codingMap_edT1)[2][N_BYTES]					        = encrypt ? codingMap->eT1  : codingMap->dT1;
-	W08x32Coding  (&codingMap_edT2)[N_ROUNDS][N_SECTIONS][4]	        = encrypt ? codingMap->eT2  : codingMap->dT2;
-	W08x32Coding  (&codingMap_edT3)[N_ROUNDS][N_SECTIONS][4]            = encrypt ? codingMap->eT3  : codingMap->dT3;
-	CODING        (&codingMap_edXOR1)[N_ROUNDS][N_SECTIONS][24]         = encrypt ? codingMap->eXOR1: codingMap->dXOR1;
-	CODING        (&codingMap_edXOR2)[N_ROUNDS][N_SECTIONS][24]         = encrypt ? codingMap->eXOR2: codingMap->dXOR2;
-	CODING        (&codingMap_edXOR3)[2][XTB_CNT_T1]                    = encrypt ? codingMap->eXOR3: codingMap->dXOR3;
+	W32XTB        (*genAES_edXTab)[N_SECTIONS][N_XOR_GROUPS]    = encrypt ? genAES->eXTab   : genAES->dXTab;
+	W32XTB        (*genAES_edXTabEx)[15][4]                     = encrypt ? genAES->eXTabEx : genAES->dXTabEx;
+	AES_TB_TYPE1  (*genAES_edTab1)[N_BYTES]			 		    = encrypt ? genAES->eTab1   : genAES->dTab1;
+	AES_TB_TYPE2  (*genAES_edTab2)[N_BYTES]			 		    = encrypt ? genAES->eTab2   : genAES->dTab2;
+	AES_TB_TYPE3  (*genAES_edTab3)[N_BYTES]			 		    = encrypt ? genAES->eTab3   : genAES->dTab3;
+	W08x128Coding (*codingMap_edT1)[N_BYTES]					= encrypt ? codingMap->eT1  : codingMap->dT1;
+	W08x32Coding  (*codingMap_edT2)[N_SECTIONS][4]	            = encrypt ? codingMap->eT2  : codingMap->dT2;
+	W08x32Coding  (*codingMap_edT3)[N_SECTIONS][4]              = encrypt ? codingMap->eT3  : codingMap->dT3;
+	CODING        (*codingMap_edXOR1)[N_SECTIONS][24]           = encrypt ? codingMap->eXOR1: codingMap->dXOR1;
+	CODING        (*codingMap_edXOR2)[N_SECTIONS][24]           = encrypt ? codingMap->eXOR2: codingMap->dXOR2;
+	CODING        (*codingMap_edXOR3)[XTB_CNT_T1]               = encrypt ? codingMap->eXOR3: codingMap->dXOR3;
 
 	// Init T1[0] tables - for the first round
 	this->generateT1Tables(genAES, extc, encrypt);
 
 #ifdef AES_BGE_ATTACK
 	// If there are 8x8 output bijections, just generate identities
-	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (genAES->eOutputBijection) : (genAES->dOutputBijection);
+	GF256_func_t (*edOutputBijection)[N_BYTES] = encrypt ? (genAES->eOutputBijection) : (genAES->dOutputBijection);
 	for(r=0;r<N_ROUNDS;r++){
 		for(i=0;i<N_BYTES;i++){
 			for(k=0;k<GF256;k++){

@@ -1,0 +1,417 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Some Performance Data  </title>
+</head>
+
+<body bgcolor="#fff9e6">
+
+<center>
+<a href="tour-gf2x.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-roadmap.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Some Performance Data 
+</p>
+</h1>
+
+<p> <hr> <p>
+
+Here are some timing figures from using NTL.
+The figures were obtained using a 700MHz Pentium III running Linux,
+and using gcc version 2.95.2.
+Also, GMP version 3.1.1 was used as the primary long integer package.
+
+<p>
+<h2>
+Basic arithmetic
+</h2>
+<p>
+
+For various values of <var>n</var>, we give the running times
+for the following tasks:
+
+<ul>
+<li> IMUL: multiply two <var>n</var>-bit numbers.
+<li> IREM: compute the remainder upon dividing a <var>2 n</var>-bit number
+     by an <var>n</var>-bit number.
+<li> IINV: compute an inverse modulo an <var>n</var>-bit prime number.
+<li> PMUL: multiply two <var>(n-1)</var>-degree polynomials modulo
+     an <var>n</var>-bit prime number.
+</ul>
+
+<p>
+
+The time for IMUL, IREM, IINV is stated in units of <var>10^{-6}s</var>,
+and that of PMUL in units of seconds.
+
+<p>
+
+<table border=1>
+<tr align=center>
+   <td> <var>n</var> <td> IMUL  <td> IREM 
+   <td> IINV  <td> PMUL
+
+<tr align=right>
+   <td>  512 <td> 4 <td> 5 <td> 90 <td> 0.11
+
+<tr align=right> 
+   <td> 1024 <td> 11 <td> 13 <td> 260 <td> 0.74
+
+<tr align=right>
+   <td> 2048 <td> 33 <td> 53 <td> 580 <td> 2.71
+
+<tr align=right>
+   <td> 4096 <td> 110 <td> 168 <td> 1460 <td> 16.64
+
+</table>
+
+
+<p>
+The IMUL, IREM, and IINV times essentially reflect the performance
+of the underlying GMP routines (NTL's interface to these routines is
+very "light weight").
+
+<p>
+The PMUL time reflects the performance of NTL's FFT implementation
+of polynomial arithmetic.
+
+
+
+
+<p>
+<h2>
+Factoring polynomials over finite fields
+</h2>
+<p>
+
+We next consider the problem of factoriing of 
+univariate polynomials modulo a prime <var>p</var>.
+As test polynomials, we take the family of polynomials
+defined in [V. Shoup, J. Symb. Comp. 20:363-397, 1995].
+For every <var>n</var>, we define <var>p</var> 
+to be the first prime greater than
+<var>2^{n-2}*PI</var>, and the polynomial is 
+<p>
+<var>sum(a[n-i]*X^i, i = 0..n), </var>
+<p>
+where <var>a[0] = 1</var>, and <var>a[i+1] = a[i]^2 + 1.</var>
+
+<p>
+Here are some running times, in seconds, for various values of <var>n</var>:
+
+<p>
+<table border=1>
+<tr align=right>
+<td> <var>n</var> <td> 64 <td> 128 <td> 256 <td> 512 <td> 1024 
+<tr align=right>
+<td> &nbsp;  <td> 0.4 <td> 2.8 <td> 25.3 <td> 238.8 <td> 2255.4
+</table>
+
+<p>
+Also of interest is space usage.
+The <var>n = 512 </var> case used about 5MB main memory, 
+and the <var>n = 1024</var> case used 18MB main memory.
+
+<p>
+<h2>
+Factoring polynomials over the integers
+</h2>
+<p>
+
+The second problem considered is factoring univariate polynomials 
+over the integers.
+In NTL 5.2, we have implemented
+<a href="http://www.openmath.org/~hoeij">Mark van Hoeij's</a> new 
+method for
+polynomial factorization.
+Prior to this, NTL offered an implementation of the classical
+``Zassenhaus method,'' which can take exponential time
+in the worst case, although the NTL algorithm implements
+several novel ``pruning techniques'' that can subsantially
+speed up the brute-force search stage of the Zassenhaus method.
+However, van Hoeij's algorithm seems to have made all of these
+techniques more or less obsolete.
+
+<p>
+Note that van Hoeij's method is more a general algorithmic technique 
+than a specific algorithm.
+To obtain a specific algorithm, several parameters and strategies 
+must be chosen.
+We have attempted to make these choices so as to obtain
+a good, general-purpose algorithm that works fairly well
+on a wide variety of input polynomials.
+All of these choices are a bit heuristic, and any feedback
+refarding possible improvements is most welcome.
+
+<p>
+We consider a number of test polynomials, collected and/or suggested
+by  <a href="http://www.loria.fr/~zimmerma">Paul Zimmermann</a>
+and Mark van Hoeij.
+
+
+<p>
+<ul>
+<li> P1
+has degree 156, coefficients up to
+424 digits, and 36 factors (12 of degree 2, 15 of degree 4, 9 of degree 8).
+<li>
+P2
+has degree 196, coefficients up to 419 digits
+and 12 factors (2 of degree 2, 4 of degree 12 and 6 of degree 24).
+<li>
+P3
+has degree 336, coefficients up to 597 digits and 16
+factors (4 of degree 12 and 12 of degree 24).
+<li>
+P4
+has degree 462, coefficients up to 756 digits, and two factors (degrees
+66 and 396). 
+<li>
+P5 has degree 64, coefficients up to 40 digits, 
+and is irreductible. 
+<li>
+P6
+has degree 144,
+coefficients up to 165 digits and has 
+6 factors (4 of degree 12 and 2 of degree 48).
+<li>
+P7
+has degree 384 and coefficients
+up to 57 digits, and is irreducible.
+<li>
+P8
+has degree 972, coefficients up to 213 digits, and is irreducible.
+<li>
+M12_5 
+has degree 792, coefficients up to 2813 digits, and is irreducible.
+<li>
+M12_6 
+has degree 924, coefficients up to 3937 digits, and
+two factors (degrees 132 and 792).
+</ul>
+
+<p>
+
+P1 comes from the Rational 
+Univariate Representation (RUR) of the Cyclic 6 system,
+and P2 and P3 come from the RUR of Cyclic 7.
+<p>
+P4 was contributed by A. Hulpke and H. Matzat: it is the 5-set resolvent of 
+the polynomial f = x^11 + 101*x^10 + 4151*x^9 + 87851*x^8 + 976826*x^7 + 
+4621826*x^6 - 5948674*x^5 - 113111674*x^4 - 12236299*x^3 + 1119536201*x^2 -
+1660753125*x - 332150625 and its factorization would prove that f has
+Galois group M11.
+<p>
+P5 is the Swinnerton-Dyer polynomial for 2,3,5,7,11,13, i.e. the
+product of all terms of the form x+/-sqrt(2)+/-...+/-sqrt(13).
+It is a "bad" polynomial for the method of factoring in Fp and
+combining the factors in Z, because all its factors in Fp are of
+degree at most 2.
+<p>
+P6 is the resultant with respect to x of the polynomial 
+p = -2566974800*x^2 +134697056*x^4
+-3312297*x^6 +43109*x^8 -308*x^10 +x^12 +1142440000 with p(y-2*x);
+it was contributed by Frederic Lehobey and 
+Nicolas Rennert.
+<p>
+P7 (contributed by John Abbott) is the norm of
+x^6 + (a1+a2+a3+a4+a5+a6)*(x^4-x^2) + 1 with a6^2-2, a5^2-3, a4^2-5,
+a3^2-7, a2^2-11 and a1^2-13, i.e. the resultant of that polynomial with
+a6^2-2 with respect to a6, then with  a5^2-3 wrt a5, and so on.
+<p>
+P8 (contributed by Jean-Charles Faugere) comes from the Groebner basis
+of Cyclic 9.
+<p>
+M12_5 and M12_6 are the 5th and 6th resolvents of the polynomial f
+with Galois group M_{12} from the example in van Hoeij's paper.
+These polynomials are non-monic (unlike the others).
+
+<p>
+We also used the polynomials S6, S7, S8, S9, and S10,
+where S<var>i</var> is the Swinnerton-Dyer polynomial
+of degree <var>2^i</var> corresponding to the first <var>i</var> primes.
+These are all irreducible polynomials,
+and are particularly bad for the Zassenhaus method.
+
+<p>
+
+The following two polynomials, H1 and H2, were suggested by Mark van Hoeij
+as examples that may 
+be particularly challenging to factor using his algorithm:
+
+<p>
+<ul>
+<li> H1 is the polynomial (x-1)^960-1.
+<li> H2 is a degree 4096 polynomial that is the product
+of a number of cyclotomic polynomials 
+(with factors of degrees 128, 128, 256, 512, 1024, and 2048).
+</ul>
+
+<p>
+The polynomial H1 is defined as it is, rather than as x^960-1,
+simply to "hide" the special structure of the polynomial  -- many
+factorizers would apply special techniques to factor x^960-1,
+but will most likely not apply these techniques to (x-1)^960-1.
+To factor this polynomial with van Hoeij's method, one has to consider
+very high traces, and thus it is essential that a good implementation
+at some point crosses over to a "dense" strategy (or alternatively,
+implements a brute-force factor search in combination with van Hoeij's
+method).
+
+<p>
+You can <a href="http://www.shoup.net/ntl/testpolys.tar.gz">download</a>
+all of the above polynomials (except H1, which is easy trivial to generate
+from scratch).
+
+<p>
+We collected timing data for both the Zassenhaus and van Hoeij
+algorithms, both with and without the so-called "power hack".
+By setting a run-time switch, the user can choose to employ a "power hack",
+which attempts to speed up the factorization if the polynomial
+f(x) is of the form g(x^m) for some m &gt; 1.
+However, while this "power hack" may sometimes speed things up substantially,
+it can also slow things down -- for the Zassenhaus method, this slowdown
+is usually negligible, but for our implementation of van Hoeij's algorithm,
+this slowdown can be quite substantial.
+Because of this, in our implementation of van Hoeij, we have modified
+the power hack so that if it "seems" to be going slowly, it is abandoned.
+This "early abort" power hack strategy 
+is "on" by default, but can be turned off by the
+user by setting a run-time switch.
+<p>
+
+In the table below, running time is presented in seconds
+for each of the 4 methods:
+<p>
+<ul>
+<li> Z-: Zassenhaus without power hack.
+<li> Z+: Zassenhaus with power hack.
+<li> H-: van Hoeij without power hack.
+<li> H+: van Hoeij with power hack (NTL's default strategy).
+
+</ul>
+<p>
+
+We also state for each polynomial the number <var>r</var> of modular
+factors of the polynomial (this is not necessarily relevant for the
+power-hack running times),
+
+<p>
+For comparison, we also state some running times for Maple version 5.1,
+running on a 500MHz Alpha 21264/EV6,
+as reported by Paul Zimmermann.
+
+<p>
+
+<table border=1>
+
+<tr align=right> 
+   <td align=left> &nbsp; <td> <var>r</var> <td> Z- <td> Z+ <td> H- <td> H+  <td> maple
+
+<tr align=right>
+   <td align=left> P1  <td> 60 <td> 2.8 <td> 0.3 <td> 2.8 <td> 0.3 <td> 0.6
+
+<tr align=right>
+   <td align=left> P2  <td> 20 <td> 4.3 <td> 1.5 <td> 4.3 <td> 1.5 <td> 1.8
+
+<tr align=right>
+   <td align=left> P3  <td> 28 <td> 13.4 <td> 3.0 <td> 13.4 <td> 3.0 <td> 2.4
+
+<tr align=right>
+   <td align=left> P4  <td> 42 <td> 40.2 <td> 40.2 <td> 27.2 <td> 27.2 <td> &gt; 5000.0
+
+<tr align=right>
+   <td align=left> P5  <td> 32 <td> 39.2 <td> 37.5 <td> 0.5 <td> 0.5 <td> &gt; 5000.0
+
+<tr align=right>
+   <td align=left> P6  <td> 48 <td> 24.0 <td> 0.9 <td> 2.9 <td> 1.0 <td> 48.0
+
+<tr align=right>
+   <td align=left> P7  <td> 76 <td> &nbsp; <td> &nbsp; <td> 15.5 <td> 13.2 <td> &nbsp;
+
+<tr align=right>
+   <td align=left> P8  <td> 54 <td> 3930.0 <td> 3940.0 <td> 44.3 <td> 52.9 <td> &gt; 5000.0 
+
+<tr align=right>
+   <td align=left> P4*rev(P4) <td> 84  <td> &nbsp;  <td> &nbsp;  <td> 826.0 <td> 826.0  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> H1 <td> 131  <td> &nbsp;  <td> &nbsp;  <td> 108.0 <td> 108.0  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> H2 <td> 256  <td> &nbsp;  <td> &nbsp;  <td> &nbsp;  <td> 379.0  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> S7 <td> 64  <td> &nbsp;  <td> &nbsp;  <td> 3.4 <td> 3.8  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> S8 <td> 128  <td> &nbsp;  <td> &nbsp;  <td> 53.4 <td> 64.6  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> S9 <td> 256  <td> &nbsp;  <td> &nbsp;  <td> 1200.0 <td> 1360.0  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> S10 <td> 512  <td> &nbsp;  <td> &nbsp;  <td> 31300.0 <td> 31700.0  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> S6*S7 <td> 96  <td> &nbsp;  <td> &nbsp;  <td> 18.8 <td> 7.2  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> S7*S9 <td> 320  <td> &nbsp;  <td> &nbsp;  <td> 3550.0 <td> 3630.0  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> S8*S9 <td> 384  <td> &nbsp;  <td> &nbsp;  <td> 8410.0 <td> 8600.0  <td> &nbsp;  
+
+<tr align=right>
+   <td align=left> M12_5 <td> 72  <td> &nbsp;  <td> &nbsp;  <td> 129.0 <td> 129.0  <td> &nbsp; 
+
+<tr align=right>
+   <td align=left> M12_6 <td> 84  <td> &nbsp;  <td> &nbsp;  <td> 410.0 <td> 396.0  <td> &nbsp; 
+
+</table>
+
+<p>
+Some remarks:
+<p>
+<ul>
+<li>
+A blank entry indicates that the corresponding experiment
+was not performed.
+<li>
+For several of the Maple experiments, the experiment was terminated
+after 5000 seconds, as indicated in the table.
+<li>
+It would be futile to attempt to factor any of the other polynomials
+in the table using the Zassenhaus method, as the running time
+of that method is exponential in <var>r</var>.
+<li>
+We attempted to factor H2 using the H- algorithm, but after several
+hours of computation, the algorithm had not yet terminated.
+Using the H+ algorithm, things were much easier:  the hardest part
+was to prove the irreducibility of a degree 2048 polynomial,
+for which the number of modular factors was 128.
+<li>
+Note that the power hack strategy can slow things down a bit,
+but can also speed things up, sometimes dramatically.
+<li>
+In the above table, rev(f) denotes the "reverse" of the polynomial f,
+i.e., x^{deg(f)}f(x^{-1}).
+</ul>
+
+
+<p>
+
+
+<center>
+<a href="tour-gf2x.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-roadmap.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+
+</body>
+</html>

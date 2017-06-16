@@ -1,0 +1,383 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Obtaining and Installing NTL for Windows 
+and other Platforms </title>
+</head>
+
+<body bgcolor="#fff9e6">
+<center>
+<a href="tour-unix.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-tips.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Obtaining and Installing NTL for Windows 
+and other Platforms
+</p>
+</h1>
+
+<p> <hr> <p>
+
+The WinNTL distribution of 
+NTL can be used on any Windows 95 or NT platform
+(but not on Windows 3.11 or earlier).
+Actually, there is nothing Windows-specific about WinNTL.
+The source code is identical to the UNIX NTL distribution;
+only the packaging is slightly different, and no assumptions
+are made about the program development environment.
+Thus, it should be possible to install WinNTL on
+other operating systems (e.g., Macintosh, OS/2)
+with little difficulty.
+
+<p>
+<b>MAC OSX Users:</b>
+since MAC OSX is essentially just a (rather funny) flavor of Unix,
+you will be much better served using the 
+<a href="tour-unix.html">Unix distribution</a>.
+
+
+<p>
+<b>
+Obtaining and unpacking NTL.
+</b>
+<p>
+
+To obtain the source code and documentation for NTL,
+<a href="http://www.shoup.net/ntl/download.html">
+download <tt>WinNTL-xxx.zip</tt></a>.
+Here, "<tt>xxx</tt>" is the current version number.
+Then <tt>unzip</tt> this file into a directory (folder).
+This will unpack everything into a directory called "<tt>WinNTL-xxx</tt>".
+Inside this directory, you will find several directories.
+
+<p>
+
+<ul>
+<li>
+
+The directory "<tt>doc</tt>" contains all of NTL's documentation,
+including this "tour" ("<tt>tour.html</tt>")
+and the "<tt>.txt</tt>" files explaining each module,
+which can be accessed directly, or through the "tour".
+
+<p>
+<li>
+
+The directory "<tt>src</tt>"
+contains all of the source files for the library,
+all with "<tt>.cpp</tt>" extensions.
+The file "<tt>lip.cpp</tt>" can be compiled as a C source file
+(this can sometimes yield a marginal performance gain).
+
+<p>
+<li>
+
+The directory "<tt>include</tt>" contains a single directory called 
+"<tt>NTL</tt>",
+and the latter contains all of the "<tt>.h</tt>" files.
+
+</ul>
+
+<p>
+
+<b>
+Platform dependent macros.
+</b>
+<p>
+
+In directory "<tt>include/NTL</tt>" there is a file called 
+"<tt>mach_desc.h</tt>",
+which contains all of the platform-dependent macro definitions.
+The default settings should be correct for any x86- or Pentium-based 
+system running Windows; however, the correct definitions
+can depend on the compiler and run-time environment.
+Therefore, to be on the safe side,
+you might consider compiling and running the program <tt>MakeDesc</tt>,
+whose source files are in directory "<tt>MakeDesc</tt>".
+This program will
+dynamically build
+a correct "<tt>mach_desc.h</tt>" for your platform (processor, compiler, 
+run-time environment).
+To get accurate results,
+you must compile this program using the level of optimization 
+(or higher) that you will use for NTL.
+The program will print some diagnostics to the screen, 
+and create the file "<tt>mach_desc.h</tt>" (in the current
+directory, and not in the "<tt>include/NTL</tt>" directory,
+where it needs to go).
+
+<p>
+<b>
+Configuration flags.
+</b>
+<p>
+
+Also in directory "<tt>include/NTL</tt>" is a file called "<tt>config.h</tt>".
+You can edit this file to override some of NTL's default options 
+for <i>basic configuration</i> and <i>performance</i>.
+
+<p>
+
+<dl>
+<dt>
+<i>Basic configuration options.</i>
+<dd>
+Most of the these flags are rather esoteric and can be safely
+ignored.
+<p>
+
+One exception to this is the <tt>NTL_STD_CXX</tt>  flag
+(or perhaps just the <tt>NTL_PSTD_NNS</tt> flag) which
+you will want to unset if your compiler is too old
+to handle it.
+<a href="tour-stdcxx.html">Go here</a> for details.
+
+<p>
+
+Another exception are the flags to use GMP for potentially
+faster long integer arithmetic.
+See the <a href="tour-gmp.html">GMP</a> section for more details.
+Note that getting GMP to run on Windows is a pain in the neck.
+If you really want to use GMP, use Unix or Linux!
+
+<p>
+
+<dt>
+<i>Performance options.</i>
+<dd>
+These flags let you fine tune for best performance.
+(If you were using Unix, you could run a script that
+automatically selects the best settings for your platform.)
+
+
+<p>
+<i>TIP for Pentium platforms:</i> 
+<ul>
+<li>
+Users running 
+on a Pentium, or other x86-like processor,
+will almost surely want to set the <tt>NTL_LONG_LONG</tt> flag,
+or possibly the <tt>NTL_AVOID_FLOAT</tt> flag, in file <tt>config.h</tt>
+to get the best performance for long integer arithmetic.
+If you set either of these flags, you should also set the
+<tt>NTL_TBL_REM</tt> flag as well, to get the best 
+performance for <tt>ZZ_pX</tt> arithmetic.
+You might also want to set the <tt>NTL_SPMM_ULL</tt> or <tt>NTL_SMPP_UL</tt>
+flags.
+
+<li>
+These flags can be useful on other platforms as well,
+especially on processors with slow int/float conversion.
+
+<li>
+The best thing is to experiment, and compile and run program <tt>QuickTest</tt>
+to see the impact on the running time of various basic operations.
+</ul>
+</dl>
+
+<p>
+Note that the file "<tt>def_config.h</tt>"
+contains a backup copy of the original <tt>config.h</tt> file.
+
+
+<p>
+<b>
+Test programs.
+</b>
+<p>
+
+The directory "<tt>tests</tt>" contains several test programs.
+For each program <tt>FooTest</tt>, there is a source file
+"<tt>FooTest.cpp</tt>", and optionally two files 
+"<tt>FooTestIn</tt>" and "<tt>FooTestOut</tt>".
+If the latter  exist, then the program should be run with
+the "<tt>FooTestIn</tt>" as standard input;
+correct output (printed to standard output) should match
+the contents of "<tt>FooTestOut</tt>" exactly;
+note that these programs also print diagnostic output on the screen
+(through standard error output).
+
+<p>
+<b>
+Timing functions.
+</b>
+<p>
+
+The directory "<tt>GetTime</tt>" contains several alternative
+definitions of the <tt>GetTime()</tt> function.
+The file "<tt>GetTime.cpp</tt>" in the "<tt>src</tt>" directory should be OK,
+but your compiler might like one of the definitions in
+the directory "<tt>GetTime</tt>" better.
+
+<p>
+<b>
+Other tools.
+</b>
+<p>
+
+The directory "<tt>misc</tt>" contains a program <tt>newnames.cpp</tt>
+to help make the
+transition to NTL version 3.5 from earlier versions of NTL.
+See the <a href="tour-changes.html">changes</a> section for more details.
+It also contains the programs <tt>gen_lip_gmp_aux.cpp</tt>
+and <tt>gen_gmp_aux.cpp</tt> that automatically generate
+the auxilliary files needed when using NTL with GMP.
+You will have to look at the makefile in the Unix distribution
+to see how to use these.
+
+
+
+<p>
+<b>
+Compiling NTL.
+</b>
+<p>
+
+Since there are a number of incompatible compilers and program development
+environments available for Windows, no attempt has been made to
+provide automatic tools for building and testing,
+as is done for the Unix distribution.
+Nevertheless,
+it should be straightforward to install NTL (even if it involves a bit of
+pointing and clicking).
+First, compile all of the files in "<tt>src</tt>", and create a static library.
+Make sure the compiler knows where to find NTL's include files
+(directory "<tt>include</tt>" and <i>not</i> "<tt>include/NTL</tt>")
+Then, to compile a program using the library, 
+make sure the compiler knows about the library and the directory
+of NTL's include files.
+In any case, if you want to do any serious computations,
+you will certainly  want to compile everything with your
+compiler's code optimizer on.
+
+<p>
+For the benefit of those who must use Microsoft Visual C++ on Windows,
+here are some steps for compiling and using NTL.
+These steps work with MSVC++ v6.
+While these steps seem to do the job,
+there may be other steps that work better.
+
+The following steps may be used to build the library,
+and to build and run program <tt>QuickTest</tt>, as a simple
+<i>console application</i>, using the library.
+The instructions assume you have already 
+unzipped NTL into a directory <tt>c:\mystuff</tt>,
+and are running the MSVC++ Development Studio.
+
+<p>
+I hope these instructions make some sense:
+I don't know a good language for accuratly describing the 
+particular pointing an clicking steps.
+
+<p>
+
+<pre>
+
+File -&gt; New -&gt; Projects 
+   project name: ntl
+   location[default]: c:\Program Files\Microsoft Visual Studio\MyProjects\ntl
+   Click on Win32 static library
+   Click on OK
+   pre-compiled headers[default]: no
+   MFC support[default]: no
+   Click on Finish
+   Click on OK
+
+Project -&gt; Add to Project -&gt; Files
+   select all files in c:\mystuff\WinNTL-xxx\src and click on OK.
+
+Project -&gt; Settings -&gt; C/C++ 
+   Category: Preprocessor.
+   Additional include directories: c:\mystuff\WinNTL-xxx\include.
+   Click on OK.
+
+Build -&gt; build ntl.lib
+
+File -&gt; New -&gt; Projects -&gt; Win32 Console Application
+   project name: test
+   location[default]: c:\Program Files\Microsoft Visual Studio\MyProjects\ntl
+   Click on Win32 Console Application
+   Click on OK
+   What kind of windows application...? [default]: An empty project
+   Click on Finish
+   Click on OK
+
+Project -&gt; Add to Project -&gt; Files
+   select the file c:\mystuff\WinNTL-xxx\tests\QuickTest.cpp
+   Click on OK
+
+Project -&gt; Add to Project -&gt; Files
+   select the file 
+      c:\Program Files\Microsoft Visual Studio\MyProjects\ntl\Debug\ntl.lib
+   Note: one must select Files of type: Library Files (.lib) to make this
+      file visible in the pop-up window.
+   Click on OK
+
+Project -&gt; Settings -&gt; C/C++ 
+   Category: Preprocessor.
+   Additional include directories: c:\mystuff\WinNTL-xxx\include.
+   Click on OK.
+
+Build -&gt; build test.exe
+
+Build -&gt; execute test.exe
+
+</pre>
+
+<p>
+<b>
+Further remarks.
+</b>
+<p>
+
+<p>
+<i>TIP:</i>  When writing programs using NTL, 
+you should include files using the syntax
+<pre>
+   #include &lt;NTL/ZZ.h&gt;
+</pre>
+and <i>not</i> using a backslash ("<tt>\</tt>") as a delimiter.
+
+<p>
+<i>TIP:</i> When writing <i>windows applications</i> using NTL
+(as opposed to <i>console applications</i>) you might want to compile 
+your program with the <tt>NTL_NO_MIN_MAX</tt> macro defined.
+This suppresses  the declaration of several <tt>min</tt>
+and <tt>max</tt> functions in file <tt>tools.h</tt> that conflict
+with macro names in the MFC header files.
+Do not attempt to build the library with this macro defined -- only
+programs that use the library.
+
+<p>
+NTL has been successfully installed and tested 
+on Windows 95 platforms with both the 
+Microsoft and Borland compilers.
+
+<p>
+If you have installed the Unix tools from 
+<a href="http://www.cygnus.com">Cygnus</a>, then you can use the
+<a href="tour-unix.html">Unix</a> distribution of NTL.
+This distribution has been specially tailored to work smoothly
+with Cygnus tools.
+For many programmers,
+this is a much more comfortable and reliable program development environment
+than commercial systems like those from Microsoft and Borland.
+And moreover, these Unix tools are <i>free</i>.
+Of course, an even better approach is to install
+<a href="http://www.linux.org">Linux</a> on your PC.
+
+
+<p>
+
+<center>
+<a href="tour-unix.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-tips.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+
+</body>
+</html>

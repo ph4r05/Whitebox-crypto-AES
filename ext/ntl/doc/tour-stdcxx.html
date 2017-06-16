@@ -1,0 +1,646 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Traditional and ISO Modes  </title>
+</head>
+
+<body bgcolor="#fff9e6">
+<center>
+<a href="tour-modules.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-unix.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Traditional and ISO Modes
+</p>
+</h1>
+
+<p> <hr> <p>
+
+<p>
+
+As of version 4.1,
+NTL can be compiled and used in one of two modes: Traditional or ISO.
+<i>As of NTL version 5.4, ISO mode is the default.</i>
+
+<p>
+To revert to traditional mode, you can pass <tt>NTL_STD_CXX=off</tt>
+as an argument to the configuration script
+when <a href="tour-unix.html">installing NTL on a Unix or Unix-like system</a>,
+which will unset the flag <tt>NTL_STD_CXX</tt> in the <tt>config.h</tt>
+file.
+Alternatively (and especially on non-Unix systems),
+you can unset this flag  by hand by editing 
+the the <tt>config.h</tt> file.
+<p>
+
+
+
+<p>
+In Traditional mode, the NTL header files include the traditional
+<tt>C++</tt> header files <tt>&lt;stdlib.h&gt;</tt>,
+<tt>&lt;math.h&gt;</tt>, and <tt>&lt;iostream.h&gt;</tt>.
+These files declare a number of names (functions, types, etc.)
+in the <i>global namespace</i>.
+Additionally, the NTL header files declare a number of names,
+also in the global namespace.
+
+<p>
+In ISO mode, three things change:
+
+<ol>
+<li>
+<b>NTL namespace:</b>
+The NTL header files wrap all NTL names in a namespace, called <tt>NTL</tt>.
+
+<p>
+<li>
+<b>New header files:</b>
+The NTL header files include the new <tt>C++</tt> 
+header files <tt>&lt;cstdlib&gt;</tt>,
+<tt>&lt;cmath&gt;</tt>, and <tt>&lt;iostream&gt;</tt>.
+These new header files are essentially the same as the traditional ones,
+except that all the the names are declared in a namespace called 
+<tt>std</tt>.
+
+<p>
+<li>
+<b>Nothrow new:</b>
+The NTL implementation files use the <tt>nothrow</tt> version of <tt>new</tt>.
+</ol>
+
+
+
+<p>
+If your complier is not up to date, but you want some of the benefits
+of Standard <tt>C++</tt>, you can set the <i>partial standard</i>
+flags to get any subset of the above three changes:
+<p>
+<ol>
+<li>
+<tt>NTL_PSTD_NNS</tt>: NTL namespace
+<li>
+<tt>NTL_PSTD_NHF</tt>: New header files
+<li>
+<tt>NTL_PSTD_NTN</tt>: Nothrow new
+</ol>
+
+You can set these flags either by using the configuration script
+(only on Unix-like systems), or by editing the <tt>config.h</tt> file.
+For example, to just wrap NTL in a namepsace, just pass 
+<tt>NTL_PSTD_NNS=on</tt>
+as an argument to the configuration script
+when installing NTL.
+However, make sure you also turn off the <tt>NTL_STD_CXX</tt> flag;
+otherwise, these have no effect.
+
+<p>
+
+Especially when combining NTL with other libraries, the
+<tt>NTL_PSTD_NNS</tt> flag may be particularly useful
+in avoiding name clashes, even if your compiler has just a
+rudimentary implementation of namespaces.
+
+<p>
+NTL will remain usable in Traditional mode indefinitely,
+assuming compilers maintain reasonable backward compatibilty with 
+pre-standard <tt>C++</tt> conventions for header files;
+however, if you want to <i>program for the future</i>, it is recommended
+to use ISO mode.
+The partial ISO modes are not highly recommended;
+they are mainly intended as a stop-gap measure 
+while we wait for decent standard-conforming <tt>C++</tt>
+compilers to become available.
+
+
+<p>
+<h3>
+A crash course on namespaces
+</h3>
+
+<p>
+As already mentioned, the main difference between Traditional and ISO
+mode is that in ISO mode, all names are wrapped in namespaces.
+Namespaces are a feature that was introduced in the new <tt>C++</tt> standard.
+One can declare names (functions, types, etc.) inside a namespace.
+By default,
+such names are not visible outside the namespace without explicit
+qualification.
+
+<p>
+The main advantage of namespaces is that it solves the <i>namespace pollution
+problem</i>:
+if two libraries define the same name in two inconsistent ways,
+it is very difficult, if not impossible,
+to combine these two libraries in the same 
+program.
+
+<p>
+The traditional way of avoiding such problems in languages like
+<tt>C</tt> is for a library designer to attach a prefix specific
+to that library to all names.
+This works, but makes for ugly code.
+The function overloading mechanism in <tt>C++</tt> eases the problem a bit,
+but is still not a complete solution.
+
+<p>
+
+The new
+namespace feature in <tt>C++</tt>
+provides a reasonably complete and elegant solution to the namespace
+pollution problem.
+It is one of the nicest and most important recent additions to the <tt>C++</tt>
+language.
+
+<p>
+
+Here is a simple example to illustrate namespaces.
+<p>
+<pre>
+
+namespace N {
+   void f(int);
+   void g(int);
+   int x;
+}
+
+int x;
+
+void h()
+{
+   x = 1;    // the global x
+   N::x = 0; // the x in namespace N
+   N::f(0);  // the f in namespace N
+   g(1);     // error -- g is not visible here
+}
+
+</pre>
+
+<p>
+All of this explicit qualification business
+can be a bit tedious.
+The easiest way to avoid this tedium is to use what is called
+a <i>using directive</i>, which effectively makes
+all names declared within a namespace visible in the
+global scope.
+
+Here is a variation on the previous example, with a using directive.
+
+<p>
+<pre>
+
+namespace N {
+   void f(int);
+   void g(int);
+   int x;
+}
+
+int x;
+
+using namespace N;
+
+void h()
+{
+   x = 1;    // error -- ambiguous: the global x or the x in namespace N?
+   ::x = 1;  // the global x
+   N::x = 0; // the x in namespace N
+   N::f(0);  // the f in namespace N
+   f(0);     // OK -- N::f(int) is visible here
+   g(1);     // OK -- N::g(int) is visible here
+}
+
+</pre>
+
+<p>
+Here is another example.
+
+<p>
+<pre>
+
+namespace N1 {
+   int x;
+   void f(int);
+   void g(int);
+}
+
+namespace N2 {
+   int x;
+   int y;
+   void f(double);
+   void g(int);
+}
+
+using namespace N1;
+using namespace N2;
+
+void h()
+{
+   x = 1;     // error -- ambiguous: N1::x or N2::x?
+   N1::x = 1; // OK
+   N2::x = 1; // OK
+   y = 1;     // OK  -- this is N2::y
+   g(0);      // error -- ambiguous: N1::g(int) or N2::g(int)?
+   f(0);      // OK -- N1::f(int), because it is the "best" match 
+   f(0.0);    // OK  -- N2::f(double), because it is the "best" match
+}
+
+</pre>
+
+<p>
+This example illustrates the interaction between using declarations
+and function overloading resolution.
+If several overloaded versions of a function are visible,
+it is not necessarily ambiguous: the usual overload resolution
+procedure is applied, and if there is a unique "best" match,
+then there is no ambiguity.
+
+<p>
+
+The examples presented here do not illustrate all of the
+features and nuances of namespaces.
+For this, you are referred to a <tt>C++</tt> book.
+
+<p>
+<h3>
+Namespaces and NTL
+</h3>
+
+<p>
+In ISO mode, the standard library is "wrapped" in namespace <tt>std</tt>,
+and NTL is "wrapped" in namespace <tt>NTL</tt>.
+Thus, the header file <tt>&lt;NTL/ZZ.h&gt;</tt> in ISO mode looks
+something like this:
+<pre>
+
+namespace NTL {
+
+   // ...
+
+   class ZZ { /* ... */ };
+
+   // ...
+
+   ZZ operator+(const ZZ&amp; a, const ZZ&amp; b);
+   ZZ operator*(const ZZ&amp; a, const ZZ&amp; b);
+
+   std::istream&amp; operator>>(std::istream&amp; s, ZZ&amp; x);
+   std::ostream&amp; operator<<(std::ostream&amp; s, const ZZ&amp; a);
+
+   // ...
+
+  
+}
+
+</pre>
+
+Therefore, one must explicitly qualify all names, or use appropriate
+using directives.
+Here is how one could write the <a href="tour-ex1.html">first example</a> 
+of the tour in
+ISO mode.
+
+<pre>
+
+#include &lt;NTL/ZZ.h&gt;
+
+int main()
+{
+   NTL::ZZ a, b, c; 
+
+   std::cin &gt;&gt; a; 
+   std::cin &gt;&gt; b; 
+   c = (a+1)*(b+1);
+   std::cout &lt;&lt; c &lt;&lt; "\n";
+}
+
+</pre>
+
+<p>
+Notice how everything is explicitly qualified.
+Actually, the input/output operators <tt>&lt;&lt;</tt> and <tt>&gt;&gt;</tt>,
+and the arithmetic operators <tt>+</tt> and <tt>*</tt> are not explicitly
+qualified, but rather, the compiler finds them through a gimmick
+called <i>Koenig Lookup</i>, which will look for functions (and operators)
+declared in namespace <tt>NTL</tt>, because the type of the argument
+(<tt>ZZ</tt>) is a class declared in that namespace.
+
+<p>
+
+Even with Koenig Lookup, explicit qualification can
+be a bit tedious.
+Here is the same example, this time with using directives.
+
+<pre>
+
+#include &lt;NTL/ZZ.h&gt;
+
+using namespace NTL;
+using namespace std;
+
+int main()
+{
+   ZZ a, b, c; 
+
+   cin &gt;&gt; a; 
+   cin &gt;&gt; b; 
+   c = (a+1)*(b+1);
+   cout &lt;&lt; c &lt;&lt; "\n";
+}
+
+</pre>
+
+To write NTL client code that will compile smoothly in either
+Traditional or ISO mode, one simply does the following:
+
+<pre>
+
+#include &lt;NTL/ZZ.h&gt;
+
+NTL_CLIENT
+
+int main()
+{
+   ZZ a, b, c; 
+
+   cin &gt;&gt; a; 
+   cin &gt;&gt; b; 
+   c = (a+1)*(b+1);
+   cout &lt;&lt; c &lt;&lt; "\n";
+}
+
+</pre>
+
+<p>
+Here, <tt>NTL_CLIENT</tt> is a macro defined by NTL
+that expands into zero, one, or two appropriate <i>using</i> directives,
+depending on the settings of <tt>NTL_STD_CXX</tt>,
+<tt>NTL_PSTD_NNS</tt>, and <tt>NTL_PSTD_NHF</tt>.
+Alternatively, instead of using the <tt>NTL_CLIENT</tt> macro,
+you can write:
+<p>
+
+<pre>
+#if (defined(NTL_PSTD_NNS) || defined(NTL_STD_CXX))
+   using namespace NTL;
+#endif
+
+#if (defined(NTL_PSTD_NHF) || defined(NTL_STD_CXX))
+   using namespace std;
+#endif
+</pre>
+
+Typically,
+when writing a program that uses NTL,
+you can
+simply insert the <tt>NTL_CLIENT</tt> as above,
+and forget about all this namespace nonsense.
+However, if you are combining libraries, you may have to disambiguate
+things from time to time.
+
+<p>
+
+The Standard <tt>C++</tt> library is huge.
+If you just use <tt>&lt;iostream&gt;</tt>, you should not
+have any ambiguous names.
+However, there are some potential ambiguities in the STL
+(Standard Template Library) part of the library.
+One that I know of is the template class <tt>negate</tt>
+defined in <tt>&lt;functional&gt;</tt>, which conflicts with the
+NTL function <tt>negate</tt>.
+With namespaces, there should be no problem, unless the client
+code explicitly uses <tt>negate</tt>, in which case you will
+have to explicitly qualify <tt>negate</tt> to tell the compiler
+which <tt>negate</tt> you mean, either <tt>std::negate</tt>
+or <tt>NTL::negate</tt>.
+
+<p>
+NTL also explicitly defines various versions of <tt>min</tt>
+and <tt>max</tt> functions.
+Template versions of these functions are also defined in the
+standard library component <tt>&lt;algorithm&gt;</tt>.
+Because of the way the function overload resolution mechanism works, 
+the "right" version of <tt>min</tt> or <tt>max</tt> should always
+be chosen, without any need for explicit qualification.
+
+<p>
+There may be other possible ambiguities between the standard library
+and NTL, but if they arise, they are easily fixed through
+explicit qualification.
+
+<p>
+<h3>
+Some global names
+</h3>
+<p>
+
+It is not quite true that <i>all</i> names
+declared in NTL header files are wrapped in namespace NTL.
+There are two classes of exceptions:
+<p>
+<ul>
+<li>
+All names that start with the prefix "<tt>NTL_</tt>"
+are in fact <i>macros</i>.  
+There are a number of documented and undocumented
+such macros.
+Note that any name with this prefix is a macro and all macros
+start with this prefix.
+
+<p>
+
+<li>
+There are also a number of undocumented names that start with the 
+prefix "<tt>_ntl_</tt>".
+These are not macros, but rather are names of functions, types, etc., 
+that are declared in the global namespace.
+Any name with this prefix is in the global namespace,
+and all names in the global namespace start with this prefix.
+All functions with <tt>"C"</tt> linkage have this prefix.
+</ul>
+<p>
+Thus, NTL "owns" all names starting with "<tt>NTL_</tt>" or "<tt>_ntl_</tt>";
+users of NTL should avoid names with these prefixes.
+
+<p>
+<h3>
+Further technicalities
+</h3>
+<p>
+
+Another thing to be aware of is that there are some small, annoying
+differences between the old standard <tt>C</tt> include files
+<tt>&lt;stdlib.h&gt;</tt> and <tt>&lt;math.h&gt;</tt>,
+and the new <tt>C++</tt> include files 
+<tt>&lt;cstdlib&gt;</tt> and <tt>&lt;cmath&gt;</tt>,
+above and beyond the namespace wrapping.
+Specifically, the new header files declare several overloaded versions
+of some functions.
+For example, in the old header files, there was one function
+<pre>
+   int abs(int);
+</pre>
+Now there are several, including:
+<pre>
+   int abs(int);
+   long abs(long);
+   float abs(float);
+   double abs(double);
+   long double abs(long double);
+</pre>
+Also, functions like <tt>log</tt> and <tt>sqrt</tt> are also overloaded.
+So instead of just
+<pre>
+   double log(double);
+</pre>
+there are
+<pre>
+   float log(float);
+   double log(double);
+   long double log(long double);
+</pre>
+
+<p>
+This can lead to compile-time errors in some old codes, such as:
+<pre>
+   double log_2 = log(2);
+</pre>
+
+<p>
+With the old header files, the <tt>int</tt> value 2 would have
+been converted to a <tt>double</tt>, and the function 
+<pre>
+   double log(double);
+</pre>
+would have been called.
+<p>
+With the new header files, the compiler would raise an error,
+because the function call is now ambiguous.
+<p>
+Of course, the fix is trivial:
+<pre>
+   double log_2 = log(2.0);
+</pre>
+This will compile correctly with either old or new header files.
+
+<p>
+Don't you just love the ISO?
+
+
+<p>
+<h3>
+A note on documentation
+</h3>
+<p>
+
+The "<tt>.txt</tt>" files documenting NTL's modules
+still reflect NTL's  Traditional mode.
+There should be no confusion in interpretting the meaning in ISO mode.
+Just remember: all of NTL is wrapped in namespace <tt>NTL</tt>,
+and the standard library is wrapped in namespace <tt>std</tt>.
+
+
+<p>
+<h3>
+Further changes in NTL version 4.1
+</h3>
+<p>
+
+The ISO Standard for <tt>C++</tt> is not compatible with the
+language defined in the second edition of Stroustrup's <tt>C++</tt> book.
+This is in fact quite annoying.
+Besides introducing namespaces, several modifications were made
+in version 4.1 that will allow NTL to be compiled smoothly under
+<i>either</i> the old or the new definition of the language
+(or any reasonable approximation thereof).
+These changes do not affect the (documented) NTL interface,
+and so version 4.1 should be backward compatible.
+<p>
+Here is a summary of the other changes:
+<ul>
+<li>
+Got rid of all <tt>friend</tt> functions.
+It turns out that new <tt>C++</tt> and old <tt>C++</tt> disagree 
+quite strongly about the semantics of a <tt>friend</tt> function
+declaration.
+In getting rid of these, I also made a number of fields public
+which used to be private, but to prevent accidental misuse,
+I gave them strange names (e.g., the previously
+private member <tt>rep</tt> in class <tt>ZZ_p</tt>
+is now the public member <tt>_ZZ_p__rep</tt>).
+
+<p>
+This change is effective in both Traditional and ISO modes.
+
+<p>
+In my view, the ISO committee really committed an act of sabotage here.
+Now the <tt>friend</tt> mechanism is much more awkward than before,
+which makes the use of private members more awkward,
+which simply encourages programmers (like me) to avoid them altogether.
+
+<p>
+
+<li>
+When <tt>NTL_STD_CXX</tt> or <tt>NTL_PSTD_NTN</tt> are set, 
+all calls to <tt>new</tt>
+have been replaced by <tt>new(std::nothrow)</tt>.
+
+<p>
+The ISO committee also committed an act of sabotage when they changed
+the semantics of the memory allocation operator <tt>new</tt>.
+In old <tt>C++</tt>, a memory allocation error simply returned
+a null pointer; in new <tt>C++</tt> an exception is thrown.
+The old semantics are available via  <tt>new(std::nothrow)</tt>.
+
+<p>
+You may of course use NTL in Traditional mode with a compiler that
+implements the new semantics for <tt>new</tt>.
+In this case, if the memory allocation fails, an exception will
+be thrown, and assuming you don't catch it, you will simply get an
+error message that is less informative than the one NTL would
+have printed.
+Also, your compiler may have a backward compatatibilty flag to 
+use the old <tt>new</tt> semantics.
+
+<p>
+
+<li>
+Various and sundry other small changes, such as fixing
+occurrences of the
+the "<tt>log(2)</tt>" problem mentioned above.
+
+</ul>
+
+<p>
+
+
+<p>
+<h3>
+Standard C++ and the Real World
+</h3>
+
+<p>
+The first C++ standard was set in 1998, with some
+revisions in 2003.
+As I write this update in 2013, I believe it is safe
+to say that most compileres released in the last
+few years do a pretty good job of implementing the standard.
+
+<p>
+However, a new revision to tne standard appeared in 2011.
+This new revision contains many new language and library 
+features.
+Surely, it will be a number of years until 
+support for all these new feautures will be uniformly 
+available.
+
+
+
+<center>
+<a href="tour-modules.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-unix.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+</body>
+</html>

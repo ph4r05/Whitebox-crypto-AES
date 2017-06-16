@@ -12,6 +12,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
 
 
 // NTL dependencies
@@ -220,12 +221,12 @@ void applyLookupTable(vec_GF2E& ltable, mat_GF2E& tgt){
 }
 
 std::string hashString(std::string inputBuffer){
-	char buff[inputBuffer.size()];					// c++0x feature
-	inputBuffer.copy(buff, inputBuffer.size(), 0);	// copy serialized lookup table to char array
+    std::vector<char> buff(inputBuffer.size());
+	inputBuffer.copy(&buff[0], inputBuffer.size(), 0);	// copy serialized lookup table to char array
 
 	MD5_CTX mdContext;
 	MD5Init(&mdContext);
-	MD5Update(&mdContext, (unsigned char * )buff, inputBuffer.size());
+	MD5Update(&mdContext, (unsigned char * )(&buff[0]), inputBuffer.size());
 	MD5Final(&mdContext);
 
 	// hexcoding

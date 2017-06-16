@@ -1,0 +1,651 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Programming Interface </title>
+</head>
+
+<body bgcolor="#fff9e6">
+<center>
+<a href="tour-examples.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-modules.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Programming Interface 
+</p>
+</h1>
+
+<p> <hr> <p>
+
+In this section, we give a general overview of the 
+NTL's programming interface.
+
+<p>
+<p>
+<h3>
+Basic Ring Classes
+</h3>
+<p>
+
+The basic ring classes are:
+<ul>
+<li>
+<tt>ZZ</tt>: big integers
+<li>
+<tt>ZZ_p</tt>: big integers modulo <tt>p</tt>
+<li>
+<tt>zz_p</tt>: integers mod "single precision" <tt>p</tt>
+<li>
+<tt>GF2</tt>: integers mod 2
+<li>
+<tt>ZZX</tt>: univariate polynomials over <tt>ZZ</tt>
+<li>
+<tt>ZZ_pX</tt>: univariate polynomials over <tt>ZZ_p</tt>
+<li>
+<tt>zz_pX</tt>: univariate polynomials over <tt>zz_p</tt>
+<li>
+<tt>GF2X</tt>: polynomials over GF2
+<li>
+<tt>ZZ_pE</tt>: ring/field extension over ZZ_p
+<li>
+<tt>zz_pE</tt>: ring/field extension over zz_p
+<li>
+<tt>GF2E</tt>: ring/field extension over GF2
+<li>
+<tt>ZZ_pEX</tt>: univariate polynomials over <tt>ZZ_pE</tt>
+<li>
+<tt>zz_pEX</tt>: univariate polynomials over <tt>zz_pE</tt>
+<li>
+<tt>GF2EX</tt>: univariate polynomials over <tt>GF2E</tt>
+</ul>
+
+<p>
+All these classes all support basic
+arithmetic operators
+<pre>
+   +, -, (unary) -, +=, -=, ++, --, 
+   *, *=, /, /=, %, %=.
+</pre>
+
+<p>
+However, the operations 
+<pre>
+   %, %=
+</pre>
+only exist for integer and polynomial classes, and 
+do not exist
+for classes 
+<pre>
+  ZZ_p, zz_p, GF2, ZZ_pE, zz_pE, GF2E.
+</pre>
+
+<p>
+The standard equality operators (<tt>==</tt> and <tt>!=</tt>)
+are provided for each class.
+In addition, the class <tt>ZZ</tt>
+supports the usual inequality
+operators.
+
+<p>
+The integer and polynomial classes also support "shift operators"
+for left and right shifting.
+For polynomial classes, this means multiplication or division
+by a power of <tt>X</tt>.
+
+<p>
+<p>
+<h3>
+Floating Point Classes
+</h3>
+<p>
+
+In addition to the above ring classes, NTL also provides three
+different floating point classes: 
+<ul>
+<li>
+<tt>xdouble</tt>: "double precision" floating point with
+extended exponent range (for very large numbers);
+<li>
+<tt>quad_float</tt>: "quasi" quadruple-precision floating point;
+<li>
+<tt>RR</tt>: aribitrary precision floating point.
+</ul>
+
+
+<p>
+<p>
+<h3>
+Vectors and Matrices
+</h3>
+<p>
+
+There are also vectors and matrices over 
+<pre>
+   ZZ ZZ_p zz_p GF2 ZZ_pE zz_pE GF2E RR
+</pre>
+which support the usual arithmetic operations.
+
+<p>
+<p>
+<h3>
+Functional and Procedural forms
+</h3>
+<p>
+
+Generally, for any function defined by NTL, there is 
+a functional form, and a procedural form.
+For example:
+
+<pre>
+   ZZ x, a, n;
+   x = InvMod(a, n);  // functional form
+   InvMod(x, a, n);   // procedural form
+</pre>
+
+<p>
+This example illustrates the normal way these two forms differ
+syntactically.
+However, there are exceptions.
+
+First, if there is a operator that can play the role of the
+functional form, that is the notation used:
+
+<pre>
+   ZZ x, a, b;
+   x = a + b;    // functional form
+   add(x, a, b); // procedural form
+</pre>
+
+Second, if the functional form's name would be ambiguous,
+the return type is simply appended to its name:
+
+<pre>
+   ZZ_p x;
+   x = random_ZZ_p();  // functional form
+   random(x);          // procedural form
+</pre>
+
+Third, there are a number of conversion functions (see below), whose name
+in procedural form is <tt>conv</tt>, but whose name in 
+functional form is <tt>conv&lt;T&gt;</tt>, where <tt>T</tt> is the return type:
+
+<pre>
+   ZZ x;  
+   double a;
+
+   x = conv&lt;ZZ&gt;(a);  // functional form
+   conv(x, a);       // procedural form
+</pre>
+
+
+
+<p>
+The use of the procedural form may be more efficient,
+since it will generally avoid the creation of a temporary object
+to store its result.
+However, it is generally silly to get too worked up about
+such efficiencies, and the functional form is usually preferable
+because the resulting code is usually easier to understand.
+
+<p>
+The above rules converning procedural and functional forms apply
+to essentially all of the arithmetic classes supported by NTL,
+with the exception of
+<tt>xdouble</tt> and <tt>quad_float</tt>.
+These two classes only support the functional/operator notation
+for arithmetic operations (but do support both forms for conversion).
+
+
+
+
+<p>
+<p>
+<h3>
+Conversions and Promotions
+</h3>
+<p>
+
+As mentioned above, there are numerous explicit conversion routines,
+which come in both functional and procedural forms.
+A complete list of these can be found in 
+<a href="conversions.txt">conversions.txt</a>.
+This is the only place these are documented; they do not appear
+in the other ".txt" files.
+
+<p>
+It is worth mentioning here, however, that generic conversion operators
+are provided for vectors and matrices, which act component-wise.
+For example, since there is a conversion from <tt>ZZ</tt> to <tt>RR</tt>,
+there is automatically a conversion from 
+<tt>Vec&lt;ZZ&gt;</tt> to <tt>Vec&lt;RR&gt</tt>.
+
+
+
+
+
+<p>
+
+Even though there are no implicity conversions, users
+of NTL can still have most of their benefits.
+This is because all of the basic arithmetic operations 
+(in both their functional and procedural forms),
+comparison operators, and assignment are overloaded
+to get the effect of automatic "promotions".
+For example:
+
+<pre>
+   ZZ x, a;
+
+   x = a + 1;
+   if (x &lt; 0) 
+      mul(x, 2, a);
+   else
+      x = -1;
+</pre>
+
+<p>
+
+These promotions are documented in the ".txt" files, 
+usually using a kind of "short hand" notation.
+For example:
+
+<pre>
+ZZ operator+(const ZZ&amp; a, const ZZ&amp; b);
+
+// PROMOTIONS: operator + promotes long to ZZ on (a, b).
+</pre>
+
+This means that in addition to the declared function, there
+are two other functions that are logically equivalent to the following:
+<pre>
+ZZ operator+(long a, const ZZ&amp; b) { return conv&lt;ZZ&gt;(a) + b; }
+ZZ operator+(const ZZ&amp; a, long b) { return a + conv&lt;ZZ&gt;(b); }
+</pre>
+
+<p>
+Note that this is not how NTL actually implements these functions.
+It is in generally more efficient to write
+<pre>
+   x = y + 2;
+</pre>
+than it is to write
+<pre>
+   x = y + conv&lt;ZZ&gt;(2);
+</pre>
+The former notation avoids the creation and destruction
+of a temporary <tt>ZZ</tt>
+object to hold the value 2.
+
+<p>
+Also, don't have any inhibitions about writing tests like
+<pre>
+   if (x == 0) ...
+</pre>
+and assignments like
+<pre>
+   x = 1; 
+</pre>
+These are all optimized, and  do not execute significaltly slower
+than the "lower level"  (and much less natural) 
+<pre>
+   if (IsZero(x)) ...
+</pre>
+and
+<pre>
+   set(x);
+</pre>
+
+<p>
+Some types have even more promotions.
+For example, the type <tt>ZZ_pX</tt> has promotions
+from <tt>long</tt> and <tt>ZZ_p</tt>.
+Thus, the <tt>add</tt> function for <tt>ZZ_pX</tt> takes the following 
+argument types:
+<pre>
+   (ZZ_pX, ZZ_pX), (ZZ_pX, ZZ_p), (ZZ_pX, long), (ZZ_p, ZZ_pX), (long, ZZ_pX)
+</pre>
+Each of these functions effectively converts the argument to be promoted
+to a <tt>ZZ_pX</tt>.
+
+<p>
+Note that when promoting a pair of arguments, at least one
+of the arguments must be of the target type.
+
+<p>
+I have tried to be very consistent with these promotions so
+that one usually won't need to hunt through the documentation.
+For a given type, there is a natural, fixed set of types
+that promote to it.
+Here is the complete list:
+<pre>
+   destination: source
+   
+   xdouble:     double
+   quad_float:  double
+   RR:          double
+   ZZ:          long
+   ZZ_p:        long
+   ZZ_pX:       long, ZZ_p
+   zz_p:        long
+   zz_pX:       long, zz_p
+   ZZX:         long, ZZ
+   GF2:         long
+   GF2X:        long, GF2
+   GF2E:        long, GF2
+   GF2EX:       long, GF2, GF2E
+   ZZ_pE:       long, ZZ_p
+   ZZ_pEX:      long, ZZ_p, ZZ_pE
+   zz_pE:       long, zz_p
+   zz_pEX:      long, zz_p, zz_pE
+</pre>
+
+<p>
+All the promotions are documented, but here
+are a few general rules describing the available promotions:
+
+<ul>
+
+<li>
+Promotions apply uniformly to both procedural and functional 
+forms, as well as to the corresponding assignment operator forms.
+E.g.,
+<pre>
+   x = x + 2;
+   add(x, x, 2);
+   x += 2;
+</pre>
+
+<li>
+The addition, subtraction, multiplication, equality and comparison
+routines always promote both arguments.  E.g.,
+<pre>
+   x = 2 + y;
+   add(x, 2, y);
+   if (3 > x || y == 5) ...
+</pre>
+
+<li>
+The assignment operator always promotes the right-hand side.
+E.g.,
+<pre>
+   x = 2;
+</pre>
+
+<li>
+For non-integer,  non-polynomial types, the division routine
+promotes both arguments.
+E.g.,
+<pre>
+   RR x, y, z;
+      ...
+   x = 1.0/y;
+   z = y/2.0;
+</pre>
+
+For integer or polynomial types, the division routine
+promotes the denominator only. E.g.,
+<pre>
+   ZZ x, y;
+      ...
+   y = x/2;
+</pre>
+   
+
+<li>
+Matrix by scalar and vector by scalar multiplication promote the scalar.
+E.g.,
+<pre>
+   Vec&lt;ZZ&gt; v, w;
+      ...
+   v = w*2;
+   v = 2*w;
+   v *= 2;
+</pre>
+
+
+<li>
+The monomial constructors for polynomials
+and the corresponding <tt>SetCoeff</tt> routines 
+promote the coefficient argument.
+E.g.,
+<pre>
+   ZZX f;
+   f = ZZX(3, 5);  // f == 5*X^3
+   SetCoeff(f, 0, 2);  // f == 5*x^3 + 2;
+</pre>
+
+<li>
+In module <tt>ZZ</tt>, the modular arithmetic routines, as well as 
+the bit-wise <i>and</i>, <i>or</i>, and <i>xor</i> routines promote their arguments.
+There are also several other routines in module <tt>ZZ</tt>
+that have both <tt>ZZ</tt> and <tt>long</tt> versions, e.g.,
+<tt>NumBits</tt>, <tt>bit</tt>, <tt>weight</tt>.
+Check the documentation in <a href="ZZ.txt"><tt>ZZ.txt</tt></a> 
+for complete details.
+
+</ul>
+
+<p>
+
+
+<p>
+<p>
+<h3>
+Some Conversion and Promotion Technicalities 
+</h3>
+<p>
+
+<p>
+Usually, conversions and promotions are semantically equivalent.
+There are three exceptions, however.
+
+<p>
+One exception 
+is conversion of floating point <tt>double</tt> to
+<tt>ZZ</tt>.
+The safest way to do this is to apply an explicit conversion operator,
+and not to rely on promotions.
+For example, consider
+<pre>
+   ZZ a; double x;
+
+   a = a + x;
+</pre>
+This is equivialent to
+<pre>
+   a = a + long(x);
+</pre>
+One could also use an explicit conversion function:
+<pre>
+   a = a + conv&lt;ZZ&gt;(x);
+</pre>
+The second version guarantees that there is no loss of precision,
+and also guarantees that the floor of <tt>x</tt> is computed.
+With the first version, one may lose precision when <tt>x</tt>
+is converted to a <tt>long</tt>, and also the direction of truncation
+for negative numbers is implementation dependent
+(usually truncating towards zero, instead of computing the floor).
+<p>
+The second exception is conversion of <tt>unsigned int</tt>
+or <tt>unsigned long</tt> to <tt>ZZ</tt>.
+Again, the safest way to do this is with an explicit conversion operator.
+As above, if one relies on promotions, the unsigned integer
+will be first converted to a <i>signed</i> <tt>long</tt>, which is most
+likely not what was intended.
+<p>
+The third exception can occur
+on 64-bit machines when 
+converting a signed or unsigned <tt>long</tt> to one of NTL's 
+extended precision floating-point types (<tt>RR</tt> or <tt>quad_float</tt>).
+These types only provide promotions from <tt>double</tt>,
+and converting a <tt>long</tt> to a <tt>double</tt> on a 64-bit machine
+can lead to a loss of precision.
+Again, if one uses the appropriate NTL conversion routine,
+no loss of precision will occur.
+
+<p>
+
+Another pitfall too avoid is initialzing <tt>ZZ</tt>'s
+with integer constants that are too big.
+Consider the following:
+<pre>
+   ZZ x;
+   x = 1234567890123456789012;
+</pre>
+This integer constant is too big, and this overflow
+condition may or may not cause your compiler to give
+you a warning or an error.
+The easiest way to introduce such large constants into your
+program is as follows:
+<pre>
+   ZZ x;
+   x = conv&lt;ZZ&gt;("1234567890123456789012");
+</pre>
+Conversion functions are provided for converting <tt>C</tt> character strings
+to  the types <tt>ZZ</tt>, <tt>RR</tt>, <tt>quad_float</tt>, 
+and <tt>xdouble</tt>.
+
+<p>
+One should also be careful when converting to <tt>RR</tt>.
+All of these conversions round to the current working precision, which is
+usually, but not always, what one wants.
+
+<p>
+<p>
+<h3>
+Aliasing
+</h3>
+<p>
+
+An important feature of NTL is that aliasing of input and output
+parameters is generally allowed.  For example, if you
+write <tt>mul(x, a, b)</tt>, then <tt>a</tt> or <tt>b</tt>
+may alias (have the same address as) <tt>x</tt>
+(or any object that <tt>x</tt> contains, e.g., scalar/vector
+or scalar/polynomial multiplication).
+
+<p>
+One exception to this rule:
+the generic conversions provided for vectors and
+matrices assume that their inputs do not alias their outputs.
+
+
+<p>
+<p>
+<h3>
+Constructors, Destructors, and Memory Management
+</h3>
+<p>
+
+NTL generally takes care of managing the space occupied by large,
+dynamically sized objects, like objects of class <tt>ZZ</tt> or any of
+NTL's dynamic vectors.
+However, it is helpful to understand a little of what is happening behind the scenes.
+
+<p>
+Most classes are implemented as a pointer, and the default constructor
+just sets this pointer to 0.
+Space is allocated for the object as needed, and when the object's
+destructor is called, the space is freed.
+Exceptions to this are the "modular" classes <tt>ZZ_p</tt>, <tt>ZZ_pE</tt>, <tt>zz_pE</tt>,
+and <tt>GF2E</tt>.
+Since, for a given modulus, the sizes of these objects are fixed, the default constructor
+allocates the appropriate amount of space.
+
+<p>
+Copies are "deep" rather than "shallow".
+This means the data itself is copied, and not just a pointer to the data.
+If the destination object does not have enough space to hold the source data,
+then the space held by the destination object is "grown".
+This is done using the <tt>C</tt> routine <tt>realloc()</tt>.
+Note, however, that if the source object is smaller than the destination
+object, the space held by the destination object is retained.
+This strategy usually yields reasonable behaviour;
+however, one can take explicit control of the situation if necessary, since
+almost all NTL classes have a method <tt>kill()</tt>
+which frees all space held by the object, and sets its state to
+the default initial state (a value 0 or a zero-length vector).
+
+<p>
+The only exception to the above are the special classes <tt>ZZ_pBak</tt>,
+<tt>ZZ_pContext</tt>, and the analogous classes for <tt>zz_p</tt>, 
+<tt>ZZ_pE</tt>, <tt>zz_pE</tt>, and <tt>GF2E</tt>.
+These objects are implemented as referenced-counted pointers,
+and copies are "shallow".
+
+<p> 
+While we are discussing initialization, there is one technical point
+worth mentioning.
+It is safe to declare global objects of any NTL type (except modular types),
+as long as one uses only the default constructor.
+For example, the global declarations
+<pre>
+   ZZ global_integer;
+   Vec&lt;ZZ_p&gt; global_vector;
+</pre>
+should always work, since their initialization only involves
+setting a pointer to 0.
+However,
+one should avoid initializing global objects with
+non-default constructors, and should avoid doing anything that would lead to
+non-trivial computations with NTL objects
+prior to the beginning of the execution of routine <tt>main()</tt>.
+The reasons for this are quite esoteric and can only be appreciated
+by a true
+<tt>C++</tt> afficianado.
+Actually, most such initializations and computations probably will work,
+but it is somewhat platform dependant.
+
+<p>
+Normal people usually do none of these things, so all of this
+should not matter too much.
+There is, however, one possible exception to this.
+A programmer might want to have a global constant initialized like this:
+<pre>
+   const quad_float Pi = conv&lt;quad_float&gt;("3.1415926535897932384626433832795029");
+</pre>
+While this probably will work fine on most platforms, 
+it may not be an entirely portable construction,
+since it will involve a non-trivial computation before
+execution of <tt>main()</tt> begins.
+A more portable strategy
+is to define a function returning a read-only
+reference:
+<pre>
+   const quad_float&amp; Pi()
+   {
+      static quad_float pi = 
+         conv&lt;quad_float&gt;("3.1415926535897932384626433832795029");
+      return pi;
+   }
+</pre>
+and then call the function <tt>Pi()</tt> to get a read-only reference
+to this constant value:
+<pre>
+   area = Pi()*r*r;
+</pre>
+The initialization will then take place the first time <tt>Pi()</tt>
+is called, which is presumably after <tt>main()</tt> starts,
+and so everything should work fine.
+This is a very simple and general strategy that most <tt>C++</tt>
+experts recommend using whenever the initialization of a non-global
+object requires non-trivial computation.
+
+
+
+
+
+
+<p>
+
+<center>
+<a href="tour-examples.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-modules.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+
+</body>
+</html>

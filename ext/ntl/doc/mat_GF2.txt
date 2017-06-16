@@ -1,0 +1,253 @@
+
+/**************************************************************************\
+
+MODULE: mat_GF2
+
+SUMMARY:
+
+The class mat_GF2 implements matrices over GF(2).
+Each row is a vec_GF2 of the same length.
+
+For a mat_GF2 M, one may access row i of M as M[i],
+indexing from 0, or as M(i), indexing from 1.
+
+Individual elements of M may be accessed as M[i][j],
+indexing from 0, or M(i, j), indexing from 1.
+Some restrictions apply (see vec_GF2.txt for details).
+Alternatively, one may use methods get and put.
+
+\**************************************************************************/
+
+
+#include <NTL/vec_vec_GF2.h>
+
+class mat_GF2 {  
+public:  
+  
+   mat_GF2(); // initially 0 x 0
+
+   mat_GF2(const mat_GF2& a);  
+   mat_GF2& operator=(const mat_GF2& a);  
+   ~mat_GF2();
+  
+   mat_GF2(INIT_SIZE_TYPE, long n, long m);  
+   // mat_T(INIT_SIZE, n, m) initializes an n x m matrix, 
+   // clearing all bits.
+
+  
+  
+   void SetDims(long n, long m);
+   // M.SetDims(n, m) makes M have dimension n x m.  If the number of
+   // columns (m) changes, previous storage is freed, and space for M
+   // is reallocated and initialized; otherwise, more rows are
+   // allocated as necessary (when number of rows increases),
+   // excess rows are retained (when number of rows decreases),
+   // and--importantly--the contents do not change.
+  
+   long NumRows() const;
+   // M.NumRows() returns the number of rows of M
+
+   long NumCols() const;
+   // M.NumCols() returns the number of columns of M
+
+   vec_GF2& operator[](long i);
+   const vec_GF2& operator[](long i) const;
+   // access row i, initial index 0.  Any attempt to change the length
+   // of this row will raise an error.
+
+  
+   vec_GF2& operator()(long i);
+   const vec_GF2& operator()(long i) const;
+   // access row i, initial index 1.  Any attempt to change the length
+   // of this row will raise an error.
+
+
+   GF2 get(long i, long j) const; 
+   // returns entry (i, j), indexing from 0
+
+   void put(long i, long j, GF2 a); 
+   void put(long i, long j, long a);
+   // set entry (i, j) to a, indexing from 0
+
+   // Here are the subscripting operations defined using
+   // the "helper" classes subscript_GF2 and const_subscript_GF2.
+
+   subscript_GF2 operator()(long i, long j);
+
+   const_subscript_GF2 operator()(long i, long j) const;
+
+   long position(const vec_GF2& a) const;
+   // returns index of a in matrix, or -1 if not present;
+   // equivalent to rep(*this).position(a);
+
+   long position1(const vec_GF2& a) const;
+   // returns index of a in matrix, or -1 if not present;
+   // equivalent to rep(*this).position1(a);
+  
+   void kill(); // free space and make 0 x 0.
+
+};  
+
+const vec_vec_GF2& rep(const mat_GF2& a);
+// read-only access to underlying representation.
+  
+void swap(mat_GF2& X, mat_GF2& Y); 
+// swap X and Y (fast pointer swap)
+
+void conv(mat_GF2& X, const vec_vec_GF2& A);  
+mat_GF2 to_mat_GF2(const vec_vec_GF2& A);  
+// convert a vector of vec_GF2's to a matrix
+
+// equality testing:
+
+long operator==(const mat_GF2& A, const mat_GF2& B); 
+long operator!=(const mat_GF2& A, const mat_GF2& B); 
+
+// Input/Output:
+//    input format is the same as for a vector of vec_GF2s.
+
+istream& operator>>(istream&, mat_GF2&); 
+ostream& operator<<(ostream&, const mat_GF2&);  
+
+
+
+
+// procedural arithmetic routines:
+
+void add(mat_GF2& X, const mat_GF2& A, const mat_GF2& B); 
+// X = A + B
+
+void sub(mat_GF2& X, const mat_GF2& A, const mat_GF2& B);
+// X = A - B = A + B
+
+void negate(mat_GF2& X, const mat_GF2& A);
+// X = -A = A 
+
+void mul(mat_GF2& X, const mat_GF2& A, const mat_GF2& B); 
+// X = A * B
+
+void mul(vec_GF2& x, const mat_GF2& A, const vec_GF2& b); 
+// x = A * b
+
+void mul(vec_GF2& x, const vec_GF2& a, const mat_GF2& B); 
+// x = a * B
+
+
+void mul(mat_GF2& X, const mat_GF2& A, GF2 b);
+void mul(mat_GF2& X, const mat_GF2& A, long b);
+// X = A * b
+
+void mul(mat_GF2& X, GF2 a, const mat_GF2& B);
+void mul(mat_GF2& X, long a, const mat_GF2& B);
+// X = a * B
+
+void determinant(GF2& d, const mat_GF2& A);
+GF2 determinant(const mat_GF2& A);
+// d =  determinant of A
+
+void transpose(mat_GF2& X, const mat_GF2& A);
+mat_GF2 transpose(const mat_GF2& A);
+// X = transpose of A
+
+void solve(GF2& d, vec_GF2& x, const mat_GF2& A, const vec_GF2& b);
+// A is an n x n matrix, b is a length n vector.  Computes d = det(A).  
+// If d != 0, solves x*A = b. 
+
+void inv(GF2& d, mat_GF2& X, const mat_GF2& A);
+// A is an n x n matrix.  Computes d = det(A).  If d != 0,
+// computes X = A^{-1}. 
+
+void sqr(mat_GF2& X, const mat_GF2& A);
+mat_GF2 sqr(const mat_GF2& A);
+// X = A*A   
+
+void inv(mat_GF2& X, const mat_GF2& A);
+mat_GF2 inv(const mat_GF2& A);
+// X = A^{-1}; error is raised if A is  singular
+
+void power(mat_GF2& X, const mat_GF2& A, const ZZ& e);
+mat_GF2 power(const mat_GF2& A, const ZZ& e);
+
+void power(mat_GF2& X, const mat_GF2& A, long e);
+mat_GF2 power(const mat_GF2& A, long e);
+// X = A^e; e may be negative (in which case A must be nonsingular).
+
+
+void ident(mat_GF2& X, long n); 
+mat_GF2 ident_mat_GF2(long n); 
+// X = n x n identity matrix
+
+long IsIdent(const mat_GF2& A, long n);
+// test if A is n x n identity matrix
+
+
+void diag(mat_GF2& X, long n, GF2 d);
+mat_GF2 diag(long n, GF2 d);
+// X = n x n diagonal matrix with diagonal element d
+
+long IsDiag(const mat_GF2& A, long n, long d);
+// test if X is an n x n diagonal matrix with diagonal element (d mod 2)
+
+
+long gauss(mat_GF2& M);
+long gauss(mat_GF2& M, long w);
+// Performs unitary row operations so as to bring M into row echelon
+// form.  If the optional argument w is supplied, stops when first w
+// columns are in echelon form.  The return value is the rank (or the
+// rank of the first w columns).
+
+void image(mat_GF2& X, const mat_GF2& A);
+// The rows of X are computed as basis of A's row space.  X is is row
+// echelon form
+
+
+void kernel(mat_GF2& X, const mat_GF2& A);
+// Computes a basis for the kernel of the map x -> x*A. where x is a
+// row vector.
+
+// miscellaneous:
+
+
+void clear(mat_GF2& X);
+// X = 0 (dimension unchanged)
+
+long IsZero(const mat_GF2& A);
+// test if A is the zero matrix (any dimension)
+
+
+// arithmetic operator notation:
+
+mat_GF2 operator+(const mat_GF2& a, const mat_GF2& b);
+mat_GF2 operator-(const mat_GF2& a, const mat_GF2& b);
+mat_GF2 operator*(const mat_GF2& a, const mat_GF2& b);
+
+mat_GF2 operator-(const mat_GF2& a);
+
+
+// matrix/scalar multiplication:
+
+mat_GF2 operator*(const mat_GF2& a, GF2 b);
+mat_GF2 operator*(const mat_GF2& a, long b);
+
+mat_GF2 operator*(GF2 a, const mat_GF2& b);
+mat_GF2 operator*(long a, const mat_GF2& b);
+
+// matrix/vector multiplication:
+
+vec_GF2 operator*(const mat_GF2& a, const vec_GF2& b);
+
+vec_GF2 operator*(const vec_GF2& a, const mat_GF2& b);
+
+
+// assignment operator notation:
+
+mat_GF2& operator+=(mat_GF2& x, const mat_GF2& a);
+mat_GF2& operator-=(mat_GF2& x, const mat_GF2& a);
+mat_GF2& operator*=(mat_GF2& x, const mat_GF2& a);
+
+mat_GF2& operator*=(mat_GF2& x, GF2 a);
+mat_GF2& operator*=(mat_GF2& x, long a);
+
+vec_GF2& operator*=(vec_GF2& x, const mat_GF2& a);
+
+

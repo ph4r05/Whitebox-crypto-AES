@@ -1,0 +1,381 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Using NTL with GMP  </title>
+</head>
+
+<body bgcolor="#fff9e6">
+
+<center>
+<a href="tour-impl.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-gf2x.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Using NTL with GMP
+</p>
+</h1>
+
+<p> <hr> <p>
+
+GMP is the GNU Multi-Precision library.
+You can get more information about it, as well as the latest version
+from <a href="http://gmplib.org">here.</a>
+
+<p>
+
+Briefly, GMP is a library for long integer arithmetic.
+It has hand-crafted assembly routines for a wide variety
+of architectures.
+For basic operations, like integer multiplication, it can be 
+two to three (and sometimes bit more) times faster than NTL's
+traditional long integer package.
+The speedup is most dramatic on x86 machines.
+
+<p>
+You can choose one of three different ways of implementing
+long integer arithmetic in NTL:
+<p>
+<ol>
+<li>
+One can use the traditional NTL long integer arithmtic package,
+and avoid dealing with GMP entirely.
+
+<p>
+<li>
+One can use traditional NTL long integer arithmtic package,
+but with GMP as a <i>supplemental</i> long integer package.
+This gives you many (though not all) of the performance benefits of GMP,
+but while still maintaining complete backward compatability.
+
+<p>
+<li>
+One can use GMP as the primary long integer package.
+This gives you essentially all of the performance benefits
+of GMP, but there are some minor backward incompatabilities 
+<a href="#compat">(see below)</a>.
+
+</ol>
+
+<p>
+
+<p>
+The use of GMP as the primary long integer package
+is the preferred method of using GMP.
+The use of GMP as a supplemental long integer package is intended
+primarily for backward compatability.
+
+<p>
+Building NTL with GMP (either as a supplemental or primary 
+long integer package) takes a few extra minutes work,
+and you certainly do not need to use NTL with GMP if you don't want to.
+As far as I know, GMP is only available on Unix systems
+and on Windows systems using Cygwin tools.
+
+<p>
+Even if you do not use GMP as the primary long integer package,
+you should still read the <a href="#compat">section below
+on backward compatabilty</a>
+so that you can write portable code and avoid deprecated constructs.
+
+<p>
+<h2>
+Downloading and building GMP
+</h2>
+<p>
+
+Download GMP from <a href="http://gmplib.org">here.</a>
+You will get a file <tt>gmp-XXX.tar.gz</tt>.
+<p>
+Now do the following:
+<pre>
+   % gunzip gmp-XXX.tar.gz
+   % tar xf gmp-XXX.tar
+   % cd gmp-XXX
+   % ./configure --prefix=$HOME/sw
+   % make
+   % make check
+   % make install
+</pre>
+This will build, test, and install GMP in <tt>$HOME/sw</tt>.
+Of course, change $HOME/sw to whatever you want (the default is 
+<tt>/usr/local</tt>).
+You will find the GMP header files in <tt>$HOME/sw/include</tt> 
+and the compiled binaries in <tt>$HOME/sw/lib</tt>.
+
+<p>
+You can also supply the option
+<tt>--disable-shared</tt> to the <tt>configure</tt> script,
+if you only want static libraries.
+However, if you ultimately want to build NTL as a shared
+library, then you must also buld GMP as a shared library.
+
+<p>
+You must ensure that NTL and GMP have the same 
+<a href="tour-unix.html#abi">ABI</a>.
+Usually, GMP's configure script will automatically
+choose a 64-bit ABI if available.
+
+
+<p>
+<h2>
+Building and using NTL with GMP
+</h2>
+<p>
+
+When building NTL with GMP, you have to tell NTL that you want to
+use GMP as the primary long integer package, 
+and where the include files and library are.
+The easiest way to do this is by passing the argument 
+<tt>NTL_GMP_LIP=on</tt> to the NTL configuration script
+when you are <a href="tour-unix.html">installing NTL</a>.
+Assuming you installed GMP in <tt>$HOME/sw</tt> as above,
+and you also want to install NTL in <tt>$HOME/sw</tt>,
+you execute:
+<pre>
+   % ./configure PREFIX=$HOME/sw NTL_GMP_LIP=on  GMP_PREFIX=$HOME/sw
+</pre>
+You can write this more simply as 
+<pre>
+   % ./configure DEF_PREFIX=$HOME/sw NTL_GMP_LIP=on 
+</pre>
+Here, <tt>DEF_PREFIX</tt> is a variable that is used
+to specify the location of all software,
+and it defaults to <tt>/usr/local</tt>.
+
+
+<p>
+If you installed GMP in <tt>/usr/local</tt> (or some other
+standard system directory where your compiler will look by default)
+then simply
+<pre>
+   % ./configure PREFIX=$HOME/sw NTL_GMP_LIP=on
+</pre>
+does the job.
+Moreover, if NTL is also to be installed in <tt>/usr/local</tt>,
+then
+<pre>
+   % ./configure NTL_GMP_LIP=on
+</pre>
+does the job.
+
+<p>
+If instead you want to use GMP as a supplemental long integer package,
+you should pass the argument <tt>NTL_GMP_HACK=on</tt> to the configure script,
+instead of <tt>NTL_GMP_LIP=on</tt>.
+One still has to specify where to find GMP using the <tt>GMP_PREFIX</tt>
+variable in the configuration script.
+
+<p>
+Instead of passing arguments to the configure script,
+you can also just edit the <tt>config.h</tt> and <tt>makefile</tt> by hand.
+The documentation in these files should be self-explanatory.
+
+
+<p>
+When compiling programs that use NTL with GMP,
+you need to link with the GMP library.
+If GMP is installed as above in 
+<tt>$HOME/sw</tt>, rather than in a standard system directory,
+ this just means adding
+<tt>-L$HOME/sw/lib -lgmp</tt> to the compilation command.
+If you installed GMP in a standard system directory,
+then just <tt>-lgmp</tt> does the job.
+Note that <tt>-lgmp</tt> must come <i>after</i> <tt>-lntl</tt>
+on the command line.
+Finally, if NTL and GF2X are installed as
+shared libraries, then you don't even need <tt>-lgmp</tt>.
+
+
+<p>
+NTL has been tested and works correctly with GMP versions 3.1,  3.1.1,
+and 4.1.4 (among others)
+as the primary long integer package.
+It is not possible to use versions of GMP prior to 3.1 as the
+primary long integer package.
+
+<p>
+
+NTL has been tested and works correctly
+with versions 2.0.2, 3.0.1, 3.1, 3.1.1, and 4.1.4
+(among otheers) of GMP as a supplemental 
+long integer package.
+It is not recommended to use versions of GMP prior to 3.1.1,
+as these are generally more buggy and less efficient.
+
+<p>
+When using NTL with GMP as either primary or supplemental
+long integer package, as a user of NTL, you do not need to
+know or understand anything about the the GMP library.
+So while there is detailed documentation available about how
+to use GMP, you do not have to read it.
+The programming interface to the long integer package 
+completely hides implementation details.
+
+
+
+
+<p>
+<h2>
+Some implementation details
+</h2>
+<p>
+
+When using GMP as the primary long integer package, 
+the code used by NTL is essentially a layer of <tt>C</tt> routines
+that call the low level <tt>mpn</tt> routines in the GMP package.
+These NTL wrapper routines provide essentially the same 
+functionality of the higher level <tt>mpz</tt> routines in GMP,
+but while presenting an interface to the rest of NTL that is almost identical
+to that of the
+traditional NTL long integer package.
+There are, however, some very minor backward incompatabilities 
+<a href="#compat">(see below)</a>.
+
+<p>
+When using GMP as a supplemental long integer package,
+the code employs
+a "quick and dirty", yet fairly effective hack.
+This quick and dirty
+approach converts "on the fly"
+between the classic LIP and GMP representations.
+This makes the use of GMP <i>completely</i> invisible to higher layer software.
+Of course, there is a penalty: converting between representations takes
+time.
+For operations like addition, conversion would take longer
+than performing the operation, and so it is not done.
+However, for computationally expensive
+operations like multiplication, the "overhead" is not so bad,
+at least for numbers that are not too small.
+To multiply two 256-bit numbers on a Pentium-II, the extra time
+required for the data conversions is just 35% of the time to
+do the multiplication in GMP, i.e., the "overhead" is 35%.
+For 512-bit numbers, the corresponding opportunity cost is about 14%,
+and for 1024-bit numbers, it is less than 10%.
+For smaller numbers, the opportunity cost is greater, but
+never much worse than about 50%.
+
+<p>
+<h2>
+<a name="compat">
+Backward compatbility
+</a>
+</h2>
+<p>
+
+With version 5.0 of NTL, some aspects of the programming interface
+are 'deprecated' so as to allow the use of another long integer package,
+such as GMP, as the primary long integer package.
+
+<p>
+Prior to version 5.0, the macro <tt>NTL_NBITS</tt> was defined,
+along with the macro <tt>NTL_RADIX</tt> defined to be 
+<tt>(1L &lt;&lt; NTL_NBITS)</tt>.
+While these macros are still available when using NTL's traditional
+long integer package (i.e., when <tt>NTL_GMP_LIP</tt> is not set),
+they are not available when using the GMP as the primary long integer
+package (i.e., when <tt>NTL_GMP_LIP</tt> is set).
+Furthermore, when writing portable programs, one should avoid these macros.
+
+<p>
+
+
+Also, the static function <tt>long ZZ::digit(const ZZ &amp;);</tt>
+is defined when using traditional long integer arithmetic,
+but is not available when using GMP as the primary long integer package,
+and in any case, its use should be avoided when writing portable programs. 
+
+
+<p>
+Instead of the above macros, one should use the followng macros:
+
+<pre>
+   NTL_ZZ_NBITS -- number of bits in a zzigit;
+                   a ZZ is represented as a sequence of zzigits.
+
+   NTL_SP_NBITS -- max number of bits in a "single-precision" number
+
+   NTL_WSP_NBITS -- max number of bits in a "wide single-precision" number
+</pre>
+<p>
+The following relations hold:
+<pre>
+   NTL_SP_NBITS &lt;= NTL_WSP_NBITS &lt;= NTL_ZZ_NBITS
+   26 &lt;= NTL_SP_NBITS &lt;= min(NTL_BITS_PER_LONG-2, NTL_DOUBLE_PRECISION-3)
+   NTL_WSP_NBITS &lt;= NTL_BITS_PER_LONG-2
+</pre>
+
+<p>
+
+Note that <tt>NTL_ZZ_NBITS</tt> may be less than, equal to, or greater than
+<tt>NTL_BITS_PER_LONG</tt>  -- no particular relationship 
+should be assumed to hold.
+In particular, expressions like <tt>(1L &lt;&lt; NTL_ZZ_BITS)</tt>
+might overflow.
+
+<p>
+"single-precision" numbers are meant to be used in conjunction with the
+single-precision modular arithmetic routines.
+
+<p>
+"wide single-precision" numbers are meant to be used in conjunction
+with the <tt>ZZ</tt> arithmetic routines for optimal efficiency.
+
+<p>
+Note that when using traditional long integer arithmetic, we have
+<pre>
+    NTL_ZZ_NBITS = NTL_SP_NBITS = NTL_WSP_NBITS = NTL_NBITS.
+</pre>
+
+<p>
+The following auxilliary macros are also defined:
+
+<pre>
+NTL_FRADIX -- double-precision value of <tt>2^NTL_ZZ_NBITS</tt>
+NTL_SP_BOUND -- (1L &lt;&lt; NTL_SP_NBITS)
+NTL_WSP_BOUND -- (1L &lt;&lt; NTL_WSP_NBITS)
+</pre>
+
+<p>
+
+Note that for a <tt>ZZ</tt> <tt>n</tt>,
+<tt>n.size()</tt> returns the number of "zzigits" of <tt>n</tt>.
+This is supported with either traditional or GMP integer arithemtic.
+Note, however, that some old codes might write <tt>n.size() &lt;= 1</tt>
+as a way to test if <tt>NumBits(n) &lt;= NTL_NBITS</tt>.
+This is no longer the right thing to do, if one wants portable code
+that works with either traditional or GMP long integer arithmetic.
+First, one has to decide whether one wants to test if
+<tt>NumBits(n)</tt> is bounded by <tt>NTL_ZZ_NBITS</tt>, 
+<tt>NTL_SP_NBITS</tt>, or <tt>NTL_WSP_NBITS</tt>.
+In the first case, <tt>n.size() &lt;= 1</tt> is still 
+the right way to test this.
+In the second case, write this as <tt>n.SinglePrecision()</tt>.
+In the third case, write this as <tt>n.WideSinglePrecision()</tt>.
+The routines <tt>SinglePrecision</tt> and <tt>WideSinglePrecision</tt>
+are new to NTL version 5.0.
+
+<p>
+
+Most "high level" applications that use NTL should not be affected
+by these changes to NTL's programming interface, and if they are,
+changing the programs should be quite easy.
+
+
+<p> <hr> <p>
+
+
+<p>
+
+<center>
+<a href="tour-impl.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-gf2x.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+
+
+</body>
+</html>

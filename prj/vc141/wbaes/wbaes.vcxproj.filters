@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="..\..\..\base.cpp" />
+    <ClCompile Include="..\..\..\BGEAttack.cpp" />
+    <ClCompile Include="..\..\..\GenericAES.cpp" />
+    <ClCompile Include="..\..\..\LinearAffineEq.cpp" />
+    <ClCompile Include="..\..\..\md5.c" />
+    <ClCompile Include="..\..\..\MixingBijections.cpp" />
+    <ClCompile Include="..\..\..\NTLUtils.cpp" />
+    <ClCompile Include="..\..\..\WBAES.cpp" />
+    <ClCompile Include="..\..\..\WBAESGenerator.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\base.h" />
+    <ClInclude Include="..\..\..\BGEAttack.h" />
+    <ClInclude Include="..\..\..\GenericAES.h" />
+    <ClInclude Include="..\..\..\LinearAffineEq.h" />
+    <ClInclude Include="..\..\..\md5.h" />
+    <ClInclude Include="..\..\..\MixingBijections.h" />
+    <ClInclude Include="..\..\..\NTLUtils.h" />
+    <ClInclude Include="..\..\..\WBAES.h" />
+    <ClInclude Include="..\..\..\WBAESGenerator.h" />
+  </ItemGroup>
+</Project>

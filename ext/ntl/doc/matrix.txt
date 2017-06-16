@@ -1,0 +1,147 @@
+
+/**************************************************************************\
+
+MODULE: matrix
+
+SUMMARY:
+
+Matrix templates.
+
+The declaration 
+
+   Mat<T> M;
+
+creates a 0 x 0 matrix.  
+
+We can make it have 10 rows and 20 columns like this:
+
+   M.SetDims(10, 20);
+
+A row can be accessed as M[i], indexing from 0, or as M(i), indexing from 1.
+A matrix entry can be accessed as M[i][j], indexing from 0, or as
+M(i, j), indexing from 1.
+
+A matrix is represented as a Vec< Vec<T> >: a vector of rows, where
+each row is a Vec<T>.  Any attempt to resize one of the rows so
+as to create a non-rectangular matrix will result in a run-time 
+error.
+
+The dimensions of an existing matrix may be changed.  If the number of
+columns does not change, then the matrix is just "resized" like a vector,
+and no information is lost.  Otherwise, if the number of columns changes,
+the matrix is completely destroyed, and a new matrix is created
+
+
+\**************************************************************************/
+
+template<class T>
+class Mat {
+
+   typedef typename Vec<T>::value_type value_type;
+   typedef typename Vec<T>::reference reference;
+   typedef typename Vec<T>::const_reference const_reference;
+
+
+   Mat(); // initially 0 x 0
+
+   Mat(const Mat<T>& a);
+   Mat& operator=(const Mat<T>& a);
+   ~Mat();
+
+   Mat(INIT_SIZE_TYPE, long n, long m); 
+   // Mat(INIT_SIZE, n, m) initializes an n x m matrix, invoking
+   // the default constructor for T to initialize entries.
+
+   void SetDims(long n, long m); 
+   // M.SetDims(n, m) makes M have dimension n x m.  If the number of
+   // columns (m) changes, previous storage is freed, and space for M
+   // is reallocated and initialized; otherwise, more rows are
+   // allocated as necessary (when number of rows increases), 
+   // excess rows are retained (when number of rows decreases),
+   // and--importantly--the contents do not change.
+
+   void kill(); free storage and make 0 x 0
+
+   long NumRows() const;
+   // M.NumRows() returns the number of rows of M
+
+   long NumCols() const;
+   // M.NumCols() returns the number of columns of M
+
+   Vec<T>& operator[](long i);
+   const Vec<T>& operator[](long i) const;
+   // access row i, initial index 0.  Any attempt to change the length
+   // of this row will raise an error.
+
+   Vec<T>& operator()(long i);
+   const Vec<T>& operator()(long i) const;
+   // access row i, initial index 1.  Any attempt to change the length
+   // of this row will raise an error.
+
+   reference operator()(long i, long j);
+   const_reference operator()(long i, long j) const; 
+   // access element (i, j), both indices starting at 1
+
+   const_reference get(long i, long j) const;
+   // access element (i, j), both indices starting at 0
+
+   void put(long i, long j, const T& a);
+   // same as M[i].put(j, a)
+
+   template <class U>
+   void put(long i, long j, const U& a);
+   // same as M[i].put(j, a)
+
+
+   long position(const Vec<T>& a) const;
+   // returns index of a in matrix, or -1 if not present;
+   // equivalent to rep(*this).position(a).
+
+
+   long position1(const Vec<T>& a) const;
+   // returns index of a in matrix, or -1 if not present;
+   // equivalent to rep(*this).position1(a).
+
+  
+
+};
+
+template<class T>
+const Vec< Vec<T> >& rep(const Mat<T>& a);
+// read-only access to underlying representation
+
+template<class T>
+void swap(Mat<T>& X, Mat<T>& Y);
+// swaps X and Y (by swapping pointers)
+
+template<class T>
+void MakeMatrix(Mat<T>& x, const vec_vec_T& a);
+// copies a to x, checking that it is "rectangular"
+
+/**************************************************************************\
+
+                            Input/Output
+
+\**************************************************************************/
+
+
+template<class T>
+istream& operator>>(istream&, Mat<T>&);
+
+template<class T>
+ostream& operator<<(ostream&, const Mat<T>&); 
+
+/**************************************************************************\
+
+                              Equality Testing
+
+
+\**************************************************************************/
+
+
+template<class T>
+long operator==(const Mat<T>& a, const Mat<T>& b);
+
+template<class T>
+long operator!=(const Mat<T>& a, const Mat<T>& b);
+
