@@ -1,0 +1,4 @@
+[submodule "ext/googletest"]
+	path = ext/googletest
+	url = https://github.com/veawor/googletest.git
+	branch = 1.8.0

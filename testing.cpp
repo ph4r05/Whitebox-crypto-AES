@@ -41,6 +41,9 @@ int main(void) {
 	// This test also demonstrates usage of external encodings by wrapping AES
 	generator.testWithVectors(true, genAES);
 
+    cout << "press any button to continue..." << endl;
+    cin.get();
+
 	// Invert test
 	BGEAttack atk;
 

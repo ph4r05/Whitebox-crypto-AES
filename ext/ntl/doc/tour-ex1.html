@@ -1,0 +1,473 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Examples: Big Integers </title>
+</head>
+
+<body bgcolor="#fff9e6">
+
+<center>
+<img src="arrow1.gif" alt="[Previous]" align=bottom>
+ <a href="tour-examples.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-ex2.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Examples: Big Integers
+</p>
+</h1>
+
+<p> <hr>  <p>
+
+The first example makes use of the class
+<tt>ZZ</tt>,
+which
+represents "big integers": signed, arbitrary length integers.
+This program reads two big integers <tt>a</tt> and <tt>b</tt>,
+and prints <tt>(a+1)*(b+1)</tt>.
+
+<p>
+<pre>
+#include &lt;NTL/ZZ.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+int main()
+{
+   ZZ a, b, c; 
+
+   cin &gt;&gt; a; 
+   cin &gt;&gt; b; 
+   c = (a+1)*(b+1);
+   cout &lt;&lt; c &lt;&lt; "\n";
+}
+</pre>
+
+<p>
+
+This program declares three variables <tt>a</tt>, <tt>b</tt>,
+and <tt>c</tt> of type <tt>ZZ</tt>.
+The values <tt>a</tt> and <tt>b</tt> are read from standard input.
+The value <tt>c</tt> is then computed as <tt>(a+1)*(b+1)</tt>.
+Finally, the value of <tt>c</tt> is printed to the standard output.
+
+<p>
+Note that one can compute with <tt>ZZ</tt>s much as with ordinary
+<tt>int</tt>s, in that most of the standard arithmetic and
+assignment operators can be used in a direct and natural way.
+The <tt>C++</tt> compiler and the NTL library routines 
+automatically take care
+of all the bookkeeping involved
+with memory management and temporary objects.
+
+<p>
+Note that by default, all of NTL's components
+are in the namespace <tt>NTL</tt>;
+with the "using directive" 
+<pre>
+   using namespace NTL;
+</pre>
+in the above example, one can access
+these components directly.
+More details on namespaces and NTL <a href="tour-stdcxx.html">here</a>.
+
+<p> <hr> <p>
+
+Here's a program that reads a list of integers from standard 
+input and prints the sum of their squares.
+
+<p>
+<pre>
+#include &lt;NTL/ZZ.h&gt;
+
+
+using namespace std;
+using namespace NTL;
+
+
+int main()
+{
+   ZZ acc, val;
+
+   acc = 0;
+   while (SkipWhiteSpace(cin)) {
+      cin &gt;&gt; val;
+      acc += val*val;
+   }
+
+   cout &lt;&lt; acc &lt;&lt; "\n";
+}
+</pre>
+
+<p>
+
+The function <tt>SkipWhiteSpace</tt> is defined by NTL.
+It skips over white space, and returns 1 if there is something
+following it.
+This function is useful, because
+NTL's input operators raise an error if an input
+is missing or ill-formed. 
+This is different from the standard I/O library,
+which does not raise an error.
+Personally, I find that not raising an error, or at least
+an exception, is a bad idea, since the caller of the I/O
+routine must constantly check the status of the input
+stream.
+
+
+
+
+<p>
+<hr>
+<p>
+
+Here's a simple modular exponentiation routine for computing
+<tt>a^e mod n</tt>.
+NTL already provides a more sophisticated one, though.
+
+<p>
+<pre>
+ZZ PowerMod(const ZZ&amp; a, const ZZ&amp; e, const ZZ&amp; n)
+{
+   if (e == 0) return to_ZZ(1);
+
+   long k = NumBits(e);
+
+   ZZ res;
+   res = 1;
+
+   for (long i = k-1; i &gt;= 0; i--) {
+      res = (res*res) % n;
+      if (bit(e, i) == 1) res = (res*a) % n;
+   }
+
+   if (e &lt; 0)
+      return InvMod(res, n);
+   else
+      return res;
+}
+</pre>
+<p>
+
+Note that as an alternative, we could implement the inner loop
+as follows:
+
+<pre>
+   res = SqrMod(res, n);
+   if (bit(e, i) == 1) res = MulMod(res, a, n);
+</pre>
+
+We could also write this as:
+
+<pre>
+   SqrMod(res, res, n);
+   if (bit(e, i) == 1) MulMod(res, res, a, n);
+</pre>
+
+This illustrates an important point about NTL's programming interface.
+For every function in NTL, there is a procedural version that
+stores its result in its first argument.
+The reason for using the procedural variant is efficieny:
+on every iteration through the above loop, the functional form
+of <tt>SqrMod</tt> will cause a temporary <tt>ZZ</tt> object to
+be created and destroyed, whereas the procedural version 
+will not create any temporaries.
+Where performance is critical, the procedural version
+is to be preferred.
+Although it is usually silly to get too worked up about performance,
+it may be reasonable to argue that modular exponentiation
+is an important enough routine that it should be as fast as possible.
+
+<p>
+
+Note that when the functional version of a function
+can be naturally named with an operator, this is done.
+So for example, NTL provides a 3-argument <tt>mul</tt> routine
+for <tt>ZZ</tt> multiplication, and a functional version
+whose name is <tt>operator *</tt>, and not <tt>mul</tt>.
+
+<p>
+
+While we are taking about temporaries, consider the first version
+of the inner loop.
+Execution of the statement
+<pre>
+   res = (res*res) % n;
+</pre>
+will result in the creation of two temporary objects,
+one for the product, and one for the result of the mod operation,
+whose value is copied into <tt>res</tt>.
+Of course, the compiler automatically generates the code for
+cleaning up temporaries and other local objects at the right time.
+The programmer does not have to worry about this.
+
+
+<p> <hr> <p>
+
+This example is a bit more interesting.
+The following program prompts the user for an input,
+and applies a simple probabilistic primality test.
+Note that NTL already provides a slightly more sophisticated
+primality test.
+
+<p>
+<pre>
+#include &lt;NTL/ZZ.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+long witness(const ZZ&amp; n, const ZZ&amp; x)
+{
+   ZZ m, y, z;
+   long j, k;
+
+   if (x == 0) return 0;
+
+   // compute m, k such that n-1 = 2^k * m, m odd:
+
+   k = 1;
+   m = n/2;
+   while (m % 2 == 0) {
+      k++;
+      m /= 2;
+   }
+
+   z = PowerMod(x, m, n); // z = x^m % n
+   if (z == 1) return 0;
+
+   j = 0;
+   do {
+      y = z;
+      z = (y*y) % n; 
+      j++;
+   } while (j &lt; k &amp;&amp; z != 1);
+
+   return z != 1 || y != n-1;
+}
+
+
+long PrimeTest(const ZZ&amp; n, long t)
+{
+   if (n &lt;= 1) return 0;
+
+   // first, perform trial division by primes up to 2000
+
+   PrimeSeq s;  // a class for quickly generating primes in sequence
+   long p;
+
+   p = s.next();  // first prime is always 2
+   while (p && p < 2000) {
+      if ((n % p) == 0) return (n == p);
+      p = s.next();  
+   }
+
+   // second, perform t Miller-Rabin tests
+
+   ZZ x;
+   long i;
+
+   for (i = 0; i &lt; t; i++) {
+      x = RandomBnd(n); // random number between 0 and n-1
+
+      if (witness(n, x)) 
+         return 0;
+   }
+
+   return 1;
+}
+
+int main()
+{
+   ZZ n;
+
+   cout &lt;&lt; "n: ";
+   cin &gt;&gt; n;
+
+   if (PrimeTest(n, 10))
+      cout &lt;&lt; n &lt;&lt; " is probably prime\n";
+   else
+      cout &lt;&lt; n &lt;&lt; " is composite\n";
+}
+</pre>
+<p>
+
+Note that in NTL, there are typically a number of ways to
+compute the same thing.
+For example, consider the computation of <tt>m</tt> and <tt>k</tt>
+in function <tt>witness</tt>.
+We could have written it thusly:
+
+<pre>
+   k = 1;
+   m = n &gt;&gt; 1;
+   while (!IsOdd(m)) {
+      k++;
+      m &gt;&gt;= 1;
+   }
+</pre>
+
+It turns out that this is actually not significantly more 
+efficient than the original version, because the implementation
+optimizes multiplication and division by 2.
+
+<p>
+
+The following is more efficient:
+
+<pre>
+   k = 1;
+   while (bit(n, k) == 0) k++;
+   m = n &gt;&gt; k;
+</pre>
+
+As it happens, there is a built-in NTL routine that does just what we want:
+
+<pre>
+   m = n-1;
+   k = MakeOdd(m);
+</pre>
+
+
+
+<p> <hr> <p>
+
+Having seen a number of examples involving <tt>ZZ</tt>s,
+let's look at the <tt>ZZ</tt> interface in a bit more detail.
+
+<p>
+
+<b>
+Constructors, assignment, and conversions
+</b>
+
+<p>
+
+When you declare an object of type <tt>ZZ</tt>, 
+the default constructor initializes to the value <tt>0</tt>.
+As we have already seen, there is an assignment operator that
+allows one to copy the value of one <tt>ZZ</tt> to another.
+Note that these copies (like almost all copies in NTL) are "deep",
+i.e., the actual data is copied, and not just a pointer.
+Of course, if the amount of space allocated by the destination
+of the assignment is insufficient to hold the value of the source,
+space is automatically re-allocated.
+
+<p>
+One can also assign a value of type <tt>long</tt> to a <tt>ZZ</tt>:
+<pre>
+   ZZ x;
+   x = 1;
+</pre>
+
+<p>
+Note that one cannot write
+<pre>
+   ZZ x = 1;  // error
+</pre>
+to initialize a <tt>ZZ</tt>.
+Instead, one could write
+<pre>
+   ZZ x = conv&lt;ZZ&gt;(1);
+</pre>
+This is an example of one of NTL's conversion routines.
+For very large constants, one can write:
+<pre>
+   ZZ x = conv&lt;ZZ&gt;("99999999999999999999");
+</pre>
+These examples illustrate conversion rountines in their 
+functional forms.
+<pre>
+   ZZ x;
+   conv(x, 1);
+   conv(x, "99999999999999999999");
+</pre>
+
+<p>
+<b>
+Functionality
+</b>
+<p>
+
+All of the basic arithmetic operators are supported,
+including comparison, arithmetic, shift, and bit-wise logical operations.
+One can mix <tt>ZZ</tt>s and <tt>long</tt>s in any expresion in
+a natural way.
+NTL does not support implicit type conversion;
+rather, for basic operations, it simply overloads the operators
+or functions in a way to achieve a kind of "promotion logic":
+if one input is a <tt>ZZ</tt> and the other is a <tt>long</tt>
+(or something that implicitly converts to a <tt>long</tt>, like 
+an <tt>int</tt>), the <tt>long</tt> input is effectively converted
+to a <tt>ZZ</tt>.
+Moreover, wherever possible, the implementation does this 
+as efficiently as possible, and usually avoids the creation
+of a temporary <tt>ZZ</tt>.
+
+<p>
+There are also procedural versions for all the basic arithmetic
+operations:
+<pre>
+   add, sub, negate, mul, sqr, div, rem, DivRem, 
+   LeftShift, RightShift,
+   bit_and, bit_or, bit_xor
+</pre>
+
+<p>
+There are many other routines.
+Here is a brief summary:
+<ul>
+<li>
+<tt>GCD</tt> -- computes greatest common divisor of two integers
+<li>
+<tt>XGCD</tt> -- extended Euclidean algorithm
+<li>
+<tt>AddMod</tt>, <tt>SubMod</tt>, <tt>NegateMod</tt>, 
+<tt>MulMod</tt>, <tt>SqrMod</tt>, <tt>InvMod</tt>,
+<tt>PowerMod</tt> -- routines for modular arithmetic,
+including inversion and exponentiation
+<li>
+<tt>NumBits</tt> -- length of binary representation
+<li>
+<tt>bit</tt> -- extract a bit
+<li>
+<tt>ZZFromBytes</tt>, <tt>BytesFromZZ</tt> -- 
+convert between octet strings and <tt>ZZ</tt>s
+<li>
+<tt>RandomBnd</tt>, <tt>RandomBits</tt>, <tt>RandomLen</tt> --
+routines for generating pseudo-random numbers
+<li>
+<tt>GenPrime</tt>, <tt>ProbPrime</tt> -- routines for generating primes
+and testing primality
+<li>
+<tt>power</tt> -- (non-modular) exponentiation
+<li>
+<tt>SqrRoot</tt> -- integer part of square root
+<li>
+<tt>Jacobi</tt>, <tt>SqrRootMod</tt> -- Jacobi symbol and modular
+square root
+</ul>
+
+<p>
+Most of these functions also have pure <tt>long</tt> versions as 
+well, and as usual, there are both functional and procedural
+variants.
+
+<p>
+There are other functions as well.
+See <a href="ZZ.txt"><tt>ZZ.txt</tt></a> for complete details.
+Also see <a href="tools.txt"><tt>tools.txt</tt></a> for some basic
+services provided by NTL.
+
+
+<p>
+<center>
+<img src="arrow1.gif" alt="[Previous]" align=bottom>
+ <a href="tour-examples.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-ex2.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+</body>
+</html>

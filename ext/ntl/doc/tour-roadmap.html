@@ -1,0 +1,128 @@
+<html>
+<head>
+<title>
+A Tour of NTL: NTL past, present, and future  </title>
+</head>
+
+<body bgcolor="#fff9e6">
+<center>
+<a href="tour-time.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-changes.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: NTL past, present, and future 
+</p>
+</h1>
+
+<p> <hr> <p>
+
+<h3>
+Some History
+</h3>
+
+<p>
+
+Work on NTL started around 1990, when I wanted to implement some new
+algorithms for factoring polynomials over finite fields.
+I found that none of the available software was adequate for
+this task, mainly because the code for polynomial arithmetic in
+the available software was too slow.
+So I wrote my own.
+My starting point was Arjen Lenstra's LIP package for long integer
+arithmetic, which was written in <tt>C</tt>.
+It soon became clear that using <tt>C++</tt> instead of <tt>C</tt>
+would be much more productive and less prone to errors,
+mainly because of <tt>C++</tt>'s constructors and destructors
+which allow memory management to be automated.
+Using <tt>C++</tt> has other benefits as well, like function
+and operator overloading, which makes for more readable code.
+
+<p>
+One of the basic design principles of LIP was portability.
+I adopted this principle for NTL as well, for a number of reasons,
+not the least of which was that my computing environment
+kept changing whenever I changed jobs.
+Achieving portability is getting easier as standards,
+like IEEE floating point, get widely adopted, and as the definition of
+and implementations of the
+<tt>C++</tt> language stabilize (which a few years ago was a huge headache,
+but is now only a big one, and in a few years will be a small one).
+
+
+<p>
+Since 1990, NTL has evolved in many ways,
+and it now provides a fairly polished and well-rounded programming interface.
+
+<p>
+When I started working on NTL, there really were not that many 
+good, portable long integer packages around.
+Besides LIP, there was the BSD Unix MP library.
+The first version of GMP was released in the early 1990's.
+At that point in time, LIP seemed like the best starting point.
+LIP remains a reasonable long integer package, but in recent years,
+GMP has really become quite good:  it seems well supported on
+many platforms, and is typically much faster than LIP.
+
+<p>
+I've now re-structured NTL so that one can use
+either 'traditional' LIP or GMP as the <i>primary</i> long integer package.
+Doing this introduced some (minor) backward incompatabilies in 
+the programming interface, so there is also a 'third way' -- you
+can use GMP as a <i>supplemental</i> long integer package, getting
+many (but not all) of the performance benefits of GMP, while
+maintaining <i>complete</i> backward compatability with the traditional
+long integer package.
+This 'third way' is not highly recommended -- it is only intended
+as backward compatabilty hack.
+
+<p>
+
+<h3>
+The Future of NTL
+</h3>
+
+<p>
+
+I hope that NTL remains stable in its current form.
+I plan to support NTL, fixing bugs and serious performance
+problems, but otherwise not to add significant new functionality or
+modify the programming interface.
+
+<p>
+I don't have time to add significant new functionality to NTL.
+However, there seems to be an ever-growing number of NTL users
+out there, and I encourage them to make their code available to
+others.
+These might be in the form of NTL "add ons", but there is the
+possibility of integrating new functionality or algorithmic improvements into NTL itself.
+One thing in particular  that would be nice is support for
+bivariate polynomial arithmetic, including GCDs, resultants,
+and factoring, and for integer and all the various finite field
+coefficient rings.
+Another nice thing would be code for elliptic curves,
+including an elliptic curve point counting algorithm.
+Another nice thing would be something for factoring integers.
+Any one of these projects would be a nice master's thesis project,
+I think.
+
+<p>
+As you can well imagine, there is potentially no end to algorithms one
+could implement.
+That is why I have to stop somewhere.
+I think NTL has reached a point where it provides a reasonably
+well-rounded suite of algorithms for basic problems.
+
+
+<p>
+
+<center>
+<a href="tour-time.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-changes.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+</body>
+</html>

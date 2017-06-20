@@ -1,0 +1,465 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Examples: Modular Arithmetic </title>
+</head>
+
+<body bgcolor="#fff9e6">
+<center>
+<a href="tour-ex3.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour-examples.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-ex5.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Examples: Modular Arithmetic
+</p>
+</h1>
+
+<p> <hr> <p>
+
+
+NTL also supports modular integer arithmetic.
+The class <tt>ZZ_p</tt>
+represents the integers mod <tt>p</tt>.
+Despite the notation, <tt>p</tt> need not in general be prime,
+except in situations where this is mathematically required.
+The classes <tt>Vec&lt;ZZ_p&gt;</tt> (a.k.a., <tt>vec_ZZ_p</tt>), 
+<tt>Mat&lt;ZZ_p&gt;</tt> (a.k.a., <tt>mat_ZZ_p</tt>),
+and <tt>ZZ_pX</tt> represent vectors, matrices, and polynomials
+mod <tt>p</tt>, and work much the same way as the corresponding
+classes for <tt>ZZ</tt>.
+
+<p>
+Here is a program that reads a prime number <tt>p</tt>,
+and a polynomial <tt>f</tt> modulo <tt>p</tt>, and factors it.
+
+<p>
+<pre>
+#include &lt;NTL/ZZ_pXFactoring.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+int main()
+{
+   ZZ p;
+   cin &gt;&gt; p;
+   ZZ_p::init(p);
+
+   ZZ_pX f;
+   cin &gt;&gt; f;
+
+   Vec&lt; Pair&lt; ZZ_pX, long &gt; &gt; factors;
+
+   CanZass(factors, f);  // calls "Cantor/Zassenhaus" algorithm
+
+   cout &lt;&lt; factors &lt;&lt; "\n";
+    
+}
+</pre>
+
+<p>
+As a program is running, NTL keeps track of a "current modulus"
+for the class <tt>ZZ_p</tt>, which can be initialized or changed
+using <tt>ZZ_p::init</tt>.
+This must be done before any variables are declared or
+computations are done that depend on this modulus.
+
+<p>
+Please note that for efficiency reasons,
+NTL does not make any attempt to ensure that
+variables declared under one modulus are not used
+under a different one.
+If that happens, the behavior of a program 
+is completely unpredictable.
+
+
+<p> <hr> <p>
+
+Here are two more examples that illustrate the <tt>ZZ_p</tt>-related 
+classes.
+The first is a vector addition routine (already supplied by NTL):
+
+<p>
+<pre>
+#include &lt;NTL/ZZ_p.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+void add(Vec&lt;ZZ_p&gt;&amp; x, const Vec&lt;ZZ_p&gt;&amp; a, const Vec&lt;ZZ_p&gt;&amp; b)
+{
+   long n = a.length();
+   if (b.length() != n) Error("vector add: dimension mismatch");
+
+   x.SetLength(n);
+   long i;
+   for (i = 0; i < n; i++)
+      add(x[i], a[i], b[i]);
+}
+</pre>
+
+<p>
+
+The second example is an inner product routine (also supplied by NTL):
+
+<p>
+<pre>
+#include &lt;NTL/ZZ_p.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+void InnerProduct(ZZ_p&amp; x, const Vec&lt;ZZ_p&gt;&amp; a, const Vec&lt;ZZ_p&gt;&amp; b)
+{
+   long n = min(a.length(), b.length());
+   long i;
+   ZZ accum, t;
+
+   accum = 0;
+   for (i = 0; i &lt; n; i++) {
+      mul(t, rep(a[i]), rep(b[i]));
+      add(accum, accum, t);
+   }
+
+   conv(x, accum);
+}
+</pre>
+
+<p>
+This second example illustrates two things.
+First, it illustrates the use of function <tt>rep</tt> which
+returns a read-only reference to the representation of a <tt>ZZ_p</tt>
+as a <tt>ZZ</tt> between <tt>0</tt> and <tt>p-1</tt>.
+Second, it illustrates a useful algorithmic technique,
+whereby one computes over <tt>ZZ</tt>, reducing mod <tt>p</tt>
+only when necessary.
+This reduces the number of divisions that need to be performed significantly,
+leading to much faster execution.
+
+
+<p>
+The class <tt>ZZ_p</tt> supports all the basic arithmetic
+operations in both operator and procedural form.
+All of the basic operations support a "promotion logic",
+promoting <tt>long</tt> to <tt>ZZ_p</tt>.
+
+<p>
+Note that the class <tt>ZZ_p</tt> is mainly useful only
+when you want to work with vectors, matrices, or polynomials 
+mod <tt>p</tt>.
+If you just want to do some simple modular arithemtic,
+it is probably easier to just work with <tt>ZZ</tt>'s directly.
+This is especially true if you want to work with many different
+moduli:  modulus switching is supported, but it is a bit awkward.
+
+<p>
+The class <tt>ZZ_pX</tt> supports all the basic arithmetic
+operations in both operator and procedural form.
+All of the basic operations support a "promotion logic",
+promoting both <tt>long</tt> and <tt>ZZ_p</tt> to <tt>ZZ_pX</tt>.
+
+<p>
+See <a href="ZZ_p.txt"><tt>ZZ_p.txt</tt></a> for details on <tt>ZZ_p</tt>;
+see <a href="ZZ_pX.txt"><tt>ZZ_pX.txt</tt></a> for details on <tt>ZZ_pX</tt>;
+see <a href="ZZ_pXFactoring.txt"><tt>ZZ_pXFactoring.txt</tt></a> for details on 
+the routines for factoring polynomials over <tt>ZZ_p</tt>;
+see <a href="vec_ZZ_p.txt"><tt>vec_ZZ_p.txt</tt></a> for details 
+on mathematical operations on  <tt>Vec&lt;ZZ_p&gt;</tt>'s;
+see <a href="mat_ZZ_p.txt"><tt>mat_ZZ_p.txt</tt></a> for details on 
+mathematical operations on <tt>Mat&lt;ZZ_p&gt;</tt>'s.
+
+<p> <hr> <p>
+
+There is a mechanism for saving and restoring a modulus,
+which the following example illustrates.
+This routine takes as input an integer polynomial
+and a prime, and tests if the polynomial is irreducible modulo
+the prime.
+
+<p>
+<pre>
+#include &lt;NTL/ZZX.h&gt;
+#include &lt;NTL/ZZ_pXFactoring.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+long IrredTestMod(const ZZX&amp; f, const ZZ&amp; p)
+{
+   ZZ_pBak bak;  
+   bak.save();  // save current modulus in bak
+
+   ZZ_p::init(p);  // set the current modulus to p
+
+   return DetIrredTest(conv&lt;ZZ_pX&gt;(f));
+
+   // old modulus is restored automatically when bak is destroyed
+   // upon return
+}
+</pre>
+
+<p>
+The modulus switching mechanism is actually quite a bit
+more general and flexible than this example illustrates.
+
+<p> 
+Noe the use of the conversion function 
+<tt>conv&lt;ZZ_pX&gt;</tt>.
+We could also have used the equivalent procedural form:
+<pre>
+   ZZ_pX f1;
+   conv(f1, f);
+   return DetIrredTest(f1);
+</pre>
+
+
+
+
+
+
+<p> <hr> <p>
+
+Suppose in the above example that <tt>p</tt> is known in advance
+to be a small, single-precision  prime.
+In this case, NTL provides a class <tt>zz_p</tt>, that
+acts just like <tt>ZZ_p</tt>,
+along with corresponding classes <tt>Vec&lt;zz_p&gt;</tt>,
+<tt>Mat&lt;zz_p&gt;</tt>, and <tt>zz_pX</tt>.
+The interfaces to all of the routines are generally identical
+to those for <tt>ZZ_p</tt>.
+However, the routines are much more efficient, in both time and space.
+
+<p>
+For small primes, the routine in the previous example could be coded
+as follows.
+
+
+<p>
+<pre>
+#include &lt;NTL/ZZX.h&gt;
+#include &lt;NTL/lzz_pXFactoring.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+long IrredTestMod(const ZZX&amp; f, long p)
+{
+   zz_pBak bak; 
+   bak.save();
+
+   zz_p::init(p);  
+
+   return DetIrredTest(conv&lt;zz_pX&gt;(f));
+}
+</pre>
+
+<p> <hr> <p>
+
+The following is a routine (essentially the same as implemented in NTL)
+for computing the GCD of polynomials with integer coefficients.
+It uses a "modular" approach:  the GCDs are computed modulo small
+primes, and the results are combined using the Chinese Remainder Theorem (CRT).
+The small primes are specially chosen "FFT primes", which are of
+a special form that allows for particular fast polynomial arithmetic.
+
+<p>
+<pre>
+#include &lt;NTL/ZZX.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+void GCD(ZZX&amp; d, const ZZX&amp; a, const ZZX&amp; b)
+{
+   if (a == 0) {
+      d = b;
+      if (LeadCoeff(d) &lt; 0) negate(d, d);
+      return;
+   }
+
+   if (b == 0) {
+      d = a;
+      if (LeadCoeff(d) &lt; 0) negate(d, d);
+      return;
+   }
+
+   ZZ c1, c2, c;
+   ZZX f1, f2;
+
+   content(c1, a);
+   divide(f1, a, c1);
+
+   content(c2, b);
+   divide(f2, b, c2);
+
+   GCD(c, c1, c2);
+
+   ZZ ld;
+   GCD(ld, LeadCoeff(f1), LeadCoeff(f2));
+
+   ZZX g, res;
+
+   ZZ prod;
+
+   zz_pBak bak;
+   bak.save();
+
+   long FirstTime = 1;
+
+   long i;
+   for (i = 0; ;i++) {
+      zz_p::FFTInit(i);
+      long p = zz_p::modulus();
+
+      if (divide(LeadCoeff(f1), p) || divide(LeadCoeff(f2), p)) continue;
+
+      zz_pX G, F1, F2;
+      zz_p  LD;
+
+      conv(F1, f1);
+      conv(F2, f2);
+      conv(LD, ld);
+
+      GCD(G, F1, F2);
+      mul(G, G, LD);
+
+
+      if (deg(G) == 0) { 
+         res = 1;
+         break;
+      }
+
+      if (FirstTime || deg(G) &lt; deg(g)) {
+         prod = 1;
+         g = 0;
+         FirstTime = 0;
+      }
+      else if (deg(G) &gt; deg(g)) {
+         continue;
+      }
+
+      if (!CRT(g, prod, G)) {
+         PrimitivePart(res, g);
+         if (divide(f1, res) &amp;&amp; divide(f2, res))
+            break;
+      }
+
+   }
+
+   mul(d, res, c);
+   if (LeadCoeff(d) &lt; 0) negate(d, d);
+}
+</pre>
+
+
+<p>
+See <a href="lzz_p.txt"><tt>lzz_p.txt</tt></a> for details on <tt>zz_p</tt>;
+see <a href="lzz_pX.txt"><tt>lzz_pX.txt</tt></a> for details on <tt>zz_pX</tt>;
+see <a href="lzz_pXFactoring.txt"><tt>lzz_pXFactoring.txt</tt></a> for details on 
+the routines for factoring polynomials over <tt>zz_p</tt>;
+see <a href="vec_lzz_p.txt"><tt>vec_lzz_p.txt</tt></a> for details on <tt>vec_zz_p</tt>;
+see <a href="mat_lzz_p.txt"><tt>mat_lzz_p.txt</tt></a> for details on <tt>mat_zz_p</tt>.
+
+
+
+<p> <hr> <p>
+
+Arithmetic mod 2 is such an important special case that NTL
+provides a class <tt>GF2</tt>, that
+acts just like <tt>ZZ_p</tt> when <tt>p == 2</tt>,
+along with corresponding classes <tt>Vec&lt;GF2&gt;</tt>,
+<tt>Mat&lt;GF2&gt;</tt>, and <tt>GF2X</tt>.
+The interfaces to all of the routines are generally identical
+to those for <tt>ZZ_p</tt>.
+However, the routines are much more efficient, in both time and space.
+
+Note that  <tt>Vec&lt;GF2&gt;</tt> is an explicit specialization
+of the template class <tt>Vec&lt;T&gt;</tt>, with a special
+implementation that packs the coefficients into the bits
+of a machine word.
+You need to include the header file <tt>&lt;NTL/vec_GF2.h&gt;</tt>
+to use the class <tt>Vec&lt;GF2&gt;</tt>.
+
+<p>
+
+This example illustrates the <tt>GF2X</tt> and <tt>Mat&lt;GF2&gt;</tt>
+classes with a simple routine to test if a polynomial over GF(2)
+is irreducible using linear algebra.
+NTL's built-in irreducibility test is to be preferred, however.
+
+<pre>
+
+#include &lt;NTL/GF2X.h&gt;
+#include &lt;NTL/mat_GF2.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+long MatIrredTest(const GF2X&amp; f)
+{
+   long n = deg(f);
+
+   if (n &lt;= 0) return 0;
+   if (n == 1) return 1;
+
+   if (GCD(f, diff(f)) != 1) return 0;
+
+   Mat&lt;GF2&gt; M;
+
+   M.SetDims(n, n);
+
+   GF2X x_squared = GF2X(2, 1);
+
+   GF2X g;
+   g = 1;
+
+   for (long i = 0; i &lt; n; i++) {
+      VectorCopy(M[i], g, n);
+      M[i][i] += 1;
+      g = (g * x_squared) % f;
+   }
+
+   long rank = gauss(M);
+
+   if (rank == n-1)
+      return 1;
+   else
+      return 0;
+}
+</pre>
+
+<p>
+Note that the statement 
+<pre>
+   g = (g * x_squared) % f;
+</pre>
+could be replace d by the more efficient code sequence
+<pre>
+   MulByXMod(g, g, f);
+   MulByXMod(g, g, f);
+</pre>
+but this would not significantly impact the overall
+running time, since it is the Gaussian elimination that 
+dominates the running time.
+
+<p>
+See <a href="GF2.txt"><tt>GF2.txt</tt></a> for details on <tt>GF2</tt>;
+see <a href="GF2X.txt"><tt>GF2X.txt</tt></a> for details on <tt>GF2X</tt>;
+see <a href="GF2XFactoring.txt"><tt>GF2XFactoring.txt</tt></a> for details on 
+the routines for factoring polynomials over <tt>GF2</tt>;
+see <a href="vec_GF2.txt"><tt>vec_GF2.txt</tt></a> for details on <tt>vec_GF2</tt>;
+see <a href="mat_GF2.txt"><tt>mat_GF2.txt</tt></a> for details on <tt>mat_GF2</tt>.
+
+<p>
+
+<center>
+<a href="tour-ex3.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour-examples.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-ex5.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+</body>
+</html>

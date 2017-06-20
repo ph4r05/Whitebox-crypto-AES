@@ -1,0 +1,209 @@
+
+/**************************************************************************\
+
+MODULE: vec_GF2
+
+SUMMARY:
+
+
+The class Vec<GF2> is explicitly specialized.
+It behaves much like a generic Vec<T> (see vector.txt), 
+but there are some differences.
+
+For efficiency, elements of a Vec<GF2> are "packed" into a word.
+You can still use subscript notation v[i] or v(i).
+For const vectors, these evaluate to values of type const GF2.
+For non-const vectors, these evaluate to values of the
+special type ref_GF2, which is defined in the GF2 header file.
+
+There are implicit conversions from ref_GF2 to const GF2
+and from GF2& to ref_GF2.  Therefore, if you want to declare
+a function that takes a non-const reference to a GF2, you
+should declare the parameter of type ref_GF2: this will
+allow you to pass variables of type GF2 as well as 
+elements of vec_GF2's obtained through indexing.
+
+As an alternative, one can use the get and put methods below to access
+vector elements.
+
+There is one subtle but important difference in the semantics
+of Vec<GF2> and that of generic NTL vectors.  With a Vec<GF2>, whenever its
+length is increased (via SetLength), the "new" bits are always 0.
+For example, if v.length() == 20, then 
+
+   v.SetLength(10); v.setLength(20);
+
+will effectively clear bits 10..19 of v.
+This is quite different from the semantics of generic NTL vectors, where
+the above sequence would not change the value of v at all.
+One has to be aware of this difference, but it will not matter
+in most ordinary circumstances.
+
+
+\**************************************************************************/
+
+
+
+template<> 
+class Vec<GF2> {
+
+public:
+
+   Vec(); // 0 length vector
+   Vec(INIT_SIZE_TYPE, long n); // initialize to length n
+                                // usage: Vec(INIT_SIZE, n)
+
+   Vec(const Vec<GF2>& a); // copy constructor
+   Vec& operator=(const Vec<GF2>& a); // assignment
+   ~Vec(); // destructor
+
+   void SetLength(long n); // set length to n bits
+   void SetMaxLength(long n); // allocate space for n bits
+
+   long length() const; // current length, in bits
+
+   long MaxLength() const; // maximum length, i.e., the maximum
+                           // value passed to either SetLength or SetMaxLength
+                           // since creation or last kill
+
+   long allocated() const; // number of bits for which space is allocated;
+                           // if n <= v.allocated(), then v.SetLength(n)
+                           // will not result in any memory re-allocation.
+
+   // INVARIANT: 
+   //    length() <= MaxLength() <= allocated() < 2^(NTL_BITS_PER_LONG-4)
+
+   
+
+   void FixLength(long n); // fix length to n bits
+      // can only be applied after default initialization or kill
+
+   long fixed() const; // test if length has been fixed
+
+   void kill(); // free space and make length 0
+
+   const GF2 get(long i) const; // fetch value at index i (indexing from 0)
+
+   void put(long i, GF2 a); // write value a to index i (indexing from 0)
+   void put(long i, long a); 
+
+// Here are the subscripting operators, defined using the
+// "helper" class ref_GF2
+
+   ref_GF2 operator[](long i);
+   ref_GF2 operator()(long i);
+
+   const GF2 operator[](long i) const;
+   const GF2 operator()(long i) const;
+
+
+// Some partial STL compatibility...also used
+// to interface with the Matrix template class
+
+   typedef GF2 value_type;
+   typedef ref_GF2 reference;
+   typedef const GF2 const_reference;
+
+
+
+};
+
+
+
+void swap(Vec<GF2>& x, Vec<GF2>& y);
+// swap x and y (fast pointer swap)
+
+void append(Vec<GF2>& v, const GF2& a);
+// append a to v
+
+void append(Vec<GF2>& v, const Vec<GF2>& a);
+// append a to v
+
+// equality operators:
+
+long operator==(const Vec<GF2>& a, const Vec<GF2>& b);
+long operator!=(const Vec<GF2>& a, const Vec<GF2>& b);
+
+
+// I/O operators:
+
+ostream& operator<<(ostream& s, const Vec<GF2>& a);
+istream& operator>>(istream& s, Vec<GF2>& a);
+
+// The I/O format is [a_0 a_1 ... a_{n-1}], where each a_i is "0" or "1".
+// On input, the a_i may be arbitrary integers, which are reduced mod 2.
+
+
+
+typedef Vec<GF2> vec_GF2;  // backward compatibility
+
+// utility routines:
+
+void clear(vec_GF2& x); // clear all bits--length unchanged
+long IsZero(const vec_GF2& a); // test if all bits are zero
+
+void shift(vec_GF2& x, const vec_GF2& a, long n);
+vec_GF2 shift(const vec_GF2& a, long n);
+// x = a shifted n places, where n may be positive or negative.
+// Generally, x[i] = a[i-n], so positive n shifts to a higher index.
+// The length of x is set to the length of a, and bits 
+// are zero-filled or discarded as necessary.
+
+void reverse(vec_GF2& x, const vec_GF2& a); // c = a reversed
+vec_GF2 reverse(const vec_GF2& a);
+
+long weight(const vec_GF2& a); // return number of 1 bits in a
+
+void random(vec_GF2& x, long n);  // x = random vector of length n
+vec_GF2 random_vec_GF2(long n);
+
+
+// arithmetic operations over GF(2):
+
+void add(vec_GF2& x, const vec_GF2& a, const vec_GF2& b);
+void sub(vec_GF2& x, const vec_GF2& a, const vec_GF2& b);
+void negate(vec_GF2& x, const vec_GF2& a);
+
+void mul(vec_GF2& x, const vec_GF2& a, GF2 b);
+void mul(vec_GF2& x, const vec_GF2& a, long b);
+
+void mul(vec_GF2& x, GF2 a, const vec_GF2& b);
+void mul(vec_GF2& x, long a, const vec_GF2& b);
+// x = a * b
+
+void InnerProduct(ref_GF2 x, const vec_GF2& a, const vec_GF2& b);
+// vectors may differ in length
+
+void VectorCopy(vec_GF2& x, const vec_GF2& a, long n);
+vec_GF2 VectorCopy(const vec_GF2& a, long n);
+// x = a copy of a of length exactly n.
+// The input is truncated or padded with zeroes, as necessary.
+
+
+
+// arithmetic operator notation:
+
+vec_GF2 operator+(const vec_GF2& a, const vec_GF2& b);
+vec_GF2 operator-(const vec_GF2& a, const vec_GF2& b);
+vec_GF2 operator-(const vec_GF2& a);
+
+// scalar mul:
+
+vec_GF2 operator*(const vec_GF2& a, GF2 b);
+vec_GF2 operator*(const vec_GF2& a, long b);
+
+vec_GF2 operator*(GF2 a, const vec_GF2& b); 
+vec_GF2 operator*(long a, const vec_GF2& b); 
+
+// inner product: 
+
+inline GF2 operator*(const vec_GF2& a, const vec_GF2& b); 
+
+// assignment operator notation:
+
+vec_GF2& operator+=(vec_GF2& x, const vec_GF2& a);
+vec_GF2& operator-=(vec_GF2& x, const vec_GF2& a);
+
+vec_GF2& operator*=(vec_GF2& x, GF2 a);
+vec_GF2& operator*=(vec_GF2& x, long a);
+

@@ -518,8 +518,8 @@ int LinearAffineEq::findLinearEquivalences(bsetElem * S1,   bsetElem * S1inv,
 	int count = 0;
 	int i;
 	bset Ua, Ub, Na, Nb, Ca, Cb;
-	bsetElem guesses1[size-1]; 					// random guesses for A(x) mapping
-	randomPermutationT(guesses1, size-1, 1);	// make it random - random permutation
+    std::vector<bsetElem> guesses1(size - 1);   // random guesses for A(x) mapping
+	randomPermutationT(&guesses1[0], size-1, 1);	// make it random - random permutation
 
 	// recursive stack for guesses
 	recStack_t recStack;

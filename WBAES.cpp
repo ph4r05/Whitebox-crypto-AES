@@ -90,14 +90,14 @@ void WBAES::encdec(W128b& state, bool encrypt){
 	W128b ares[N_BYTES];				// intermediate result for T1-boxes
 
 	// encryption/decryption dependent operations and tables
-	const int (&shiftOp)[N_BYTES]                        = encrypt ? (this->shiftRows) : (this->shiftRowsInv);
-	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->eXTab)     : (this->dXTab);
-	W32XTB (&edXTabEx)[2][15][4]                         = encrypt ? (this->eXTabEx)   : (this->dXTabEx);
-	AES_TB_TYPE1 (&edTab1)[2][N_BYTES]                   = encrypt ? (this->eTab1)     : (this->dTab1);
-	AES_TB_TYPE2 (&edTab2)[N_ROUNDS][N_BYTES]            = encrypt ? (this->eTab2)     : (this->dTab2);
-	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]            = encrypt ? (this->eTab3)     : (this->dTab3);
+	const int (&shiftOp)[N_BYTES]               = encrypt ? (this->shiftRows) : (this->shiftRowsInv);
+	W32XTB (*edXTab)[N_SECTIONS][N_XOR_GROUPS]	= encrypt ? (this->eXTab)     : (this->dXTab);
+	W32XTB (*edXTabEx)[15][4]                   = encrypt ? (this->eXTabEx)   : (this->dXTabEx);
+	AES_TB_TYPE1 (*edTab1)[N_BYTES]             = encrypt ? (this->eTab1)     : (this->dTab1);
+	AES_TB_TYPE2 (*edTab2)[N_BYTES]            	= encrypt ? (this->eTab2)     : (this->dTab2);
+	AES_TB_TYPE3 (*edTab3)[N_BYTES]            	= encrypt ? (this->eTab3)     : (this->dTab3);
 #ifdef AES_BGE_ATTACK
-	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (this->eOutputBijection) : (this->dOutputBijection);
+	GF256_func_t (*edOutputBijection)[N_BYTES] 	= encrypt ? (this->eOutputBijection) : (this->dOutputBijection);
 #endif
 
 	// At first we have to put input to T1 boxes directly, no shift rows

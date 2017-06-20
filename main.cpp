@@ -154,7 +154,6 @@ int tryMain(int argc, const char * argv[]) {
     // use external coding ?
     useExternal = vm["extEnc"].as<bool>();
     decrypt = vm["decrypt"].as<bool>();
-
     //
     // AES generator benchmark
     //
@@ -265,7 +264,7 @@ int tryMain(int argc, const char * argv[]) {
 				<< "; clocktime=" << ((float) pacc / CLOCKS_PER_SEC) << " s;" << endl;
     }
 
-	//
+    //
 	// Create tables & dump to a file
 	//
 	if (vm.count("create-table") && keyToUse != NULL){
@@ -292,7 +291,6 @@ int tryMain(int argc, const char * argv[]) {
 
 		generator.save(outTables.c_str(), genAES, &coding);
 	}
-
     //
     // AES encryption - encrypt input files with table representation
     //
@@ -430,7 +428,7 @@ int tryMain(int argc, const char * argv[]) {
 		}
 	}
 
-	return 0;
+    return 0;
 }
 
 int A1A2relationsGenerator(void){
@@ -592,7 +590,7 @@ int dualAESTest(void){
 	dumpVector(rndB);
 	dumpVector(rndBinv);
 
-	return 0;
+    return 0;
 }
 
 

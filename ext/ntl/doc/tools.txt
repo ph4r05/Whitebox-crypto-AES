@@ -1,0 +1,116 @@
+
+/**************************************************************************\
+
+MODULE: tools
+
+SUMMARY:
+
+Some useful tools that are used throughout NTL.
+
+\**************************************************************************/
+
+#include <cstdlib>
+#include <cmath>
+#include <iostream>
+
+#include <NTL/config.h>
+#include <NTL/mach_desc.h>
+
+
+
+
+double GetTime();
+// returns number of seconds of CPU time used by this process;
+
+void PrintTime(ostream& s, double t);
+// prints the time t (in seconds) to s in the format
+//     ss  or  mm:ss  or  hh:mm:ss,
+// where the value t is first rounded to the nearest integer.
+
+void Error(const char *s);
+// print an error message and call abort
+
+extern void (*ErrorCallback)();
+// A pointer (initially NULL) to a callback function.
+// This function will be called by the Error function,
+// as well as other functions, before calling abort().
+// Note that the callback function is expected to have
+// C++ linkage, as it is called directly by a C++ function,
+// even though the latter function may be called from a
+// C function.
+
+long IsWhiteSpace(long c);
+// returns 1 if c is "wite space" (as defined by isspace is the
+// standard library...usually blanks, tabs, newlines), and 0 otherwise.
+
+long SkipWhiteSpace(istream& s);
+// skips white space (as defined by IsWhiteSpace).
+// Return value is 0 if end-of-file is reached; otherwise,
+// return value is 1.
+
+// This routine is useful in conjuction with input routines,
+// like NTL's, that raise an error if an input item is
+// ill-formed or missing.  
+
+long IsEOFChar(long c);
+// test if c == EOF
+
+
+long CharToIntVal(long c);
+// returns the hexidecimal value of c if c is '0'..'9', 'A'..'F', or 'a'..'f';
+// otherwise, the return value is -1.
+
+char IntValToChar(long x);
+// returns the hexadecimal digit '0'..'9', 'a'..'f' representing x;
+// an error is raised if x < 0 or x > 15.
+
+long IsFinite(double *p);
+// Returns 1 if *p is a "finite" floating point number.
+// A pointer is used to ensure that the number is in memory,
+// which on some architectures (notably x86/Pentium) can make a difference.
+
+// some min/max and swap routines:
+
+int min(int a, int b);
+int max(int a, int b);
+
+long min(long a, long b);
+long max(long a, long b);
+
+long min(int a, long b);
+long max(int a, long b);
+
+long min(long a, int b);
+long max(long a, int b);
+
+void swap(long& a, long& b);
+void swap(int& a, int& b);
+
+
+// defined here are all the conversion routines among the types 
+// int, long, float, double.  See conversions.txt for complete details.
+
+
+
+// The following platform-dependent macros are defined:
+
+#define NTL_BITS_PER_LONG      (...)  /* bits in a long */
+#define NTL_MAX_LONG           (...)  /* max value of a long */
+#define NTL_MIN_LONG           (...)  /* min value of a long */
+
+#define NTL_BITS_PER_INT       (...)  /* bits in a int */
+#define NTL_MAX_INT            (...)  /* max value of a int */
+#define NTL_MIN_INT            (...)  /* min value of a int */
+
+#define NTL_DOUBLE_PRECISION   (...)  /* # of bits of precision in a double */
+#define NTL_FDOUBLE_PRECISION  (...)  /* the double value 
+                                        2^{NTL_DOUBLE_PRECISION-1} */
+
+#define NTL_ARITH_RIGHT_SHIFT  (...)  /* 1 if signed right-shift is
+                                        arithmetic; 0 otherwise */
+
+#define NTL_EXT_DOUBLE         (...)  /* 1 if platform has "extended" doubles;
+                                        0 otherwise */
+
+
+

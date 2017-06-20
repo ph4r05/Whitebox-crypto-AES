@@ -1,0 +1,336 @@
+
+
+/**************************************************************************\
+
+MODULE: ZZ_p
+
+SUMMARY:
+
+The class ZZ_p is used to represent integers mod p.  The modulus p may
+be any positive integer, not necessarily prime.  
+
+
+Objects of the class ZZ_p are represented as a ZZ in the range 0..p-1.
+
+An executing program maintains a "current modulus", which is set to p
+with ZZ_p::init(p).  The current modulus should be initialized before
+any ZZ_p objects are created.
+
+The modulus may be changed, and a mechanism is provided for saving and
+restoring a modulus (see classes ZZ_pBak and ZZ_pContext below).
+
+\**************************************************************************/
+
+#include <NTL/ZZ.h>
+#include <NTL/ZZVec.h>
+
+class ZZ_p {
+public:
+   
+   ZZ_p(); // initialize to 0
+
+   ZZ_p& operator=(const ZZ_p& a); // assignment
+   ZZ_p& operator=(long a); // assignment
+
+   ZZ_p(const ZZ_p& a); // copy constructor
+
+
+   ~ZZ_p(); // destructor
+
+   static void init(const ZZ& p);
+   // ZZ_p::init(p) sets the modulus to p (p > 1)
+   
+   static const ZZ& modulus();
+   // ZZ_p::modulus() yields read-only reference to the current
+   // modulus
+};
+
+
+/**************************************************************************\
+
+                      Access to representation
+
+\**************************************************************************/
+
+
+const ZZ& rep(const ZZ_p& a); 
+// read-only access to representation of a
+
+/****** Example: ********  
+
+   ZZ x;
+   ZZ_p a;
+
+   x = rep(a);
+
+*************************/
+
+
+/**************************************************************************\
+
+                                  Comparison
+
+\**************************************************************************/
+
+
+long operator==(const ZZ_p& a, const ZZ_p& b);
+long operator!=(const ZZ_p& a, const ZZ_p& b);
+
+// PROMOTIONS: the comparison operators provide promotions
+// from long to ZZ_p on (a, b)
+
+long IsZero(const ZZ_p& a);  // test for 0
+long IsOne(const ZZ_p& a);  // test for 1
+
+
+/**************************************************************************\
+
+                                    Addition 
+
+\**************************************************************************/
+
+// operator notation:
+
+ZZ_p operator+(const ZZ_p& a, const ZZ_p& b);
+ZZ_p operator-(const ZZ_p& a, const ZZ_p& b);
+ZZ_p operator-(const ZZ_p& a); // unary -
+
+ZZ_p& operator+=(ZZ_p& x, const ZZ_p& b);
+ZZ_p& operator+=(ZZ_p& x, long b);
+
+ZZ_p& operator-=(ZZ_p& x, const ZZ_p& b);
+ZZ_p& operator-=(ZZ_p& x, long b);
+
+ZZ_p& operator++(ZZ_p& x);  // prefix
+void operator++(ZZ_p& x, int);  // postfix
+
+ZZ_p& operator--(ZZ_p& x);  // prefix
+void operator--(ZZ_p& x, int);  // postfix
+
+// procedural versions:
+
+
+void add(ZZ_p& x, const ZZ_p& a, const ZZ_p& b); // x = a + b
+void sub(ZZ_p& x, const ZZ_p& a, const ZZ_p& b); // x = a - b 
+void negate(ZZ_p& x, const ZZ_p& a); // x = -a
+
+// PROMOTIONS: binary +, - and procedures add, sub provide promotions
+// from long to ZZ_p on (a, b)
+
+
+/**************************************************************************\
+
+                                  Multiplication 
+
+\**************************************************************************/
+
+// operator notation:
+
+ZZ_p operator*(const ZZ_p& a, const ZZ_p& b);
+
+ZZ_p& operator*=(ZZ_p& x, const ZZ_p& b);
+ZZ_p& operator*=(ZZ_p& x, long b);
+
+// procedural versions:
+
+
+void mul(ZZ_p& x, const ZZ_p& a, const ZZ_p& b); // x = a * b
+
+void sqr(ZZ_p& x, const ZZ_p& a); // x = a^2
+ZZ_p sqr(const ZZ_p& a); // x = a^2
+
+// PROMOTIONS: operator * and procedure mul provide promotions 
+// from long to ZZ_p on (a, b)
+
+
+
+/**************************************************************************\
+
+                              Division
+
+\**************************************************************************/
+
+
+// operator notation:
+
+ZZ_p operator/(const ZZ_p& a, const ZZ_p& b);
+
+ZZ_p& operator/=(ZZ_p& x, const ZZ_p& b);
+ZZ_p& operator/=(ZZ_p& x, long b);
+
+
+// procedural versions:
+
+
+void div(ZZ_p& x, const ZZ_p& a, const ZZ_p& b);
+// x = a/b.
+
+// By default, if b is not invertible, an error is raised.  However,
+// one can override this default behavior by defining an error handler
+// void H(const ZZ_p& b), and setting ZZ_p::DivHandler = H.  Then if b
+// != 0 and b is not invertible, the function H is invoked with b as
+// its argument.  When this happens, p is of course not prime, and
+// GCD(p, rep(b)) is a nontrivial factor.
+
+void inv(ZZ_p& x, const ZZ_p& a); // x = 1/a
+ZZ_p inv(const ZZ_p& a); 
+
+// Error handling is the same as above.
+
+// PROMOTIONS: operator / and procedure div provide promotions
+// from long to ZZ_p on (a, b)
+
+
+
+/**************************************************************************\
+
+                            Exponentiation
+
+\**************************************************************************/
+
+
+
+void power(ZZ_p& x, const ZZ_p& a, const ZZ& e); // x = a^e (e may be negative)
+ZZ_p power(const ZZ_p& a, const ZZ& e); // functional variants
+
+void power(ZZ_p& x, const ZZ_p& a, long e); 
+ZZ_p power(ZZ_p& x, const ZZ_p& a, long e); 
+
+
+
+/**************************************************************************\
+
+                               Random Elements
+
+\**************************************************************************/
+
+
+void random(ZZ_p& x);
+ZZ_p random_ZZ_p();
+// x = random element in ZZ_p.  
+
+
+/**************************************************************************\
+
+                                Input/Output
+
+\**************************************************************************/
+
+
+ostream& operator<<(ostream& s, const ZZ_p& a);
+
+istream& operator>>(istream& s, ZZ_p& x);
+// a ZZ is read and reduced mod p
+
+/**************************************************************************\
+
+                       Modulus Switching 
+
+A class ZZ_pBak is provided for "backing up" the current modulus.
+
+Here is what you do to save the current modulus, temporarily
+set it to something new, and then restore it:
+
+   ZZ_pBak bak;
+   bak.save();   // save current modulus (if any)
+
+   ZZ_p::init(p);  // set modulus to desired value p
+
+      // ...
+
+   bak.restore(); // restore old modulus (if any)
+
+Note that between the save and restore, you may have several calls to
+ZZ_p::init, each of which simply clobbers the previous modulus.
+
+The ZZ_pBak interface is good for implementing simple stack-like
+modulus "context switching".  For more general context switching,
+see ZZ_pContext below.
+
+..........................................................................
+
+When the current modulus is changed, there may be extant
+ZZ_p objects. If the old modulus was saved and then later restored, 
+these objects can be used again as if the modulus had never changed.  
+Note, however, that if a ZZ_p object is created under one modulus 
+and then used in any way (except destroyed) under another, 
+program behavior is not predictable.  This condition is not
+explicitly checked for, but an error is likely to be raised.
+One should also not presume that things will work properly
+if the modulus is changed, but its value happens to be the same---
+one should restore the same "context", from either a ZZ_pBak
+or a ZZ_pContext object.
+
+\**************************************************************************/
+
+
+class ZZ_pBak {
+public:
+
+   // To describe this logic, think of a ZZ_pBak object
+   // of having two components: a modulus q (possibly "null") and 
+   // an "auto-restore bit" b.
+
+   // There is also a global current modulus p (initially "null").
+
+   ZZ_pBak();  // q = "null", b = 0
+
+   ~ZZ_pBak();  // if (b) p = q
+
+   void save();  // q = p, b = 1 
+   void restore();  // p = q, b = 0
+
+
+private:
+   ZZ_pBak(const ZZ_pBak&);  // copy disabled
+   void operator=(const ZZ_pBak&);  // assignment disabled
+};
+
+
+// more general context switching:
+
+class ZZ_pContext {
+
+// A ZZ_pContext object has a modulus q (possibly "null"),
+// but has no auto-restore bit like a ZZ_pBak object.
+// However, these objects can be initialized and copied with
+// complete generality.
+
+// As above, p is the current global modulus (initially "null")
+
+public:
+
+ZZ_pContext(); // q = "null"
+ZZ_pContext(const ZZ& new_q); // q = new_q
+
+void save(); // q = p
+void restore() const; // p = q
+
+ZZ_pContext(const ZZ_pContext&);  // copy
+ZZ_pContext& operator=(const ZZ_pContext&); // assignment
+~ZZ_pContext(); // destructor
+
+
+};
+
+
+
+/**************************************************************************\
+
+                               Miscellany
+
+\**************************************************************************/
+
+void clear(ZZ_p& x); // x = 0
+void set(ZZ_p& x); // x = 1
+
+static long ZZ_p::ModulusSize();
+//  ZZ_p::ModulusSize() returns ZZ_p::modulus().size()
+
+static const ZZ_p& ZZ_p::zero();
+// ZZ_p::zero() yields a read-only reference to zero
+
+void swap(ZZ_p& x, ZZ_p& y);
+// swap x and y (done by "pointer swapping", if possible).
+
+

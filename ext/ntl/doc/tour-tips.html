@@ -1,0 +1,119 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Tips for Getting the Best Performance out of NTL 
+</title>
+</head>
+
+<body bgcolor="#fff9e6">
+<center>
+<a href="tour-win.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-impl.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Tips for Getting the Best Performance out of NTL
+</p>
+</h1>
+
+<p> <hr> <p>
+
+<ol>
+
+<li>
+Build NTL using GMP as the primary long integer package.
+This is extremely important, as the GMP implementation
+of long integer arithmetic is <i>much</i> faster
+than the default implementation.
+Go <a href="tour-gmp.html">here</a> for details.
+
+<p>
+<li>
+On many machines that optionally offer 64-bit integer arithmetic
+(recent Mac OSX machines, for instance),
+you should
+compile using <tt>gcc</tt> with the option <tt>-m64</tt>
+to get the full benefit.
+To do this,
+pass <tt>"CFLAGS=-O2 -m64"</tt>
+to the <tt>configure</tt> script (note the use of quotes).
+If you are using NTL with GMP on such a machine,
+you <i>must</i> do this to get compatible code.
+
+<p>
+<li>
+On Sparcs, 
+pass the argument <tt>"CFLAGS=-O2 -mcpu=v8"</tt>
+to the <tt>configure</tt> script.
+On more recent, 64-bit sparcs, pass <tt>"CFLAGS=-O2 -mcpu=v9 -m64"</tt>
+to get the full instruction set and 64-bit code.
+
+<p>
+<li>
+Make sure you run the configuration wizard when you install NTL.
+This is the default behaviour in the makefile
+in the Unix distribution, so don't change this;
+in the Windows distribution, there is unfortunately no 
+easy way to run the wizard.
+
+<p>
+<li>
+In time-critical code, avoid creating unnecessary temporary
+objects.
+For example, instead of
+<pre>
+ZZ InnerProduct(const ZZ *a, const ZZ *b, long n)
+{
+   long i;
+   ZZ res;
+   for (i = 0; i < n; i++)
+      res += a[i] * b[i];
+   return res;
+}
+</pre>
+write this as
+<pre>
+ZZ InnerProduct(const ZZ *a, const ZZ *b, long n)
+{
+   long i;
+   ZZ res, t;
+   for (i = 0; i < n; i++) {
+      mul(t, a[i], b[i]);
+      add(res, res, t);
+   }
+   return res;
+}
+</pre>
+The first version of <tt>InnerProduct</tt>
+creates and destroys a temporary object, holding the value
+<tt>a[i]*b[i]</tt>, in every loop iteration.
+The second does not.
+
+
+
+
+<p>
+<li>
+If you use the class <tt>ZZ_p</tt>, try to avoid switching the modulus
+too often, as this can be a rather expensive operation.
+If you <i>must</i> switch the modulus often,
+use the class <tt>ZZ_pContext</tt> to save the information
+associated with the modulus (see <a href="ZZ.txt">ZZ.txt</a>). 
+
+
+
+</ol>
+
+<p>
+
+<center>
+<a href="tour-win.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-impl.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+
+</body>
+</html>

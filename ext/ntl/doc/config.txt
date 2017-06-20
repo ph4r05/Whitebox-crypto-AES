@@ -1,0 +1,681 @@
+
+usage: ./configure [ variable=value ]...
+
+This configure script generates the file 'makefile' and the file
+'../include/NTL/config.h', based upon the values assigned to the
+variables on the command line.
+
+Note that all of these configuration options can also be set 
+by editing these two (well documented) files by hand.
+
+This command is intended only to provide a slightly more convenient
+and (perhaps more importantly) non-interactive way to do this.
+This script does not perform any 'magic', like finding out what
+the local C compiler is called, etc.  If the defaults are not
+correct for your platform, you have to set an appropriate variable.
+
+
+########### Here are the most important variables, and their default values.
+
+CC=gcc               # The C compiler
+CXX=g++              # The C++ compiler
+CFLAGS=-O2           # C complilation flags
+CXXFLAGS=$(CFLAGS)   # C++ compilation flags (by default, same as CFLAGS)
+
+DEF_PREFIX=/usr/local # Default software directory
+PREFIX=$(DEF_PREFIX) # Directory in which to install NTL library components
+SHARED=off           # Generate a shared library (as well as static)
+
+NTL_STD_CXX=on       # ISO Mode switch
+
+NTL_GMP_LIP=off      # Switch to enable the use of GMP as primary 
+                     #   long integer package
+
+GMP_PREFIX=$(DEF_PREFIX) # Directory in which GMP components are installed
+
+NTL_GF2X_LIB=off     # Switch to enable the use of the gf2x package
+                     #   for faster arithmetic over GF(2)[X]
+
+GF2X_PREFIX=$(DEF_PREFIX) # Directory in which gf2x components are installed
+
+
+########## Here are more detailed description of these variables.
+
+########## Basic compilation variables:
+
+CC=gcc
+
+# A C or C++ compiler, e. g., gcc, cc, xlc.
+# There are a few components written in C which may be compiled
+# under C++, but C compilers tend to generate slightly better code.
+# The C++ and C compilers (if different) must generate
+# compatible code.
+
+
+
+CXX=g++
+
+# A C++ compiler, e.g., g++, CC, xlC
+# Note that NTL appends a ".c" siffix to both C and C++ files,
+# so you must, for example, use g++ (rather than gcc) as your C++ 
+# compiler.
+
+
+
+CFLAGS=-O2
+
+# Flags for the C compiler
+# Some useful flags:
+#   -O2   --  recommended level of optimization
+#   -g    --  debugging
+#   -mcpu=v8  --  needed with gcc/g++ to get the full instruction set
+#                 of a SparcStation
+#   -qarch=ppc  -- needed with xlc/C to get the full instruction set
+#                  of a PowerPC
+
+
+
+CXXFLAGS=$(CFLAGS)
+
+# Flags for the C++ compiler (usually the same as CFLAGS)
+# Some useful flags:
+#   -+  -- needed with xlC to make it treat .c files as C++ files
+
+
+
+
+########## Installation path:
+
+DEF_PREFIX=/usr/local
+
+# Default software directory
+
+PREFIX=$(DEF_PREFIX)
+
+# Set this to the directory in which you want NTL components to be
+# installed.  When 'make install' is executed, the header
+# files are copied into $(PREFIX)/include/NTL, the library itself is
+# copied to $(PREFIX)/lib/libntl.a, and the documentation files
+# are copied into $(PREFIX)/share/doc/NTL.
+# Unless you have root permissions when running 'make install',
+# you will have to override the default PREFIX value with the
+# name of your own local directory.
+# If you want finer-grained control over where the different
+# library components are installed, set the variables 
+# INCLUDEDIR, LIBDIR, and DOCDIR (see below).
+
+########## Shared library switch:
+
+SHARED=off
+
+# Set this to 'on' if you want to generate a shared library, in addition to
+# a static library.   Shared libraries have many advantages, but
+# unfortunately, their use is rather less portable than that of good,
+# old-fashioned static libraries.  If you set SHARED=on, then the makefile
+# attempts to make use of the GNU libtool program, which is meant to work
+# around these portability issues.  You may also want to set the
+# configuration variable LIBTOOL (see below), to point to another version of
+# libtool.  For example, on Mac OSX, the built-in command libtool is not
+# actually the GNU libtool program; in this case, you will want to set
+# LIBTOOL=glibtool.  On other systems, it may be necssary to downlaod and
+# install a fresh copy of the libtool program (which can be obtained from
+# http://www.gnu.org/software/libtool). Note that if SHARED=on, then 
+# in addition to using the libtool program, the makefile relies on
+# features specific to GNU make.
+
+
+
+########## ISO mode switch:
+
+NTL_STD_CXX=on
+
+# Set to 'off' if you do not want to use the "Standard C++" version of NTL.
+# In this version, all of NTL is "wrapped" inside the namespace NTL,
+# and are no longer directly accessible---you must either use
+# explicit qualification, or using directives, or using declarations.
+# However, note that all names that begin with "NTL_" are macros,
+# and as such do not belong to any namespace.
+# Additionally, instead of including the traditional headers
+# <stdlib.h>, <math.h>, and <iostream.h>, the standard headers
+# <cstdlib>, <cmath>, and <iostream> are included.
+# These "wrap" some (but not all) names in namespace std.
+
+# If your compiler is not yet up to date, but you want some
+# of the benefits of Standard C++, you might try the "partial Standard C++"
+# switches NTL_PSTD_NNS, NTL_PSTD_NHF, NTL_PSTD_NTN (see below).
+
+########## GMP variables:
+
+NTL_GMP_LIP=off
+
+# Set to 'on' if you want to use GMP, the GNU Multi-Precision package,
+# as the primary long integer package.
+# This will typically yield significantly faster long integer arithmetic 
+# compared to the traditional long integer package, and will yield somewhat
+# faster long integer arithmetic compared the traditinal package
+# supplemented by GMP (i.e., the NTL_GMP_HACK flag, see below).
+
+# If you set this flag, please note the following.
+# If you have installed GMP in a standard "system" location, this is
+# all you have to do.  Otherwise, if GMP is built, but not installed
+# in a standard place, you have to set the variable GMP_PREFIX.
+
+
+GMP_PREFIX=$(DEF_PREFIX)
+
+# If GMP was installed in a standard system directory, e.g., /usr/local,
+# then do not set this variable.
+# Otherwise, if you want to use GMP and GMP was installed in
+# a directory <gmp_prefix>, then set GMP_PREFIX=<gmp_prefix>.
+# This works if the directory <gmp_prefix>/include contains gmp.h
+# and <gmp_prefix>/lib contains libgmp.a.  
+# For finer-grained control, set the variables GMP_INCDIR and GMP_LIBDIR 
+# instead (see below).
+
+
+########## GF2X variables:
+
+NTL_GF2X_LIB=off
+
+# Set to 'on' if you want to use the gf2x library for faster
+# arithmetic over GF(2)[X] (the NTL class GF2X).
+
+# If you set this flag, please note the following.
+# If you have installed gf2x in a standard "system" location, this is
+# all you have to do.  Otherwise, if gf2x is built, but not installed
+# in a standard place, you have to set the variable GF2X_PREFIX.
+
+
+GF2X_PREFIX=$(DEF_PREFIX)
+
+# If gf2x was installed in a standard system directory, e.g., /usr/local,
+# then do not set this variable.
+# Otherwise, if you want to use gf2x and gf2x was installed in
+# a directory <gf2x_prefix>, then set GF2X_PREFIX=<gf2x_prefix>.
+# This works if the directory <gf2x_prefix>/include contains gf2x.h
+# and <gf2x_prefix>/lib contains libgf2x.a.  
+# For finer-grained control, set the variables GF2X_INCDIR and GF2X_LIBDIR 
+# instead (see below).
+
+
+
+########### Examples:
+
+# If you are happy with all the default values:
+
+   ./configure
+
+# Actually, the initially installed makefile and config.h files
+# already reflect the default values. 
+
+
+
+
+# If your C/C++ compilers are called cc/CC:
+
+   ./configure CC=cc CXX=CC
+
+
+
+# If GMP is installed in a standard system directory, and you want to use it:
+
+   ./configure NTL_GMP_LIP=on
+
+
+
+# If GMP was installed in a non-standard directory, say,  $HOME/sw:
+
+   ./configure NTL_GMP_LIP=on GMP_PREFIX=$HOME/sw 
+
+
+
+# If you want to use the options -g and -O for compiling C and C++,
+# just execute
+
+   ./configure "CFLAGS=-g -O"
+
+# Note the use of quotes to keep the argument in one piece.
+
+
+# If you want to use both GMP and the gf2x library:
+
+   ./configure NTL_GMP_LIP=on NTL_GF2X_LIB=on
+
+
+# If you want to use GMP as well as traditional (non-ISO) mode:
+
+   ./configure NTL_GMP_LIP=on NTL_STD_CXX=off
+
+
+
+
+########### Here is a complete list of the remaining variables,
+########### with their default values.  These variables are pretty 
+########### esoteric, and you will probably never change their
+########### default values.
+
+AR=ar
+ARFLAGS=ruv
+RANLIB=ranlib
+LDFLAGS=
+LDFLAGS_CXX=$(LDFLAGS)
+LDLIBS=-lm
+LDLIBS_CXX=$(LDLIBS)
+CPPFLAGS=
+LIBTOOL=libtool
+
+LIBDIR=$(PREFIX)/lib
+INCLUDEDIR=$(PREFIX)/include
+DOCDIR=$(PREFIX)/share/doc
+
+
+NTL_PSTD_NNS=off
+NTL_PSTD_NHF=off
+NTL_PSTD_NTN=off
+
+NTL_LONG_LONG_TYPE=undefined
+NTL_UNSIGNED_LONG_LONG_TYPE=undefined
+NTL_CXX_ONLY=off
+NTL_CLEAN_INT=off
+NTL_CLEAN_PTR=off
+NTL_RANGE_CHECK=off
+NTL_X86_FIX=off
+NTL_NO_X86_FIX=off
+NTL_NO_INIT_TRANS=off
+
+WIZARD=on
+NTL_LONG_LONG=off
+NTL_AVOID_FLOAT=off
+NTL_SPMM_UL=off
+NTL_SPMM_ULL=off
+NTL_SPMM_ASM=off
+NTL_FFT_BIGTAB=off
+NTL_FFT_LAZYMUL=off
+NTL_TBL_REM=off
+NTL_AVOID_BRANCHING=off
+NTL_GF2X_NOINLINE=off
+NTL_GF2X_ALTCODE=off
+NTL_GF2X_ALTCODE1=off
+
+NTL_GMP_HACK=off
+GMP_INCDIR=$(GMP_PREFIX)/include
+GMP_LIBDIR=$(GMP_PREFIX)/lib
+
+GF2X_INCDIR=$(GF2X_PREFIX)/include
+GF2X_LIBDIR=$(GF2X_PREFIX)/lib
+
+
+
+
+########### Here is a more detailed description of these variables.
+
+########### Further compilation variables:
+
+
+AR=ar
+
+# command to make a library
+
+
+
+ARFLAGS=ruv
+
+# arguments for AR
+
+
+
+RANLIB=ranlib
+
+# set to echo if you want to disable it completely
+
+
+
+LDFLAGS=
+
+# arguments for linker for C++ programs
+
+
+
+LDFLAGS_CXX=$(LDFLAGS)
+
+# libraries for linking C programs
+
+
+
+LDLIBS=-lm
+
+# libraries for linking C programs
+
+
+
+LDLIBS_CXX=$(LDLIBS)
+
+# libraries for linking C++ programs
+
+
+
+CPPFLAGS=
+
+# arguments for the C preprocessor
+
+LIBTOOL=libtool
+
+# the libtool command -- only needed if SHARED=on
+
+
+
+########### Details of the compilation process (when SHARED=off)
+
+
+# When a C file foo.c is compiled:
+   $(CC) -I../include $(CPPFLAGS) $(CFLAGS) -c foo.c
+
+# When a C file foo.c is compiled and linked:
+   $(CC) -I../include $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o foo foo.c $(LDLIBS)
+
+# When a C++ file foo.c is compiled:
+   $(CXX) -I../include $(CPPFLAGS) $(CXXFLAGS) -c foo.c
+
+# When a C++ file foo.c is compiled and linked:
+   $(CXX) -I../include $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS_CXX) \ 
+      -o foo foo.c $(LDLIBS_CXX)
+
+# When the library ntl.a is built
+   $(AR) $(ARFLAGS) ntl.a [ object files ]...
+   $(RANLIB) ntl.a
+# If the ranlib command does not exist, everything will still function OK.
+
+
+
+########### Further installation variables:
+
+LIBDIR=$(PREFIX)/lib
+INCLUDEDIR=$(PREFIX)/include
+DOCDIR=$(PREFIX)/share/doc
+# Where to install NTL.
+# Execution of 'make install' copies header files into $(INCLUDEDIR)/NTL,
+# copies the library itself to $(LIBDIR)/libntl.a, and copies the
+# documentation files into $(DOCDIR)/NTL.
+
+
+
+########## Partial ISO modes
+
+NTL_PSTD_NNS=off 
+
+# NTL namespace --  wraps NTL in a namespace
+
+
+
+NTL_PSTD_NHF=off
+ 
+# new header files -- use <cstdlib>, etc., instead of <stdlib.h>, etc.  
+
+
+
+NTL_PSTD_NTN=off 
+
+# nothrow new -- use the nothrow version of new.  
+
+# Any combination of these PSTD swtiches may be set -- setting them all
+# is equvalent to setting NTL_STD_CXX.  Make sure you also unset NTL_STD_CXX;
+# otherwise, they have no effect.
+
+
+########### Basic Configuration Options:
+
+NTL_LONG_LONG_TYPE=undefined
+
+# Name of double-word signed integer type.
+# This is a non-standard type, and is called 'long long' by many
+# compilers.  MS C++ calls it '__int64'.
+#
+# Note that the new C99 standard defines the type 'long long'
+# to be at least 64-bits wide.  On 32-bit machines, this is just right.
+# Although not officially part of the C++ standard (which predates C99),
+# it is widely supported by C++ compilers, and is likely to be added
+# to the C++ standard.
+#
+# Unfortunately, 64-bit machines usually define 'long long'
+# to also be 64-bits wide, which is kind of useless.
+# However, GCC provides a type __int128_t which does the job.
+#
+# If left undefined, NTL will use somee "ifdef magic" to find
+# the type most suitable for your machine (based on compiler and
+# word size).
+
+NTL_UNSIGNED_LONG_LONG_TYPE=undefined
+
+# Name of double-word unsigned integer type.
+#
+# If left undefined, NTL will use somee "ifdef magic" to find
+# the type most suitable for your machine (based on compiler and
+# word size).
+
+
+
+
+
+NTL_CXX_ONLY=off
+
+# It is possible to compile everything using C++ only.
+# If you want to do this, CC and CXX should both be C++ compilers.
+# You may also want to set NTL_CXX_ONLY=on, which eliminates some
+# "C" linkage that is no longer necessary.
+# However, it should still work without it.
+# 
+# This flag can be set independently of NTL_STD_CXX.
+# All functions that may have "C" linkage are never wrapped in
+# namespace NTL;  instead, their names always start with "_ntl_",
+# and as such, they should not conflict with other global names.
+
+
+
+NTL_CLEAN_INT=off
+
+# Setting this to 'on' disables the use of some non-standard
+# integer arithmetic which would yield slightly better performance.
+
+
+NTL_CLEAN_PTR=off
+
+# Setting this to 'on' disables the use of some non-standard
+# pointer arithmetic which would yield slightly better performance.
+
+
+NTL_RANGE_CHECK=off
+
+# Setting this to 'on' will generate vector subscript range-check code.
+# Useful for debugging, but it slows things down of course.
+
+
+
+NTL_X86_FIX=off
+
+# Set to 'on' to force the "x86 floating point fix", 
+# overriding the default behavior.
+# By default, NTL will apply the "fix" if it looks like it is
+# necessary, and if it knows how to fix it.
+# The problem addressed here is that x86 processors sometimes
+# run in a mode where FP registers have more precision than doubles.
+# This will cause code in quad_float.c some trouble.
+# NTL can normally automatically detect the problem, and fix it,
+# so you shouldn't need to worry about this or the next flag.
+
+
+
+NTL_NO_X86_FIX=off
+
+# Set to 'on' to forces no "x86 floating point fix", 
+# overriding the default behavior.
+
+
+
+NTL_NO_INIT_TRANS=off
+
+# When 'off', NTL uses a special code sequence to avoid
+# copying large objects in return statements.  However, if your
+# compiler optimizes away the return of a *named* local object,
+# this is not necessary, and setting this flag to 'on' will result
+# in *slightly* more compact and efficient code.  The C++
+# standard explicitly allows compilers to perform this optimization,
+# and with time, more compilers actually do this.
+# Traditionally, however, most will only avoid copying *temporary* 
+# objects in return statements, and NTL's default code sequence 
+# exploits this fact.
+
+
+
+########## Performance Options:
+
+WIZARD=on
+
+# Set to 'off' if you want to bypass the wizard; otherwise, set to 'on'.
+# The wizard is a script that runs when NTL is built that sets the following
+# flags to 'optimize' performance on the current platform.
+
+
+
+NTL_LONG_LONG=off
+
+# For platforms that support it, this flag can be set to cause
+# the long-integer multiplication code to use the type "long long",
+# which on some platforms yields a significant performance gain,
+# but on others, it can yield no improvement and can even
+# slow things down.
+# The variable NTL_LONG_LONG_TYPE can be defined to use a type name
+# other than "long long".
+# If you set NTL_LONG_LONG, you might also want to set
+# the flag NTL_TBL_REM.
+
+
+
+NTL_AVOID_FLOAT=off
+
+# On machines with slow floating point or---more comminly---slow int/float
+# conversions, this flag can lead to faster long-integer multiplication code.
+# If you set NTL_AVOID_FLOAT, you should probably also
+# set NTL_TBL_REM.
+# Note that at most one of NTL_LONG_LONG and NTL_AVOID_FLOAT may be set.
+
+
+NTL_SPMM_UL=off
+
+# On machines with slow floating point or---more comminly---slow int/float
+# conversions, this flag can lead to faster single-precision multiplication
+# with preconditioning (see MulModPrecon in the ZZ module).
+# This sounds esoteric, but it is actually important.
+
+
+NTL_SPMM_ULL=off
+
+# Similar to NTL_SPMM_UL, but relies on double-word unsigned multiplication.
+# This is (usually) done using the type 'unsigned long long',
+# but you can set the variable NTL_UNSIGNED_LONG_LONG_TYPE to
+# override the default.
+
+
+NTL_SPMM_ASM=off
+
+# Similar to NTL_SPMM_ULL, but relies on double-word unsigned multiplication
+# using assembly code.  Only supported on select machines 
+# and only under GCC.
+
+NTL_FFT_BIGTAB=off
+
+# Precomputed tables are used to store all the roots of unity
+# used in an FFT computation for the first NTL_FFT_BIGTAB_LIMIT
+# FFT primes (the latter is defined in FFT.h).  This can
+# lead to significant time savings but at the const of some space:
+# in the worst case, the precomputed tables will take of space
+# log_2(NTL_FFT_BUGTAB_LIMIT) * M, where M is roughly the maxmimum
+# space occupied by any one polynomial that was involved in an
+# FFT computation (this could be a polynomial over zz_p, ZZ_p, or ZZ).
+
+
+NTL_FFT_LAZYMUL=off
+
+# This flag only has an effect when combined with the NTL_FFT_BIGTAB
+# flag, and either the NTL_SPMM_ULL or NTL_SPMM_ASM flags. 
+# When set, a "lazy multiplication" strategy due to David Harvey:
+# see his paper "FASTER ARITHMETIC FOR NUMBER-THEORETIC TRANSFORMS".
+
+
+
+
+NTL_TBL_REM=off
+
+# With this flag, some divisions are avoided in the
+# ZZ_pX multiplication routines.  If you use the NTL_AVOID_FLOAT
+# or NTL_LONG_LONG flags, then you should probably use this one too.
+
+
+
+
+NTL_AVOID_BRANCHING=off
+
+# With this option, branches are replaced at several
+# key points with equivalent code using shifts and masks.
+# Recommended for use with RISC architectures, especially
+# ones with deep pipelines and high branch penalities.
+# This flag is becoming less helpful as newer machines
+# have much smaller branch penalties, but still may be worth a try.
+
+
+
+
+NTL_GF2X_NOINLINE=off
+
+# By default, the low-level GF2X multiplication routine in inlined.
+# This can potentially lead to some trouble on some platforms,
+# and you can override the default by setting this flag.
+
+
+
+
+NTL_GF2X_ALTCODE=off
+
+# With this option, the default strategy for implmenting low-level
+# GF2X multiplication is replaced with an alternative strategy.
+# This alternative strategy seems to work better on RISC machines
+# with deep pipelines and high branch penalties (like a powerpc),
+# but does no better (or even worse) on x86s.
+
+
+NTL_GF2X_ALTCODE1=off
+
+# Yet another alternative implementation for GF2X multiplication.
+
+
+
+########## More GMP Options:
+
+
+NTL_GMP_HACK=off
+
+# Set to 'on' if you want to use GMP, the GNU Multi-Precision package,
+# as a supplemental long integer package.
+# This will typically yield significantly faster long integer arithmetic 
+# compared  to the traditional long integer package, while still maintaining
+# complete backward compataibility with code that uses the traditional
+# long integer package.  However, this flag is mainly for
+# enabling backward compatibility, and you are much better off
+# using the NTL_GMP_LIP flag.  
+
+# If you set this flag, you may have to set GMP_PREFIX as well. 
+
+GMP_INCDIR=$(GMP_PREFIX)/include
+# directory containing gmp.h
+
+GMP_LIBDIR=$(GMP_PREFIX)/lib
+# directory containing libgmp.a
+
+
+####### More gf2x options:
+
+GF2X_INCDIR=$(GF2X_PREFIX)/include
+# directory containing gf2x.h
+
+GF2X_LIBDIR=$(GF2X_PREFIX)/lib
+# directory containing libgf2x.a
+

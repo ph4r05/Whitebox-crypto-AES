@@ -1,0 +1,102 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Examples: Floating Point Classes </title>
+</head>
+
+<body bgcolor="#fff9e6">
+<center>
+<a href="tour-ex5.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour-examples.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<img src="arrow3.gif" alt="[Next]" align=bottom>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Examples: Floating Point Classes
+</p>
+</h1>
+
+<p> <hr> <p>
+
+NTL also supports arbitrary precision floating point with 
+the class <tt>RR</tt>.
+Additionally, it supports two specialized classes: <tt>quad_float</tt>,
+which gives a form of quadruple precision, but without an extended
+exponent range, 
+and <tt>xdouble</tt>,
+which gives double precision, but with an extended exponent range.
+The advantage of the latter two classes is efficiency.
+
+<p>
+
+Here again is a program that reads a list of numbers from the input,
+and outputs the sum of their squares, using the class <tt>RR</tt>.
+<p>
+
+<pre>
+#include &lt;NTL/RR.h&gt;
+
+int main()
+{
+   RR acc, val;
+
+   acc = 0;
+   while (SkipWhiteSpace(cin)) {
+      cin &gt;&gt; val;
+      acc += val*val;
+   }
+
+   cout &lt;&lt; acc &lt;&lt; "\n";
+}
+</pre>
+
+<p>
+
+The precision used for the computation can be set by executing 
+<pre>
+   RR::SetPrecision(p);
+</pre>
+which sets the effective precision to <tt>p</tt> bits.
+By default, <tt>p=150</tt>.
+All of the basic arithmetic operations compute their results
+by rounding to the nearest <tt>p</tt>-bit floating point number. 
+The semantics of this are exactly the same as in the IEEE floating
+point standard (except that there are no special values, like 
+"infinity" and "not a number").
+
+<p>
+
+The number of <i>decimal</i> digits of precision that are used when
+printing an <tt>RR</tt> can be set be executing
+<pre>
+   RR::SetOutputPrecision(d);
+</pre>
+which sets the output precision to <tt>d</tt>.
+By default, <tt>d=10</tt>.
+
+<p>
+See <a href="RR.txt"><tt>RR.txt</tt></a> for details.
+
+<p>
+
+By replacing the occurences of <tt>RR</tt> by either <tt>quad_float</tt>
+or <tt>xdouble</tt>, one gets an equivalent program using one of the
+other floating point classes.
+The output precision for these two classes can be controlled just
+as with <tt>RR</tt>.
+See <a href="quad_float.txt"><tt>quad_float.txt</tt></a> and 
+<a href="xdouble.txt"><tt>xdouble.txt</tt></a>
+for details.
+
+<p>
+
+
+<center>
+<a href="tour-ex5.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour-examples.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+ <img src="arrow3.gif" alt="[Next]" align=bottom>
+</center>
+
+</body>
+</html>

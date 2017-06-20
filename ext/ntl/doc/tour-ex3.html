@@ -1,0 +1,223 @@
+<html>
+<head>
+<title>
+A Tour of NTL: Examples: Polynomials </title>
+</head>
+
+<body bgcolor="#fff9e6">
+
+<center>
+<a href="tour-ex2.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour-examples.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-ex4.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+<h1> 
+<p align=center>
+A Tour of NTL: Examples: Polynomials
+</p>
+</h1>
+
+<p> <hr> <p>
+
+NTL provides extensive support for very fast polynomial arithmetic.
+In fact, this was the main motivation for creating NTL in the first place,
+because existing computer algebra systems and software
+libraries had very slow polynomial arithmetic.
+The class <tt>ZZX</tt> represents univariate polynomials
+with integer coefficients.
+
+The following program reads a polynomial,
+factors it, and prints the factorization.
+
+<p>
+<pre>
+#include &lt;NTL/ZZXFactoring.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+int main()
+{
+   ZZX f;
+
+   cin &gt;&gt; f;
+
+   Vec&lt; Pair&lt; ZZX, long &gt; &gt; factors;
+   ZZ c;
+
+   factor(c, factors, f);
+
+   cout &lt;&lt; c &lt;&lt; "\n";
+   cout &lt;&lt; factors &lt;&lt; "\n";
+}
+</pre>
+<p>
+
+When this program is compiled an run on input
+
+<pre>
+   [2 10 14 6]
+</pre>
+
+which represents the polynomial <tt>2 + 10*X + 14*x^2 +6*X^3</tt>,
+the output is
+
+<pre>
+   2
+   [[[1 3] 1] [[1 1] 2]]
+</pre>
+
+The first line of output is the content of the polynomial, which
+is 2 in this case as each coefficient of the input polynomial
+is divisible by 2.
+The second line is a vector of pairs, the first member of each 
+pair is an irreducible factor of the input, and the second 
+is the exponent to which is appears in the factorization.
+Thus, all of the above simply means that
+
+<pre>
+2 + 10*X + 14*x^2 +6*X^3 = 2 * (1 + 3*X) * (1 + X)^2 
+</pre>
+
+<p>
+Admittedly, I/O in NTL is not exactly user friendly,
+but then NTL has no pretensions about being an interactive
+computer algebra system: it is a library for programmers.
+
+<p>
+In this example, the type <tt>Vec&lt; Pair&lt; ZZX, long &gt; &gt;</tt>
+is an NTL vector whose base type is <tt>Pair&lt; ZZX, long &gt;</tt>.
+The type <tt>Pair&lt; ZZX, long &gt;</tt> is the instantiation
+of a template "pair" type defined by NTL.
+See <a href="pair.txt"><tt>pair.txt</tt></a> for more details.
+
+
+
+<p> <hr> <p>
+
+Here is another example.
+The following program prints out the first 100 cyclotomic polynomials.
+
+<pre>
+
+#include &lt;NTL/ZZX.h&gt;
+
+using namespace std;
+using namespace NTL;
+
+int main()
+{
+   Vec&lt;ZZX&gt; phi(INIT_SIZE, 100);  
+
+   for (long i = 1; i &lt;= 100; i++) {
+      ZZX t;
+      t = 1;
+
+      for (long j = 1; j &lt;= i-1; j++)
+         if (i % j == 0)
+            t *= phi(j);
+
+      phi(i) = (ZZX(i, 1) - 1)/t;  // ZZX(i, a) == X^i * a
+
+      cout &lt;&lt; phi(i) &lt;&lt; "\n";
+   }
+}
+</pre>
+
+<p>
+To illustrate more of the NTL interface, let's look at alternative ways 
+this routine could have been written.
+
+<p>
+First, instead of
+<pre>
+   Vec&lt;ZZX&gt; phi(INIT_SIZE, 100);  
+</pre>
+one can write
+<pre>
+   Vec&lt;ZZX&gt; phi;
+   phi.SetLength(100);
+</pre>
+
+<p>
+Second,
+instead of
+<pre>
+            t *= phi(j);
+</pre>
+one can write this as
+<pre>
+            mul(t, t, phi(j));
+</pre>
+or
+<pre>
+            t = t * phi(j);
+</pre>
+Also, one can write <tt>phi[j-1]</tt> in place of <tt>phi(j)</tt>.
+
+<p>
+Third, instead of
+<pre>
+      phi(i) = (ZZX(i, 1) - 1)/t;  
+</pre>
+one can write
+<pre>
+      ZZX t1;
+      SetCoeff(t1, i, 1);
+      SetCoeff(t1, 0, -1);
+      div(phi(i), t1, t);
+</pre>
+Alternatively, one could directly access the coefficient vector as follows:
+<pre>
+      ZZX t1;
+      t1.SetLength(i+1); // all vector elements are initialized to zero
+      t1[i] = 1;
+      t1[0] = -1;
+      t1.normalize();  // not necessary here, but good practice in general
+      div(phi(i), t1, t);
+</pre>
+Generally, you can freely access the coefficient vector
+of a polynomial, as above.
+However, after fiddling with this vector, you should "normalize"
+the polynomial, so that the leading coefficient is non-zero:
+this is an invariant which all routines that work with polynomials
+expect to hold.
+Of course, if you can avoid directly accessing the
+coefficient vector, you should do so.
+You can always use the <tt>SetCoeff</tt> routine above to set or
+change coefficients, and you can always read the value of a coefficient
+using the routine <tt>coeff</tt>, e.g., 
+<pre>
+   ... f[i] == 1 ...
+</pre>
+is equivalent to
+<pre>
+   ... coeff(f, i) == 1 ...
+</pre>
+except that in the latter case, a read-only reference to zero is returned
+if the index <tt>i</tt> is out of range.
+There are also special-purpose read-only access routines <tt>LeadCoeff(f)</tt>
+and <tt>ConstTerm(f)</tt>.
+   
+      
+<p>
+NTL provides a full compliment of arithmetic operations for polynomials
+over the integers, in both operator and procedural form.
+All of the basic operations support a "promotion logic" similar
+to that for <tt>ZZ</tt>, except that inputs of <i>both</i> types 
+<tt>long</tt> and <tt>ZZ</tt> are promoted to <tt>ZZX</tt>.
+See <a href="ZZX.txt"><tt>ZZX.txt</tt></a> for details,
+and see <a href="ZZXFactoring.txt"><tt>ZZXFactoring.txt</tt></a> for details
+on the polynomial factoring routines.
+
+<p>
+
+<center>
+<a href="tour-ex2.html"><img src="arrow1.gif" alt="[Previous]" align=bottom></a>
+ <a href="tour-examples.html"><img src="arrow2.gif" alt="[Up]" align=bottom></a> 
+<a href="tour-ex4.html"> <img src="arrow3.gif" alt="[Next]" align=bottom></a>
+</center>
+
+</body>
+</html>

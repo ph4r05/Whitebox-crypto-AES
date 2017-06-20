@@ -63,14 +63,14 @@ void BGEAttack::Rbox(W128b& state, bool encrypt, int r, bool noShift, int colMas
 	W128b ares[N_BYTES];				// intermediate result for T1-boxes
 
 	// encryption/decryption dependent operations and tables
-	const int (&shiftOp)[N_BYTES] = noShift ? this->shiftIdentity : (encrypt ? (this->wbaes->shiftRows)   : (this->wbaes->shiftRowsInv));
-	W32XTB (&edXTab)[N_ROUNDS][N_SECTIONS][N_XOR_GROUPS] = encrypt ? (this->wbaes->eXTab) 	         : (this->wbaes->dXTab);
-	W32XTB (&edXTabEx)[2][15][4]                         = encrypt ? (this->wbaes->eXTabEx)          : (this->wbaes->dXTabEx);
-	AES_TB_TYPE1 (&edTab1)[2][N_BYTES]                   = encrypt ? (this->wbaes->eTab1)            : (this->wbaes->dTab1);
-	AES_TB_TYPE2 (&edTab2)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes->eTab2) 	         : (this->wbaes->dTab2);
-	AES_TB_TYPE3 (&edTab3)[N_ROUNDS][N_BYTES]			 = encrypt ? (this->wbaes->eTab3) 	         : (this->wbaes->dTab3);
+	const int (*shiftOp) = noShift ? this->shiftIdentity : (encrypt ? (this->wbaes->shiftRows)   : (this->wbaes->shiftRowsInv));
+	W32XTB (*edXTab)[N_SECTIONS][N_XOR_GROUPS]	= encrypt ? (this->wbaes->eXTab) 	        : (this->wbaes->dXTab);
+	W32XTB (*edXTabEx)[15][4]                  	= encrypt ? (this->wbaes->eXTabEx)          : (this->wbaes->dXTabEx);
+	AES_TB_TYPE1 (*edTab1)[N_BYTES]             = encrypt ? (this->wbaes->eTab1)            : (this->wbaes->dTab1);
+	AES_TB_TYPE2 (*edTab2)[N_BYTES]			 	= encrypt ? (this->wbaes->eTab2) 	        : (this->wbaes->dTab2);
+	AES_TB_TYPE3 (*edTab3)[N_BYTES]			 	= encrypt ? (this->wbaes->eTab3) 	        : (this->wbaes->dTab3);
 #ifdef AES_BGE_ATTACK
-	GF256_func_t (&edOutputBijection)[N_ROUNDS][N_BYTES] = encrypt ? (this->wbaes->eOutputBijection) : (this->wbaes->dOutputBijection);
+	GF256_func_t (*edOutputBijection)[N_BYTES] 	= encrypt ? (this->wbaes->eOutputBijection) : (this->wbaes->dOutputBijection);
 #endif
 	// Last round = special case. Just T1 boxes && 128-bot XOR cascade
 	if (r==(N_ROUNDS-1)){
