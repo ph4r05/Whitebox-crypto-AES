@@ -39,7 +39,7 @@ addons:
   coverity_scan:
       project:
         name: "ph4r05/Whitebox-crypto-AES"
-        description: "<Your project description here>"
+        description: "AES Whitebox implementation"
       notification_email: ph4r05@gmail.com
       build_command_prepend: bash install-ntl-cached.sh
       build_command:   bash build.sh
