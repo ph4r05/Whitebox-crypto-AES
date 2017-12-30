@@ -24,10 +24,15 @@ set(SOURCE_FILES
     WBAES.cpp
     WBAES.h
     WBAESGenerator.cpp
-    WBAESGenerator.h)
+    WBAESGenerator.h EncTools.cpp EncTools.h)
+
+set(TEST_SOURCE_FILES
+        tests/WBAes.cpp
+        tests/tester.cpp tests/Commons.cpp tests/Commons.h)
 
 add_executable(main ${SOURCE_FILES} main.cpp)
 add_executable(testing ${SOURCE_FILES} testing.cpp testing.h)
+add_executable(gtesting ${SOURCE_FILES} ${TEST_SOURCE_FILES})
 
 # NTL
 if (NTL_NO_DEFAULT_PATH)
@@ -98,3 +103,5 @@ include_directories(
 # Linking
 target_link_libraries(main ${NTL_LIB} ${Boost_LIBRARIES})
 target_link_libraries(testing ${NTL_LIB} ${Boost_LIBRARIES})
+target_link_libraries(gtesting ${NTL_LIB} ${Boost_LIBRARIES} libgtest libgmock)
+
