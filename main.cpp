@@ -67,10 +67,10 @@ int tryMain(int argc, const char * argv[]) {
 	int benchbge=0;
 	bool randomKey=false;
 	bool decrypt=false;
-	std::string outFile = "";
-	std::string outTables = "";
-	std::string inTables = "";
-	std::string aesKey = "";
+	std::string outFile;
+	std::string outTables;
+	std::string inTables;
+	std::string aesKey;
 	unsigned char keyFromString[AES_BYTES];
 	unsigned char * keyToUse = GenericAES::testVect128_key;
 
@@ -120,7 +120,7 @@ int tryMain(int argc, const char * argv[]) {
 	if (vm.count("load-tables")){
 		inTables = vm["load-tables"].as<std::string>();
 		std::cout << "Table input file given: " << inTables << endl;
-		keyToUse = NULL;
+		keyToUse = nullptr;
 	}
 
 	if (vm.count("use-key")){
@@ -145,7 +145,7 @@ int tryMain(int argc, const char * argv[]) {
 		keyToUse = keyFromString;
 	}
 
-    if (keyToUse != NULL){
+    if (keyToUse != nullptr){
 	    std::cout << "AES key to use: ";
 	    dumpArray(std::cout, (char *)keyToUse, AES_BYTES);
 	    std::cout << std::endl;
@@ -159,7 +159,7 @@ int tryMain(int argc, const char * argv[]) {
     // AES generator benchmark
     //
     benchgen = vm["bench-gen"].as<int>();
-    if (benchgen > 0 && keyToUse != NULL){
+    if (benchgen > 0 && keyToUse != nullptr){
     	cout << "Benchmark of the WB-AES generator is starting..." << endl;
 
     	//
@@ -177,7 +177,7 @@ int tryMain(int argc, const char * argv[]) {
 		cout << "Going to compute tables. Benchmark will iterate " << benchgen << " times" << endl;
 		time(&start);
 
-		WBAES * genAES = new WBAES;
+		auto * genAES = new WBAES;
 		for(int i=0; i<benchgen; i++){
 			generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, true);
 			generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, false);
@@ -196,7 +196,7 @@ int tryMain(int argc, const char * argv[]) {
 	//BGE benchmark
 	//
     benchbge = vm["bench-bge"].as<int>();
-    if (benchbge > 0 && keyToUse != NULL){
+    if (benchbge > 0 && keyToUse != nullptr){
     	cout << "Benchmark of the BGE attack is starting..." << endl;
 
     	//
@@ -220,9 +220,9 @@ int tryMain(int argc, const char * argv[]) {
 
 		cout << "Going to generate AES tables to crack ..." << endl;
 
-		WBAES     * genAES = new WBAES;
-		WBAES     * tmpAES = new WBAES;
-		BGEAttack * atk = new BGEAttack;
+		auto * genAES = new WBAES;
+		auto * tmpAES = new WBAES;
+		auto * atk = new BGEAttack;
 
 		clock_t pstart, pend;
 		clock_t pacc = 0;
@@ -268,7 +268,7 @@ int tryMain(int argc, const char * argv[]) {
 	//
 	// Create tables & dump to a file
 	//
-	if (vm.count("create-table") && keyToUse != NULL){
+	if (vm.count("create-table") && keyToUse != nullptr){
 		outTables = vm["create-table"].as<std::string>();
 		std::cout << "Table output file given: " << outTables << endl;
 
@@ -276,7 +276,7 @@ int tryMain(int argc, const char * argv[]) {
 		defAES.init(0x11B, 0x03);
 
 		WBAESGenerator generator;
-		WBAES * genAES = new WBAES;
+		auto * genAES = new WBAES;
 
 		cout << "External coding will be used: " << useExternal << endl;
 		ExtEncoding coding;
@@ -298,7 +298,7 @@ int tryMain(int argc, const char * argv[]) {
     //
 	if(vm.count("input-files")){
 		std::vector<std::string>  files = vm["input-files"].as<std::vector<std::string>>();
-		for(std::string file : files){
+		for(const std::string &file : files){
 			std::cout << "Input file " << file << std::endl;
 		}
 
@@ -309,13 +309,13 @@ int tryMain(int argc, const char * argv[]) {
 		defAES.init(0x11B, 0x03);
 
 		WBAESGenerator generator;
-		WBAES * genAES = new WBAES;
+		auto * genAES = new WBAES;
 		ExtEncoding coding;
 		// Generate new encoding.
 		cout << "Generating External encoding, identity: " << useExternal << "..." << endl;
 		generator.generateExtEncoding(&coding, useExternal ? 0 : WBAESGEN_EXTGEN_ID);
 
-		if (inTables.empty() && keyToUse != NULL) {
+		if (inTables.empty() && keyToUse != nullptr) {
 			cout << "Generating WB-AES instance..." << endl;
 			time(&start);
 			generator.generateTables(keyToUse, KEY_SIZE_16, genAES, &coding, true);
@@ -342,7 +342,7 @@ int tryMain(int argc, const char * argv[]) {
 
 		// Open reading file
 		ifstream inf(fileName.c_str(), ios::in | ios::binary);
-		if (inf.is_open()==false){
+		if (!inf.is_open()){
 			cerr << "Cannot open specified input file" << endl;
 			exit(3);
 		}
@@ -351,7 +351,7 @@ int tryMain(int argc, const char * argv[]) {
 		const int buffSize       = 4096;
 		const long int iters     = buffSize / N_BYTES;
 		unsigned long long blockCount = 0;
-		char * memblock          = new char[buffSize];
+		auto * memblock          = new char[buffSize];
 		char blockbuff[N_BYTES];
 
 		// time measurement of just the cipher operation
@@ -375,7 +375,7 @@ int tryMain(int argc, const char * argv[]) {
 			}
 
 			// here we have data in the buffer - lets encrypt them
-			W128b state;
+			W128b state{};
 			long int iter2comp = min(iters, (long int) ceil((float)bRead / N_BYTES));
 
 			for(int k = 0; k < iter2comp; k++, blockCount++){
