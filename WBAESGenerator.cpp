@@ -774,7 +774,7 @@ void WBAESGenerator::generateTables(BYTE *key, enum keySize ksize, WBAES * genAE
 					iocoding_encode32x32(mapResult, mapResult, codingMap_edT3[r][i][j], false, pCoding04x04, pCoding08x08);
 					// Store result value to lookup table
 					genAES_edTab3[r][i*4+j][b] = mapResult;
-// cout << "T3["<<r<<"]["<<i<<"]["<<j<<"]["<<b<<"] = "; dumpW32b(mapResult);
+					// cout << "T3["<<r<<"]["<<i<<"]["<<j<<"]["<<b<<"] = "; dumpW32b(mapResult);
 				}
 			}
 

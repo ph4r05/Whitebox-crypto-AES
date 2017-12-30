@@ -365,7 +365,7 @@ NTL::GF2X BGEAttack::characteristicPolynomial(mat_GF2 & m){
 
 }
 
- int BGEAttack::proposition1(affineEquiv_t & ret, int r, int col, int syi, int syj, int sx){
+int BGEAttack::proposition1(affineEquiv_t & ret, int r, int col, int syi, int syj, int sx){
 	GF256_func_t yi, yj, yj_inv;        // pre-computed functions
 
 	W128b state;
