@@ -977,7 +977,7 @@ int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES * genAES, ExtEnco
 	}
 
 	for(i=0; i<AES_TESTVECTORS; i++){
-		W128b plain, cipher, state;
+		W128b plain{}, cipher{}, state{};
 		arr_to_W128b(GenericAES::testVect128_plain[i], 0, plain);
 		arr_to_W128b(GenericAES::testVect128_plain[i], 0, state);
 		arr_to_W128b(GenericAES::testVect128_cipher[i], 0, cipher);
@@ -1004,6 +1004,9 @@ int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES * genAES, ExtEnco
 		} else {
 			err++;
 			if (coutOutput) cout << "[ ERROR ]:  Enc(plaintext) != ciphertext_test" << endl;
+#			ifdef FAIL
+            FAIL() << "[ ERROR ]:  Enc(plaintext) != ciphertext_test";
+#			endif
 		}
 
 		applyExternalEnc(state, extc, true);
@@ -1019,6 +1022,9 @@ int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES * genAES, ExtEnco
 		} else {
 			err++;
 			if (coutOutput) cout << "[ ERROR ]:  Dec(Enc(plaintext)) != plaintext_test" << endl;
+#			ifdef FAIL
+			FAIL() << "[ ERROR ]:  Dec(Enc(plaintext)) != plaintext_test";
+#			endif
 		}
 
 		if (coutOutput){
