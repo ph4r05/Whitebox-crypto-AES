@@ -16,3 +16,5 @@ ntl-**
 CMakeFiles
 Makefile
 CMakeCache.txt
+build-*/
+cmake-build-*/
