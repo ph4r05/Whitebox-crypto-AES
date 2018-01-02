@@ -54,4 +54,4 @@ script:
   - ls -las
   - ls -las $HOME/ntl
   - bash build.sh
-
+  - ls -las
