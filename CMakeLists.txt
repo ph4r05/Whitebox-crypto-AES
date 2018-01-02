@@ -80,6 +80,8 @@ find_package(Boost REQUIRED COMPONENTS program_options serialization iostreams r
 include_directories(${Boost_INCLUDE_DIRS})
 
 # We need thread support
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package( Threads )
 #find_package(Threads REQUIRED)
 
 # Enable ExternalProject CMake module
@@ -123,7 +125,11 @@ include_directories(
         "${source_dir}/googlemock/include")
 
 # Linking
+if(NOT MSVC)
+    set(PThreadLib -pthread)
+endif()
+
 target_link_libraries(main ${NTL_LIB} ${Boost_LIBRARIES})
 target_link_libraries(testing ${NTL_LIB} ${Boost_LIBRARIES})
-target_link_libraries(gtesting ${NTL_LIB} ${Boost_LIBRARIES} libgtest libgmock ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(gtesting ${NTL_LIB} ${Boost_LIBRARIES} libgtest libgmock ${CMAKE_THREAD_LIBS_INIT} ${PThreadLib})
 
