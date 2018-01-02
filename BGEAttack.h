@@ -199,7 +199,7 @@ public:
 
 	//
 	// Demonstration of an attack - generates new WB AES instance and calls attack()
-	int run(void);
+	int run(BYTE * key = nullptr, keySize keyLen = KEY_SIZE_16);
 
 	//
 	// Main entry point
@@ -291,9 +291,23 @@ public:
 	const static int shiftIdentity[16];
 	const static int shiftT2[16];
 
+	const vec_GF2E &getEncKey() const;
+
+	void setEncKey(const vec_GF2E &encKey);
+
+	bool isDoCout() const;
+
+	void setDoCout(bool doCout);
+
 protected:
 	// used internally for comptuting characteristic polynomial
 	GF2X characteristicPolynomial(mat_GF2X_t & m);
+
+	// Recovered enc key
+	vec_GF2E encKey;
+
+	// Dumping debugging info to cout
+	bool doCout = true;
 };
 
 } /* namespace attack */

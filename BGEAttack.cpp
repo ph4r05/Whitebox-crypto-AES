@@ -277,7 +277,7 @@ int BGEAttack::deriveBset(Bset & bset, GenericAES & aes, bool permissive){
 
 				GF2E beta = (coefs[a].gfCoef * coefs[b].gfCoef) * (coefs[c].gfCoefInv * coefs[d].gfCoefInv);
 				BYTE intBeta = (BYTE) getLong(beta);
-				cout << "i="<<i<<"; Beta=["<<CHEX(intBeta)
+				if (doCout) cout << "i="<<i<<"; Beta=["<<CHEX(intBeta)
 						<<"]; a="<<CHEX(coefs[a].intCoef)
 						<<"; b="<<CHEX(coefs[b].intCoef)
 						<<"; c="<<CHEX(coefs[c].intCoef) << ", inv="<<CHEX(coefs[c].intCoefInv)
@@ -301,7 +301,7 @@ int BGEAttack::deriveBset(Bset & bset, GenericAES & aes, bool permissive){
 			if (a==d && b==c) continue; // not 2 rows same
 			GF2E beta = (coefs[a].gfCoef * coefs[b].gfCoef) * (coefs[c].gfCoefInv * coefs[d].gfCoefInv);
 			BYTE intBeta = (BYTE) getLong(beta);
-			cout << "i="<<i<<"; Beta=["<<CHEX(intBeta)
+			if (doCout) cout << "i="<<i<<"; Beta=["<<CHEX(intBeta)
 					<<"]; a="<<CHEX(coefs[a].intCoef)
 					<<"; b="<<CHEX(coefs[b].intCoef)
 					<<"; c="<<CHEX(coefs[c].intCoef) << ", inv="<<CHEX(coefs[c].intCoefInv)
@@ -529,8 +529,8 @@ int BGEAttack::proposition2(mat_GF2 & L, baseVectors_t & out, mat_GF2 beta){
 			mat_GF2 lhs = L * outM;
 			mat_GF2 rhs = outM * beta;
 			if(lhs != rhs){
-				cout << "Something wrong with the result, equation does not hold in self-test..." << endl;
-				cout << "Dimension of solution="<<freeVariables<<"; Faulty vector k="<<k<<"; Vector: " << endl;
+				if (doCout) cout << "Something wrong with the result, equation does not hold in self-test..." << endl;
+				if (doCout) cout << "Dimension of solution="<<freeVariables<<"; Faulty vector k="<<k<<"; Vector: " << endl;
 				dumpMatrix(outM);
 				return -4;
 			}
@@ -558,7 +558,7 @@ int BGEAttack::proposition2(mat_GF2 & L, baseVectors_t & out, mat_GF2 beta){
 	mat_GF2 lhs = L * outM;
 	mat_GF2 rhs = outM * beta;
 	if(lhs != rhs){
-		cout << "Something wrong with the result, equation does not hold..." << endl;
+		if (doCout) cout << "Something wrong with the result, equation does not hold..." << endl;
 		return -2;
 	}
 
@@ -598,7 +598,7 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 		// Check if this matrix is OK
 		NTL::inv(determinant, AtildMatInv, AtildMat);  // construct inverse - thats what we are looking for
 		if (determinant==GF2::zero()){
-			cout << "One Atild vector is not invertible but it should be: " << vIdx << endl;
+			if (doCout) cout << "One Atild vector is not invertible but it should be: " << vIdx << endl;
 			if (vectorIdx==vIdx) return -5;
 		}
 
@@ -609,7 +609,7 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 
 	// No solution form invertible matrix
 	if (determinant==GF2::zero()){
-		cout << "There was problem with finding Atild inversion from given set of base vectors, dim=" << vectSpaceDim << endl;
+		if (doCout) cout << "There was problem with finding Atild inversion from given set of base vectors, dim=" << vectSpaceDim << endl;
 		return -2;
 	}
 
@@ -715,7 +715,7 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 				NTL::GF2 determinant;
 				NTL::inv(determinant, out->P[p].Linv, out->P[p].L);
 				if (determinant == GF2::zero()){
-					cout << "Strange situation, determinant=0, but transformation worked on space... p= "<<p<<";Delta="<<delta<<"; c="<<c<<endl;
+					if (doCout) cout << "Strange situation, determinant=0, but transformation worked on space... p= "<<p<<";Delta="<<delta<<"; c="<<c<<endl;
 					continue;
 				}
 
@@ -746,7 +746,7 @@ int BGEAttack::proposition3(prop3struct_t * out, GenericAES & aes, int r, int co
 		}
 
 		if (idxTwice==-1){
-			cout << "Weird thing happened, there should be 2 deltas with same value, is MC as it should be?" << endl;
+			if (doCout) cout << "Weird thing happened, there should be 2 deltas with same value, is MC as it should be?" << endl;
 			return PiOK;
 		}
 
@@ -782,7 +782,7 @@ int BGEAttack::recoverQj(GenericAES & aes, int r, int col, int row, const mat_GF
 	affineEquiv_t L;
 	int prop1result = proposition1(L, r, col, 0, row, 0);
 	if (prop1result==0) {
-		cout << "recoverAj fail: Proposition1 failed for r="<<r<<"; col="<<col<<"; (y0, y"<<row<<") " << endl;
+		if (doCout) cout << "recoverAj fail: Proposition1 failed for r="<<r<<"; col="<<col<<"; (y0, y"<<row<<") " << endl;
 		return -1;
 	}
 
@@ -804,7 +804,7 @@ int BGEAttack::recoverQj(GenericAES & aes, int r, int col, int row, const mat_GF
 	GF2 determinant;
 	NTL::inv(determinant, AjInv, Aj);
 	if (determinant == GF2::zero()){
-		cout << "Cannot compute inverse - should never happen!!" << endl;
+		if (doCout) cout << "Cannot compute inverse - should never happen!!" << endl;
 		return -2;
 	}
 
@@ -812,7 +812,7 @@ int BGEAttack::recoverQj(GenericAES & aes, int r, int col, int row, const mat_GF
 	int prop3result = proposition3(prop3, aes, r, col, row, AjInv);
 	if (prop3result != 0xf) {
 		delete prop3;
-		cout << "some problem with proposition 3 in recover Qj occurred. result="<<prop3result<<endl;
+		if (doCout) cout << "some problem with proposition 3 in recover Qj occurred. result="<<prop3result<<endl;
 		return -3;
 	}
 
@@ -830,12 +830,13 @@ int BGEAttack::recoverQj(GenericAES & aes, int r, int col, int row, const mat_GF
 		GF2E deltaGF    = GF2EFromLong(prop3->P[x].delta, 8);
 		GF2E deltaInvGF = NTL::inv(deltaGF);
 		BYTE deltaInv   = getLong(deltaInvGF);
-		cout << "   recoverQj self-test; r="<<r<<"; col="<<col<<"; (y0, y"<<row<<"); P["<<x
+		if (doCout) cout
+			 << "   recoverQj self-test; r="<<r<<"; col="<<col<<"; (y0, y"<<row<<"); P["<<x
 			 <<"].deltaInv="<<CHEX(deltaInv)
 			 <<"; alfa_{"<<row<<","<<x<<"}="<< CHEX(prop3->P[x].alfa_0) << endl;
 	}
 
-	cout << "   recoverQj; q = " << CHEX(*qj) << "; gamma=" << CHEX(prop3->gamma) << "; " << endl;
+	if (doCout) cout << "   recoverQj; q = " << CHEX(*qj) << "; gamma=" << CHEX(prop3->gamma) << "; " << endl;
 
 	delete prop3;
 	return 0;
@@ -852,7 +853,7 @@ int BGEAttack::recoverCipherKey(GenericAES & aes, BYTE roundKeys[2][16], vec_GF2
 	for(int col=1; col<4; col++){
 		for(int row=1; row<4; row++){
 			if (roundKeys[1][4*row+col] != (roundKeys[1][4*row+col-1] ^ roundKeys[0][4*row+col])){
-				cout << "Error in round key verification, you passed invalid round keys; col="<<col<<"; row="<<row << endl;
+				if (doCout) cout << "Error in round key verification, you passed invalid round keys; col="<<col<<"; row="<<row << endl;
 				return -1;
 			}
 		}
@@ -886,7 +887,7 @@ int BGEAttack::recoverCipherKey(GenericAES & aes, BYTE roundKeys[2][16], vec_GF2
 
 		if(correctRcon){
 			rconIdx = rc;
-			cout << "We have correct Rcon! rconIdx="<<rc<<endl;
+			if (doCout) cout << "We have correct Rcon! rconIdx="<<rc<<endl;
 			break;
 		}
 	}
@@ -923,7 +924,7 @@ int BGEAttack::recoverCipherKey(GenericAES & aes, BYTE roundKeys[2][16], vec_GF2
 		// copy back
 		for(int i=0; i<16; i++) w[i/4][i%4] = GF2EFromLong(getLong(wp[i/4][i%4]), 8);
 
-		cout << "RC=" << rc << "; previousKey: "<<endl;
+		if (doCout) cout << "RC=" << rc << "; previousKey: "<<endl;
 		dumpMatrix(w);
 	}
 
@@ -931,7 +932,7 @@ int BGEAttack::recoverCipherKey(GenericAES & aes, BYTE roundKeys[2][16], vec_GF2
 	return 0;
 }
 
-int BGEAttack::run(void) {
+int BGEAttack::run(BYTE * key, keySize keyLen) {
 	GenericAES defAES;
 	defAES.init(0x11B, 0x03);
 
@@ -941,7 +942,7 @@ int BGEAttack::run(void) {
 #endif
 
 	WBAESGenerator generator;
-	cout << "Generating AES..." << endl;
+	if (doCout) cout << "Generating AES..." << endl;
 
 	generator.useDualAESARelationsIdentity=false;
 	generator.useDualAESIdentity=false;
@@ -955,14 +956,16 @@ int BGEAttack::run(void) {
 	this->wbaes  = new WBAES;
 	this->coding = new ExtEncoding;
 	generator.generateExtEncoding(this->coding, WBAESGEN_EXTGEN_ID);
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, this->coding, true);  cout << "AES ENC generated" << endl;
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, this->coding, false); cout << "AES DEC generated" << endl;
+	generator.generateTables(key ? key : GenericAES::testVect128_key, keyLen,
+							 this->wbaes, this->coding, true);  if (doCout) cout << "AES ENC generated" << endl;
+	generator.generateTables(key ? key : GenericAES::testVect128_key, keyLen,
+							 this->wbaes, this->coding, false); if (doCout) cout << "AES DEC generated" << endl;
 
 	// WBAES changed to state with affine matching bijections at round boundaries.
-	cout << "Going to test WBAES before modifying tables" << endl;
+	if (doCout) cout << "Going to test WBAES before modifying tables" << endl;
 	generator.testComputedVectors(true, this->wbaes, this->coding);
 
-	cout << "Starting the BGE attack" << endl;
+	if (doCout) cout << "Starting the BGE attack" << endl;
 	int toReturn = this->attack();
 
 	delete this->wbaes;
@@ -991,8 +994,8 @@ int BGEAttack::attack(void) {
 	const int * nextTbox = shiftT2;             // attack is not yet implemented for decryption
 	generator.BYTEArr_to_vec_GF2E(GenericAES::testVect128_key, KEY_SIZE_16, defaultKey);			// convert BYTE key to GF2E key
 	defAES.expandKey(expandedKey, defaultKey, KEY_SIZE_16);	// key schedule for default AES
-	cout << "Expanded key: " << endl;
-	dumpVector(expandedKey);
+	if (doCout) cout << "Expanded key: " << endl;
+	if (doCout) dumpVector(expandedKey);
 
 
 	//
@@ -1011,13 +1014,13 @@ int BGEAttack::attack(void) {
 
 	// At first compute base function f_{00}, we will need it for computing all next functions,
 	// to be exact, its inverse, f^{-1}_{00}
-	cout << "Allocating memory for the attack" << endl;
+	if (doCout) cout << "Allocating memory for the attack" << endl;
 	SsetPerRound_t * Sr = new SsetPerRound_t[10];
 	Qaffine_t * Qaffine = new Qaffine_t;
-	cout << "Memory allocated; Sr=" << dec << (sizeof(SsetPerRound_t)*10) << "; Qaffine=" << dec << sizeof(Qaffine_t) << endl;
-	cout << "Memory allocated totally: " << (((sizeof(SsetPerRound_t)*10) + sizeof(Qaffine_t)) / 1024.0 / 1024.0) << " MB" << endl;
+	if (doCout) cout << "Memory allocated; Sr=" << dec << (sizeof(SsetPerRound_t)*10) << "; Qaffine=" << dec << sizeof(Qaffine_t) << endl;
+	if (doCout) cout << "Memory allocated totally: " << (((sizeof(SsetPerRound_t)*10) + sizeof(Qaffine_t)) / 1024.0 / 1024.0) << " MB" << endl;
 
-	cout << "Starting attack phase 1 ..." << endl;
+	if (doCout) cout << "Starting attack phase 1 ..." << endl;
 	for(r=0; r<9; r++){
 		// Init f_00 function in Sr
 		for(i=0; i<AES_BYTES; i++){
@@ -1032,7 +1035,7 @@ int BGEAttack::attack(void) {
 		// 0 0 0 0  --->  y_{0,2} y_{1,2} ..
 		// 0 0 0 0        y_{0,3} y_{1,3} ..
 		//
-		cout << "Generating f_00 for round r="<<r<<endl;
+		if (doCout) cout << "Generating f_00 for round r="<<r<<endl;
 		for(x=0; x<=0xff; x++){
 			memset(&state, 0, sizeof(state));		// put 0 everywhere
 			state.B[0]=x;   state.B[1]=x; 			// init with x values for y_0 in each column
@@ -1053,7 +1056,7 @@ int BGEAttack::attack(void) {
 		}
 
 		// now generate f(x,0,0,0) .. f(x,0xff,0,0) functions, generate then corresponding sets and whole Sr for round r
-		cout << "Generating set S..." << endl;
+		if (doCout) cout << "Generating set S..." << endl;
 		for(c1=0; c1<=0xff; c1++){
 			// init f_c1 functions
 			for(i=0; i<AES_BYTES; i++){
@@ -1128,7 +1131,7 @@ int BGEAttack::attack(void) {
 		// We can find base set in S and express every element in S by means of base. This way we will find \psi.
 		//
 		for(i=0; i<AES_BYTES; i++){
-			cout << "Recovering psi for Sidx="<<i<<endl;
+			if (doCout) cout << "Recovering psi for Sidx="<<i<<endl;
 			Sset_t & curS = Sr[r].S[i%4][i/4];
 			recoverPsi(curS);
 
@@ -1164,11 +1167,11 @@ int BGEAttack::attack(void) {
 			}
 
 			Qaffine->Q[r][i].initHash();
-			cout << "Q~ recovered; hash=" << Qaffine->Q[r][i].hash << endl;
-			cout << "PSI function: " << hashFunction(curS.psi) << endl;
+			if (doCout) cout << "Q~ recovered; hash=" << Qaffine->Q[r][i].hash << endl;
+			if (doCout) cout << "PSI function: " << hashFunction(curS.psi) << endl;
 		}
 
-		cout << "PSI recovered for all sets in given round" << endl;
+		if (doCout) cout << "PSI recovered for all sets in given round" << endl;
 	}
 
 	// Now we can reduce P, Q are non-linear & matching state to P,Q are affine and matching
@@ -1195,7 +1198,7 @@ int BGEAttack::attack(void) {
 
 	// Q will be on transfered to AES output bijection layer - additional one
 	// P will be on this->wbaes.eTab2[r][?][0..256]
-	cout << "Going to transform AES input/output matching bijection to affine" << endl;
+	if (doCout) cout << "Going to transform AES input/output matching bijection to affine" << endl;
 	for(r=0; r<N_ROUNDS-2; r++){
 		for(i=0; i<AES_BYTES; i++){
 			// Choice of indexes for eTab2 explained below:
@@ -1266,7 +1269,7 @@ int BGEAttack::attack(void) {
 	}
 
 	// WBAES changed to state with affine matching bijections at round boundaries.
-	cout << "Going to test WBAES after modifying tables" << endl;
+	if (doCout) cout << "Going to test WBAES after modifying tables" << endl;
 	if (this->coding != NULL) {
 		generator.testComputedVectors(true, this->wbaes, this->coding);
 	} else {
@@ -1287,10 +1290,13 @@ int BGEAttack::attack(void) {
 	Bset bset2;
 	deriveBset(bset2, defAES, true);
 
-	cout << "Bset: { ";
-	for(Bset::const_iterator it = bset2.begin(); it!=bset2.end(); ++it){
-		cout << CHEX(*it) << ", ";
-	} cout << "} " << endl;
+	if (doCout) {
+		cout << "Bset: { ";
+		for (Bset::const_iterator it = bset2.begin(); it != bset2.end(); ++it) {
+			cout << CHEX(*it) << ", ";
+		}
+		cout << "} " << endl;
+	}
 
 	// Now we can generate multiplication matrices from given constants \in B, then compute
 	// characteristic polynomials for them.
@@ -1301,10 +1307,10 @@ int BGEAttack::attack(void) {
 	charPolynomialMultimap_t charPolyMap;
 	for(Bset::const_iterator it = bset2.begin(); it!=bset2.end(); ++it){
 		mat_GF2 m = defAES.makeMultAMatrix(*it);
-		cout << "Computing characteristic polynomial for: " << CHEX(*it) << "; ....";
+		if (doCout) cout << "Computing characteristic polynomial for: " << CHEX(*it) << "; ....";
 
 		GF2X poly = characteristicPolynomial(m);
-		cout << "Characteristic polynomial=" << poly << "; hex=" << GF2EHEX(poly) << endl;
+		if (doCout) cout << "Characteristic polynomial=" << poly << "; hex=" << GF2EHEX(poly) << endl;
 
 		// Insert characteristic polynomial to multi-map. Later it will be used to determine B
 		charPolyMap.insert(charPolynomialMultimap_elem_t(getLong(poly), *it));
@@ -1330,7 +1336,7 @@ int BGEAttack::attack(void) {
 		// extraction for k0,k1,k2,k3. We want to determine round key for whole round
 		// so iterate over columns
 		for(int col=0; col<4; col++){
-			cout << endl << "Extracting round keys for r="<<r<<"; col="<<col<<endl;
+			if (doCout) cout << endl << "Extracting round keys for r="<<r<<"; col="<<col<<endl;
 			// We are using section 3.2, proposition 1 to compute L0, L1 linear parts of affine
 			// transformation between (yi, yj).
 			// Prop1: yi(x0, 00, 00, 00) = L(yj(x0, 00, 00, 00)) + c
@@ -1343,7 +1349,7 @@ int BGEAttack::attack(void) {
 			int resL0 = proposition1(L0, r, col, 0, 1, 0);
 			int resL1 = proposition1(L1, r, col, 0, 1, 1);
 			if (resL0==0 || resL1==0){
-				cout << "One of relations is not affine! r="<<r<<"; col="<<col<<"; l0="<<resL0 << "; l1="<<resL1 << endl;
+				if (doCout) cout << "One of relations is not affine! r="<<r<<"; col="<<col<<"; l0="<<resL0 << "; l1="<<resL1 << endl;
 				return -1;
 			}
 
@@ -1360,8 +1366,8 @@ int BGEAttack::attack(void) {
 
 			// Determine beta values for L using characteristic polynomial - explained above
 			if (charPolyMap.count(LpolyInt)==0){
-				cout << "Error, cannot find beta for characteristic polynomial: " << Lpoly << endl;
-				cout << "Attack cannot continue, please check implementation for possible bugs..." << endl;
+				if (doCout) cout << "Error, cannot find beta for characteristic polynomial: " << Lpoly << endl;
+				if (doCout) cout << "Attack cannot continue, please check implementation for possible bugs..." << endl;
 				return -5;
 			}
 
@@ -1370,21 +1376,21 @@ int BGEAttack::attack(void) {
 			for (auto it = its.first; it != its.second; ++it) {
 				int prop3Result=-1;
 				beta = it->second;
-				cout << "Possible beta for L is " << CHEX(beta) << "; poly(L)=" << Lpoly << endl;
+				if (doCout) cout << "Possible beta for L is " << CHEX(beta) << "; poly(L)=" << Lpoly << endl;
 
 				// Try this value of beta with Proposition 2 to obtain A~_0 = A_0 * gamma for L=A0 * beta * A0^{-1}
 				// From proposition 2 we will get A~0 = A0 * gamma, where A0 is linear part of Q0
 				// Assuming we know L = A0 * beta * A0^{-1}  and beta.
 				int AtildResult = proposition2(L, bVectors, defAES.makeMultAMatrix(beta));
 				if (AtildResult < 0 || bVectors.size()==0){
-					cout << "Something bad happen, attack does not work here - Atild computation problem" << endl;
+					if (doCout) cout << "Something bad happen, attack does not work here - Atild computation problem" << endl;
 					continue;
 				}
 
 				// Just debug for user - we may get some error if beta was not correctly guessed, or
 				// subspace of solutions.
 				betaValid = true;
-				cout << "We have number of solutions=" << bVectors.size() << endl;
+				if (doCout) cout << "We have number of solutions=" << bVectors.size() << endl;
 
 				// Continue with proposition 3 to extract info about affine part Q0.
 				// Recovers deltaMult_i and c_i from following equations:
@@ -1401,8 +1407,8 @@ int BGEAttack::attack(void) {
 				// P~_i = L_i(x) + Pc + k_i
 				//
 				prop3Result = proposition3(prop3struct, defAES, r, col, 0, bVectors, vectorIdx);
-				cout << "Prop3 done(v="<<vectorIdx<<") with result=" << CHEX(prop3Result) << "; gamma=" << CHEX(prop3struct->gamma) << endl;
-				for(int x=0; x<4; x++){
+				if (doCout) cout << "Prop3 done(v="<<vectorIdx<<") with result=" << CHEX(prop3Result) << "; gamma=" << CHEX(prop3struct->gamma) << endl;
+				for(int x=0; doCout && x<4; x++){
 					cout << "  Prop3["<<x<<"] valid="<<(((prop3Result & (1<<x))>0) ? 1:0)
 						 << "; .valid=" << prop3struct->P[x].valid
 						 << "; delta="<<CHEX(prop3struct->P[x].delta)
@@ -1415,7 +1421,7 @@ int BGEAttack::attack(void) {
 				// From paper we know that our beta could be from set {b, b^2} so try next one.
 				// But definitely one of betas should be correct.
 				if (prop3Result != 0xf){
-					cout << "This value of Beta was probably not valid, since proposition 3 failed for some relations" << endl;
+					if (doCout) cout << "This value of Beta was probably not valid, since proposition 3 failed for some relations" << endl;
 					betaValid=false;
 					continue;
 				}
@@ -1424,7 +1430,7 @@ int BGEAttack::attack(void) {
 			// Things didn't go as expected, beta was not correctly guessed from characteristics polynomial.
 			// This should never happen if implementation is correct.
 			if (!betaValid){
-				cout << "Problem with beta, cannot continue with attack." << endl;
+				if (doCout) cout << "Problem with beta, cannot continue with attack." << endl;
 				return -2;
 			}
 
@@ -1485,7 +1491,7 @@ int BGEAttack::attack(void) {
 			GF2 determinant;
 			NTL::inv(determinant, A0InvMatrix, A0Matrix);
 			if(determinant==GF2::zero()){
-				cout << "Problem with the attack, A0 (linear part of Q0) is not invertible" << endl;
+				if (doCout) cout << "Problem with the attack, A0 (linear part of Q0) is not invertible" << endl;
 				return -6;
 			}
 
@@ -1493,7 +1499,7 @@ int BGEAttack::attack(void) {
 			// Just one of the possible assertions that should hold.
 			mat_GF2 betaMatrix = defAES.makeMultAMatrix(beta);
 			mat_GF2 Lcons = A0Matrix * betaMatrix * A0InvMatrix;
-			if (Lcons != L){
+			if (doCout && Lcons != L){
 				cout << "L matrix determined in proposition 2 is not same as should be" << endl;
 				cout << "L matrix: " << endl; dumpMatrix(L);
 				cout << "A0 * beta * A0^{-1} matrix: " << endl; dumpMatrix(Lcons);
@@ -1522,7 +1528,7 @@ int BGEAttack::attack(void) {
 	// From proposition3 we obtained P~ affine equivalences
 	// P~_i = P_i(x) + k_i   where k_i is corresponding byte of round key and P_i(x) is affine transformation
 	// P^{r+1}_{i,j} * Q^{r}_{i,j} = identity  ==> derive round key by composition of those two.
-	cout << endl << "Going to reconstruct encryption key from extracted round keys..." << endl;
+	if (doCout) cout << endl << "Going to reconstruct encryption key from extracted round keys..." << endl;
 
 	// Recover keys as described. Round keys are indexed by rows, but in AES implementation round keys are
 	// indexed by columns, so just transpose before roundkey->encryption key transformation.
@@ -1537,7 +1543,7 @@ int BGEAttack::attack(void) {
 	}
 
 	// just simply printout
-	for(int r=0; r<rounds2hack-1; r++){
+	for(int r=0; doCout && r<rounds2hack-1; r++){
 		cout << "* Round keys extracted from the process, r=" << (r+roundStart+1) << endl;
 		dumpVectorT(roundKeys[r], 16);
 	}
@@ -1545,11 +1551,10 @@ int BGEAttack::attack(void) {
 	//
 	// Recover encryption key from recovered round keys
 	//
-	cout << "Recovering cipher key from round keys..." << endl;
-	vec_GF2E encKey;
+	if (doCout) cout << "Recovering cipher key from round keys..." << endl;
 	recoverCipherKey(defAES, roundKeys, encKey);
 
-	cout << "Final result: " << endl;
+	if (doCout) cout << "Final result: " << endl;
 	dumpVector(encKey);
 
 	// Just debug piece of code - was needed in proof that BGE attack works also
@@ -1569,17 +1574,20 @@ int BGEAttack::attack(void) {
 
 		GenericAES dualAES;
 		dualAES.initFromIndex(AES_IRRED_POLYNOMIALS-1, AES_GENERATORS-1);
-		cout << "T: " << endl; dumpMatrix(dualAES.T);
-		cout << "Tinv: " << endl; dumpMatrixN(dualAES.Tinv);
-		cout << "T*20: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][0]);
-		cout << "T*21: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][1]);
-		cout << "20*T: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.T);
-		cout << "21*T: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.T);
 
-		cout << "Tinv*20: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][0]);
-		cout << "Tinv*21: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][1]);
-		cout << "20*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.Tinv);
-		cout << "21*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.Tinv);
+		if (doCout) {
+			cout << "T: " << endl; dumpMatrix(dualAES.T);
+			cout << "Tinv: " << endl; dumpMatrixN(dualAES.Tinv);
+			cout << "T*20: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][0]);
+			cout << "T*21: " << endl; dumpMatrixN(dualAES.T * Qaffine->Aj[2][1]);
+			cout << "20*T: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.T);
+			cout << "21*T: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.T);
+
+			cout << "Tinv*20: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][0]);
+			cout << "Tinv*21: " << endl; dumpMatrixN(dualAES.Tinv * Qaffine->Aj[2][1]);
+			cout << "20*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][0]*dualAES.Tinv);
+			cout << "21*Tinv: " << endl; dumpMatrixN(Qaffine->Aj[2][1]*dualAES.Tinv);
+		}
 	}
 
 	//
@@ -1607,7 +1615,7 @@ int BGEAttack::invertCipherTest(){
 	WBAESGenerator generator;
 	ExtEncoding    coding;
 
-	cout << "Generating AES..." << endl;
+	if (doCout) cout << "Generating AES..." << endl;
 	//bool encrypt = true;
 	generator.useDualAESARelationsIdentity=true;	// this attack works only on basic form
 	generator.useDualAESIdentity=true;
@@ -1619,12 +1627,12 @@ int BGEAttack::invertCipherTest(){
 	generator.generateExtEncoding(&coding, WBAESGEN_EXTGEN_ID);
 
 	this->wbaes = new WBAES;
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, true);  cout << "AES ENC generated" << endl;
-	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, false); cout << "AES DEC generated" << endl;
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, true);  if (doCout) cout << "AES ENC generated" << endl;
+	generator.generateTables(GenericAES::testVect128_key, KEY_SIZE_16, this->wbaes, &coding, false); if (doCout) cout << "AES DEC generated" << endl;
 	//int (&nextTbox)[N_BYTES]     = encrypt ? (shiftT2) : (shiftT2);  // attack is not yet implemented for decryption
 
 	// WBAES changed to state with affine matching bijections at round boundaries.
-	cout << "Going to test WBAES before modifying tables" << endl;
+	if (doCout) cout << "Going to test WBAES before modifying tables" << endl;
 	generator.testComputedVectors(true, this->wbaes, &coding);
 
 	// Encrypt test vector and then try to decrypt it by inverting encryption tables
@@ -1635,13 +1643,18 @@ int BGEAttack::invertCipherTest(){
 
 	// encryption
 	this->wbaes->encrypt(state);
-	cout << "=====================" << endl;
-	cout << "InvertTest plaintext: " << endl;
-	dumpW128b(plain); cout << endl;
-	cout << "InvertTest ciphertext: " << endl;
-	dumpW128b(cipher); cout << endl;
-	cout << "Enc(plaintext_test): " << endl;
-	dumpW128b(state); cout << endl;
+	if (doCout) {
+		cout << "=====================" << endl;
+		cout << "InvertTest plaintext: " << endl;
+		dumpW128b(plain);
+		cout << endl;
+		cout << "InvertTest ciphertext: " << endl;
+		dumpW128b(cipher);
+		cout << endl;
+		cout << "Enc(plaintext_test): " << endl;
+		dumpW128b(state);
+		cout << endl;
+	}
 
 	time_t lastRound = time(NULL);
 	time_t lastTm = time(NULL);
@@ -1659,7 +1672,7 @@ int BGEAttack::invertCipherTest(){
 		unsigned long long int col = 0;	// represents whole state array column
 		int colMask2compute = 15; // start with full mask
 
-		cout << "Inverting cipher; round=" << r << endl;
+		if (doCout) cout << "Inverting cipher; round=" << r << endl;
 		curTm     = time(NULL);
 		lastRound = time(NULL);
 
@@ -1677,7 +1690,7 @@ int BGEAttack::invertCipherTest(){
 				cnt = 0;
 				curTm = time(NULL);
 				if ((curTm - lastTm) > 30){
-					cout << "...progress=" <<((((double)col) / 4294967296.0)*100) << " %" << endl;
+					if (doCout) cout << "...progress=" <<((((double)col) / 4294967296.0)*100) << " %" << endl;
 					lastTm = curTm;
 				}
 			}
@@ -1690,7 +1703,7 @@ int BGEAttack::invertCipherTest(){
 			// find if one of columns holds state = Rbox(prevState2)
 			for(int i=0; i<4; i++){
 				if ((colMask2compute & (1<<i)) > 0 && ISEQ_W128B_COL(prevState2, i, state, i)){
-					cout << "..found inverse for col="<<i<<"; foundCols="<<foundCols
+					if (doCout) cout << "..found inverse for col="<<i<<"; foundCols="<<foundCols
 							<<"; col=" << col
 							<<"; done=" << ((((double)col) / 4294967296.0)*100) << " %" << endl;
 
@@ -1705,7 +1718,7 @@ int BGEAttack::invertCipherTest(){
 
 		// If reached this point, all inverses should have been found
 		if (foundCols!=4){
-			cout << "ERROR: foundCols!=4; " << foundCols << endl;
+			if (doCout) cout << "ERROR: foundCols!=4; " << foundCols << endl;
 			return -1;
 		}
 
@@ -1725,7 +1738,7 @@ int BGEAttack::invertCipherTest(){
 		}
 
 		time_t curTime = time(NULL);
-		cout << "Inverse found; r="<<r
+		if (doCout) cout << "Inverse found; r="<<r
 				<<"; time elapsed=" << (curTime - lastRound)
 				<<" s; state dump: " << endl;
 
@@ -1738,6 +1751,22 @@ int BGEAttack::invertCipherTest(){
 
 	delete this->wbaes;
 	return 0;
+}
+
+const vec_GF2E &BGEAttack::getEncKey() const {
+    return encKey;
+}
+
+void BGEAttack::setEncKey(const vec_GF2E &encKey) {
+    BGEAttack::encKey = encKey;
+}
+
+bool BGEAttack::isDoCout() const {
+    return doCout;
+}
+
+void BGEAttack::setDoCout(bool doCout) {
+    BGEAttack::doCout = doCout;
 }
 
 } /* namespace attack */
