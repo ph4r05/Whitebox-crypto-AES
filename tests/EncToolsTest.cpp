@@ -31,8 +31,10 @@ protected:
         wbaes = unique_ptr<WBAES>(new WBAES());
         generator = unique_ptr<WBAESGenerator>(new WBAESGenerator());
         coding = unique_ptr<ExtEncoding>(new ExtEncoding);
+        coding2 = unique_ptr<ExtEncoding>(new ExtEncoding);
 
-        generator->generateExtEncoding(coding.get(), 0);
+        generator->generateExtEncoding(coding.get(), WBAESGEN_EXTGEN_ID);
+        generator->generateExtEncoding(coding2.get(), 0);
         generator->generateTables(const_cast<BYTE *>(test_key), KEY_SIZE_16, wbaes.get(), coding.get(), true);
         generator->generateTables(const_cast<BYTE *>(test_key), KEY_SIZE_16, wbaes.get(), coding.get(), false);
     }
@@ -49,6 +51,7 @@ protected:
     unique_ptr<WBAES> wbaes;
     unique_ptr<WBAESGenerator> generator;
     unique_ptr<ExtEncoding> coding;
+    unique_ptr<ExtEncoding> coding2;
 };
 
 TEST_F(EncToolsTest, EncDecBase)
