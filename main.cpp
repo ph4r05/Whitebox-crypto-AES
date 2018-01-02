@@ -357,7 +357,7 @@ int tryMain(int argc, const char * argv[]) {
 		// open the given file
 		std::string fileName = files[0];
 		cout << "Going to " << (decrypt ? "decrypt":"encrypt") << " file ["<<fileName<<"] with WBAES" << endl;
-		cout << "PKCS5 padding: " << pkcs5Padding << " CBC: " << cbc;
+		cout << "External coding: " << useExternal << ", PKCS5 padding: " << pkcs5Padding << ", CBC: " << cbc << endl;
 
 		bool writeOut = !outFile.empty();
 		ofstream out;
