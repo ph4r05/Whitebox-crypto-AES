@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iosfwd>
 #include <ios>
+#include <memory>
 #include "InputObject.h"
 #include <boost/circular_buffer.hpp>
 

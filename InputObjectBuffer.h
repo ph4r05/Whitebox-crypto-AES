@@ -6,6 +6,7 @@
 #define WHITEBOX_CRYPTO_AES_INPUTOBJECTBUFFER_H
 
 #include "InputObject.h"
+#include <memory>
 
 template<typename T>
 class InputObjectBuffer : public InputObject<T>{
