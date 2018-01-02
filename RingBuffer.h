@@ -267,16 +267,16 @@ ssize_t RingBuffer<T>::write(InputObject<T> *buffer, size_t maxLength) {
 
     if (ars.first.second > 0 && bytesToWrite > 0 && buffer->isGood()){
         ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.first.second);
-        buffer->read((T*)ars.first.first, (size_t)toWrite);
-        written += toWrite;
-        bytesToWrite -= toWrite;
+        ssize_t actuallyWritten = buffer->read((T*)ars.first.first, (size_t)toWrite);
+        written += actuallyWritten;
+        bytesToWrite -= actuallyWritten;
     }
 
     if (ars.second.second > 0 && bytesToWrite > 0 && buffer->isGood()){
         ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.second.second);
-        buffer->read((T*)ars.second.first, (size_t)toWrite);
-        written += toWrite;
-        bytesToWrite -= toWrite;
+        ssize_t actuallyWritten = buffer->read((T*)ars.second.first, (size_t)toWrite);
+        written += actuallyWritten;
+        bytesToWrite -= actuallyWritten;
     }
 
     setBytesWritten(written);
