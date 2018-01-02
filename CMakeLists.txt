@@ -4,6 +4,9 @@ project(Whitebox_crypto_AES)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 option(NTL_NO_DEFAULT_PATH "Using just given paths when searching for NTL" OFF)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(SOURCE_FILES
     base.h
     base.cpp
