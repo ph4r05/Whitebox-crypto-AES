@@ -171,33 +171,24 @@ ssize_t RingBuffer<T>::read(T *buffer, size_t maxLength) {
     }
 
     ssize_t read = 0;
-    T * bytes = _buffer.get();
+    array_ranges ars = this->array_read();
 
     // Number of bytes that can be read in this call.
-    ssize_t bytesToRead = std::min(_count, maxLength);
+    ssize_t bytesToRead = maxLength < 0 ? _count : std::min(_count, static_cast<size_t>(maxLength));
 
-    // Number of bytes that can be copied right after _fill position without need to modulo.
-    const ssize_t bytesToReadRight = std::min(bytesToRead, static_cast<ssize_t>(_buffSize - _use));
-
-    // Phase 1 - memcpy up to the right boundary.
-    if (bytesToReadRight > 0){
-        memcpy(buffer, bytes + _use, static_cast<size_t>(bytesToReadRight));
-
-        read        += bytesToReadRight;
-        _use         = (_use + bytesToReadRight) % _buffSize;  // Should be 0.
-        bytesToRead -= bytesToReadRight;
+    if (ars.first.second > 0 && bytesToRead > 0){
+        ssize_t toRead = std::min(bytesToRead, (ssize_t)ars.first.second);
+        memcpy(buffer, ars.first.first, (size_t)toRead);
+        read += toRead;
+        bytesToRead -= toRead;
     }
 
-    // Phase 2 - write rest of bytes after modular rotation.
-    if (bytesToRead > 0){
-        memcpy(buffer + read, bytes + _use, static_cast<size_t>(bytesToRead));
-
-        read  += bytesToRead;
-        _use   = (_use + bytesToRead) % _buffSize; // Should never need to modulo.
+    if (ars.second.second > 0 && bytesToRead > 0){
+        ssize_t toRead = std::min(bytesToRead, (ssize_t)ars.first.second);
+        memcpy(buffer+read, ars.second.first, (size_t)toRead);
+        read += toRead;
     }
-
-    _count -= read;
-    assert((_count != 0 || _use == _fill) && "Cyclic buffer invariant failed");
+    setBytesRead(read);
 
     return read;
 }
@@ -214,14 +205,14 @@ ssize_t RingBuffer<T>::read(std::ofstream * buffer, ssize_t maxLength) {
     // Number of bytes that can be read in this call.
     ssize_t bytesToRead = maxLength < 0 ? _count : std::min(_count, static_cast<size_t>(maxLength));
 
-    if (ars.first.second > 0){
+    if (ars.first.second > 0 && bytesToRead > 0){
         ssize_t toRead = std::min(bytesToRead, (ssize_t)ars.first.second);
         buffer->write((char*)ars.first.first, (std::streamsize)toRead);
         read += toRead;
         bytesToRead -= toRead;
     }
 
-    if (ars.second.second > 0 && read < bytesToRead && bytesToRead > 0){
+    if (ars.second.second > 0 && bytesToRead > 0){
         ssize_t toRead = std::min(bytesToRead, (ssize_t)ars.first.second);
         buffer->write((char*)ars.second.first, (std::streamsize)toRead);
         read += toRead;
@@ -237,45 +228,28 @@ ssize_t RingBuffer<T>::write(T const *buffer, size_t maxLength) {
         return 0;
     }
 
-    ssize_t writtenTotal = 0;
     ssize_t written = 0;
-    ssize_t curBufferLen = maxLength;
-    T * bytes = _buffer.get();
-
-    // Free space in ring buffer.
-    const ssize_t freeSpace = _buffSize - _count;
+    array_ranges ars = this->array_free();
 
     // Number of bytes that will be written in this call.
-    ssize_t bytesToWrite = std::min(freeSpace, curBufferLen);
+    ssize_t bytesToWrite = maxLength < 0 ? getSpaceAvailable() : std::min(getSpaceAvailable(), maxLength);
 
-    // Number of bytes that can be copied right after _fill position without need to modulo.
-    const ssize_t bytesToWriteRight = std::min(bytesToWrite, static_cast<ssize_t>(_buffSize - _fill));
-    written = 0;
-
-    // Phase 1 - memcpy to the right boundary.
-    if (bytesToWriteRight > 0) {
-        memcpy(bytes + _fill, buffer + writtenTotal, static_cast<size_t>(bytesToWriteRight));
-
-        written      += bytesToWriteRight;
-        writtenTotal += bytesToWriteRight;
-        bytesToWrite -= bytesToWriteRight;
-        _fill = (_fill + bytesToWriteRight) % _buffSize;  // Should be 0, if we reached the right boundary.
+    if (ars.first.second > 0 && bytesToWrite > 0){
+        ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.first.second);
+        memcpy(ars.first.first, buffer + written, (size_t)toWrite);
+        written += toWrite;
+        bytesToWrite -= toWrite;
     }
 
-    // Phase 2 - write rest of bytes after modular rotation.
-    if (bytesToWrite > 0) {
-        memcpy(bytes + _fill, buffer + writtenTotal, static_cast<size_t>(bytesToWrite));
-
-        written      += bytesToWrite;
-        writtenTotal += bytesToWrite;
-        _fill = (_fill + bytesToWrite) % _buffSize; // Should never need to modulo.
+    if (ars.second.second > 0 && bytesToWrite > 0){
+        ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.second.second);
+        memcpy(ars.second.first, buffer + written, (size_t)bytesToWrite);
+        written += toWrite;
+        bytesToWrite -= toWrite;
     }
 
-    _count += written;
-    curBufferLen -= written;
-    assert((_count != _buffSize || _use == _fill) && "Cyclic buffer invariant failed");
-
-    return writtenTotal;
+    setBytesWritten(written);
+    return written;
 }
 
 template<typename T>
@@ -290,14 +264,14 @@ ssize_t RingBuffer<T>::write(std::ifstream *buffer, size_t maxLength) {
     // Number of bytes that will be written in this call.
     ssize_t bytesToWrite = maxLength < 0 ? getSpaceAvailable() : std::min(getSpaceAvailable(), maxLength);
 
-    if (ars.first.second > 0){
+    if (ars.first.second > 0 && bytesToWrite > 0){
         ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.first.second);
         buffer->read((char*)ars.first.first, (std::streamsize)toWrite);
         written += toWrite;
         bytesToWrite -= toWrite;
     }
 
-    if (ars.second.second > 0 && written < bytesToWrite && bytesToWrite > 0){
+    if (ars.second.second > 0 && bytesToWrite > 0){
         ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.second.second);
         buffer->read((char*)ars.second.first, (std::streamsize)toWrite);
         written += toWrite;
@@ -360,7 +334,7 @@ T *RingBuffer<T>::getContiguousReadBuffer() {
 
 template<typename T>
 bool RingBuffer<T>::setBytesWritten(ssize_t bytesWritten) {
-    if (_count + bytesWritten > _buffSize || !isEmpty()){
+    if (_count + bytesWritten > _buffSize){
         return false;
     }
 
