@@ -2,25 +2,24 @@
 // Created by Dusan Klinec on 30.12.17.
 //
 
+#include <stdexcept>
 #include "EncTools.h"
 #include "GenericAES.h"
 #include "WBAESGenerator.h"
+#include "RingBuffer.h"
 
-void EncTools::processData(bool decrypt, istream &inf, ofstream * out, ExtEncoding * coding,
+void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generator,
+                           istream * inf, ostream * out, ExtEncoding * coding, bool padding,
                            time_t *cacc, clock_t * pacc)
 {
-    GenericAES defAES;
-    defAES.init(0x11B, 0x03);
-
-    WBAESGenerator generator;
-    auto * genAES = new WBAES;
-
     // read the file
     const int buffSize       = 4096;
     const long int iters     = buffSize / N_BYTES;
+    const unique_ptr<RingBuffer<BYTE>> buffer = unique_ptr<RingBuffer<BYTE>>(new RingBuffer<BYTE>(buffSize + N_BYTES));
+
     unsigned long long blockCount = 0;
-    auto * memblock          = new char[buffSize];
     char blockbuff[N_BYTES];
+    bool paddingOk = true;
 
     // time measurement of just the cipher operation
     time_t cstart=0, cend=0;
@@ -34,43 +33,60 @@ void EncTools::processData(bool decrypt, istream &inf, ofstream * out, ExtEncodi
     }
 
     // measure the time here
+    bool eof = false;
     do {
-        streamsize bRead;
-
         // read data from the file to the buffer
-        inf.read(memblock, buffSize);
-        bRead = inf.gcount();
-        if (inf.bad()) {
+        streamsize bRead = buffer->write(inf, buffSize);
+        streamsize bufferSize = buffer->getBytesAvailable();
+        eof = inf->eof();
+        if (inf->bad()) {
             break;
         }
 
         // here we have data in the buffer - lets encrypt them
         W128b state{};
-        long int iter2comp = min(iters, (long int) ceil((float)bRead / N_BYTES));
+        auto blocks = (float)bufferSize / N_BYTES;
+        auto blocks_rounded = (long int) (eof ? ceil(blocks) : floor(blocks));
+        auto iter2comp = min(iters, blocks_rounded);
+
+        // Padding not enabled but input data is not block aligned - exception.
+        if (eof && (!padding || decrypt) && (long int)blocks != blocks_rounded){
+            throw std::invalid_argument("Error: Padding not enabled, input data not block aligned");
+        }
+
+        // Add PKCS5 padding bytes to the buffer so we are block aligned
+        if (eof && padding && !decrypt){
+            auto missingBytes = blocks_rounded * N_BYTES - bufferSize;
+            assert(missingBytes > 0 && missingBytes <= 16 && "Padding size is invalid");
+            memset(blockbuff, (char)missingBytes, (size_t)missingBytes);
+            buffer->read((BYTE*)blockbuff, (size_t)missingBytes);
+        }
 
         for(int k = 0; k < iter2comp; k++, blockCount++){
-            arr_to_W128b(memblock, k * 16UL, state);
+            buffer->read((BYTE*)blockbuff, 16);
+            arr_to_W128b(blockbuff, k * 16UL, state);
 
             if (cacc) {
                 time(&cstart);
             }
+
             if(pacc) {
                 pstart = clock();
             }
 
             // encryption
-            if (coding) {
-                generator.applyExternalEnc(state, coding, true);
+            if (coding && generator) {
+                generator->applyExternalEnc(state, coding, true);
             }
 
             if (decrypt){
-                genAES->decrypt(state);
+                wbaes->decrypt(state);
             } else {
-                genAES->encrypt(state);
+                wbaes->encrypt(state);
             }
 
-            if (coding) {
-                generator.applyExternalEnc(state, coding, false);
+            if (coding && generator) {
+                generator->applyExternalEnc(state, coding, false);
             }
 
             if (pacc) {
@@ -83,24 +99,40 @@ void EncTools::processData(bool decrypt, istream &inf, ofstream * out, ExtEncodi
                 *cacc += (cend - cstart);
             }
 
-            // if wanted, store to file
+            // result of the cipher operation
             if (out){
                 W128b_to_arr(blockbuff, 0, state);
-                out->write(blockbuff, N_BYTES);
+                ssize_t writeBytes = N_BYTES;
+
+                // If is the last decryption block with the padding - remove the padding.
+                if (decrypt && padding && eof && k + 1 < iter2comp){
+                    char paddingVal = blockbuff[N_BYTES - 1];
+                    if (paddingVal <= 0 || paddingVal > N_BYTES){
+                        paddingOk = false;
+                    }
+
+                    for(int px = N_BYTES - paddingVal; paddingOk && px < N_BYTES; ++px){
+                        paddingOk &= blockbuff[px] == paddingVal;
+                    }
+
+                    if (paddingOk){
+                        writeBytes -= paddingVal;
+                    }
+                }
+
+                if (writeBytes > 0) {
+                    out->write(blockbuff, (size_t)writeBytes);
+                }
             }
         }
 
-        if (inf.eof()){
-            break;
-        }
-
-    } while(true);
+    } while(!eof);
 
     if (out){
         out->flush();
     }
 
-    // free allocated memory
-    delete genAES;
-    delete[] memblock;
+    if (!paddingOk){
+        throw std::invalid_argument("Padding is not OK");
+    }
 }

@@ -19,8 +19,10 @@ public:
      * @param cacc [in,out, optional] time_t time accumulator
      * @param pacc [in,out, optional] clock_t time accumulator
      */
-    static void processData(bool decrypt, istream &inf, ofstream * out, ExtEncoding * coding,
-                            time_t *cacc, clock_t * pacc);
+    static void processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generator,
+                            istream * inf, ostream * out,
+                            ExtEncoding * coding = nullptr, bool padding = false,
+                            time_t *cacc = nullptr, clock_t * pacc = nullptr);
 };
 
 
