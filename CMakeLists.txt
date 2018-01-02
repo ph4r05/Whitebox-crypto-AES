@@ -77,7 +77,7 @@ find_package(Boost REQUIRED COMPONENTS program_options serialization iostreams r
 include_directories(${Boost_INCLUDE_DIRS})
 
 # We need thread support
-find_package(Threads REQUIRED)
+#find_package(Threads REQUIRED)
 
 # Enable ExternalProject CMake module
 include(ExternalProject)
