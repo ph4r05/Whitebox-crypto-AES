@@ -87,3 +87,28 @@ TEST_F(EncToolsTest, EncDecPadding)
     EXPECT_TRUE(memcmp(io1.get()->getBuffer(), io3.get()->getBuffer(), size + 2) == 0);
 }
 
+TEST_F(EncToolsTest, EncDecPaddingCbcZeroIv)
+{
+    io1->write((BYTE*)"XX", 2);
+    EncTools::processData(false, wbaes.get(), generator.get(), io1.get(), io2.get(), coding.get(), true, true, nullptr, nullptr, nullptr);
+    EXPECT_EQ(io2->getPos(), size + 16);
+
+    EncTools::processData(true, wbaes.get(), generator.get(), io2.get(), io3.get(), coding.get(), true, true, nullptr, nullptr, nullptr);
+    EXPECT_TRUE(memcmp(io1.get()->getBuffer(), io3.get()->getBuffer(), size + 2) == 0);
+}
+
+TEST_F(EncToolsTest, EncDecPaddingCbcIv)
+{
+    BYTE iv[N_BYTES];
+    for(int i = 0; i < N_BYTES; i++){
+        iv[i] = (BYTE) i;
+    }
+
+    io1->write((BYTE*)"XX", 2);
+    EncTools::processData(false, wbaes.get(), generator.get(), io1.get(), io2.get(), coding.get(), true, true, iv, nullptr, nullptr);
+    EXPECT_EQ(io2->getPos(), size + 16);
+
+    EncTools::processData(true, wbaes.get(), generator.get(), io2.get(), io3.get(), coding.get(), true, true, iv, nullptr, nullptr);
+    EXPECT_TRUE(memcmp(io1.get()->getBuffer(), io3.get()->getBuffer(), size + 2) == 0);
+}
+

@@ -24,6 +24,26 @@ public:
                             InputObject<BYTE> * inf, InputObject<BYTE> * out,
                             ExtEncoding * coding = nullptr, bool padding = false, bool cbc = false, BYTE * iv = nullptr,
                             time_t *cacc = nullptr, clock_t * pacc = nullptr);
+
+    /**
+     * Simple IV xor
+     * @param buffer
+     * @param iv
+     */
+    static void xorIv(BYTE * buffer, const BYTE * iv){
+        for(int ividx=0; ividx < N_BYTES; ++ividx){
+            buffer[ividx] ^= iv[ividx];
+        }
+    }
+
+    /**
+     * Simple AES block copy
+     * @param dstBlock
+     * @param srcBlock
+     */
+    static void copyBlock(BYTE * dstBlock, const BYTE * srcBlock){
+        memcpy(dstBlock, srcBlock, N_BYTES);
+    }
 };
 
 

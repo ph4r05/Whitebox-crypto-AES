@@ -71,11 +71,14 @@ int tryMain(int argc, const char * argv[]) {
 	bool randomKey=false;
 	bool decrypt=false;
 	bool pkcs5Padding=false;
+	bool cbc=false;
 	std::string outFile;
 	std::string outTables;
 	std::string inTables;
 	std::string aesKey;
+	std::string cbcIv;
 	unsigned char keyFromString[AES_BYTES];
+	unsigned char ivFromString[N_BYTES] = {0};
 	unsigned char * keyToUse = GenericAES::testVect128_key;
 
 	GF2X defaultModulus = GF2XFromLong(0x11B, 9);
@@ -93,9 +96,11 @@ int tryMain(int argc, const char * argv[]) {
 		("create-table",   po::value<std::string>(),                                       "Create encryption/decryption tables")
 		("create-random",  po::value<bool>()->default_value(false)->implicit_value(false), "Create tables with random key")
 		("use-key",        po::value<std::string>(),                                       "Create encryption/decryption with given hex-coded key")
+		("use-iv",         po::value<std::string>(),                                       "Use CBC with given hex-coded IV")
 		("load-tables",    po::value<std::string>(),                                       "Loads encryption/decryption tables from given file")
 		("decrypt",        po::value<bool>()->default_value(false)->implicit_value(false), "Should perform encryption or decryption")
 		("pkcs5",          po::value<bool>()->default_value(false)->implicit_value(false), "Enables PKCS5 padding")
+		("cbc",            po::value<bool>()->default_value(false)->implicit_value(false), "Uses CBC mode")
 		("version,v",                                                                      "Display the version number");
 
 
@@ -140,6 +145,18 @@ int tryMain(int argc, const char * argv[]) {
 		keyToUse = keyFromString;
 	}
 
+	if (vm.count("use-iv")){
+		cbcIv = vm["use-iv"].as<std::string>();
+		size_t bytes = hexstr2bin(cbcIv, (char*)ivFromString, N_BYTES);
+
+		if (bytes != N_BYTES){
+			std::cerr << "Invalid AES IV size, expected " << N_BYTES << " bytes" << std::endl;
+			return -1;
+		}
+
+		keyToUse = keyFromString;
+	}
+
 	// use random key?
 	randomKey = vm["create-random"].as<bool>();
 	if (randomKey){
@@ -160,6 +177,7 @@ int tryMain(int argc, const char * argv[]) {
     useExternal = vm["extEnc"].as<bool>();
     decrypt = vm["decrypt"].as<bool>();
     pkcs5Padding = vm["pkcs5"].as<bool>();
+	cbc = vm["cbc"].as<bool>();
 
     //
     // AES generator benchmark
@@ -339,6 +357,7 @@ int tryMain(int argc, const char * argv[]) {
 		// open the given file
 		std::string fileName = files[0];
 		cout << "Going to " << (decrypt ? "decrypt":"encrypt") << " file ["<<fileName<<"] with WBAES" << endl;
+		cout << "PKCS5 padding: " << pkcs5Padding << " CBC: " << cbc;
 
 		bool writeOut = !outFile.empty();
 		ofstream out;
@@ -359,7 +378,7 @@ int tryMain(int argc, const char * argv[]) {
         time_t cacc=0;
         clock_t pacc = 0;
         EncTools::processData(decrypt, genAES, &generator, &iois, writeOut ? &ioos : nullptr, &coding, pkcs5Padding,
-                              false, nullptr, &cacc, &pacc);
+                              cbc, ivFromString, &cacc, &pacc);
 
 		time(&end);
 		time_t total = end-start;

@@ -20,8 +20,14 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
 
     unsigned long long blockCount = 0;
     char blockbuff[N_BYTES];
-    char prevBlock[N_BYTES];
+    char blockBuffOut[N_BYTES];
+    char prevBlock[N_BYTES] = {0};
     bool paddingOk = true;
+
+    // IV cbc decryption init
+    if (cbc){
+        iv ? memcpy(prevBlock, iv, N_BYTES) : memset(prevBlock, 0, N_BYTES);
+    }
 
     // time measurement of just the cipher operation
     time_t cstart=0, cend=0;
@@ -68,6 +74,12 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
 
         for(int k = 0; k < iter2comp; k++, blockCount++){
             buffer->read((BYTE*)blockbuff, 16);
+
+            // CBC xor for encryption
+            if (cbc && !decrypt){
+                EncTools::xorIv((BYTE*)blockbuff, (BYTE*)prevBlock);
+            }
+
             arr_to_W128b(blockbuff, 0, state);
 
             if (cacc) {
@@ -104,29 +116,36 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
             }
 
             // result of the cipher operation
-            if (out){
-                W128b_to_arr(blockbuff, 0, state);
-                ssize_t writeBytes = N_BYTES;
+            W128b_to_arr(blockBuffOut, 0, state);
+            ssize_t writeBytes = N_BYTES;
 
-                // If is the last decryption block with the padding - remove the padding.
-                if (decrypt && padding && eof && k + 1 >= iter2comp){
-                    char paddingVal = blockbuff[N_BYTES - 1];
-                    if (paddingVal <= 0 || paddingVal > N_BYTES){
-                        paddingOk = false;
-                    }
+            // Decrypt CBC
+            if (cbc && decrypt){
+                EncTools::xorIv((BYTE*)blockBuffOut, (BYTE*)prevBlock);
+                EncTools::copyBlock((BYTE*)prevBlock, (BYTE*)blockbuff);
+            }
+            if (cbc && !decrypt){
+                EncTools::copyBlock((BYTE*)prevBlock, (BYTE*)blockBuffOut);
+            }
 
-                    for(int px = N_BYTES - paddingVal; paddingOk && px < N_BYTES; ++px){
-                        paddingOk &= blockbuff[px] == paddingVal;
-                    }
-
-                    if (paddingOk){
-                        writeBytes -= paddingVal;
-                    }
+            // If is the last decryption block with the padding - remove the padding.
+            if (decrypt && padding && eof && k + 1 >= iter2comp){
+                char paddingVal = blockBuffOut[N_BYTES - 1];
+                if (paddingVal <= 0 || paddingVal > N_BYTES){
+                    paddingOk = false;
                 }
 
-                if (writeBytes > 0) {
-                    out->write((BYTE*)blockbuff, (size_t)writeBytes);
+                for(int px = N_BYTES - paddingVal; paddingOk && px < N_BYTES; ++px){
+                    paddingOk &= blockBuffOut[px] == paddingVal;
                 }
+
+                if (paddingOk){
+                    writeBytes -= paddingVal;
+                }
+            }
+
+            if (out && writeBytes > 0) {
+                out->write((BYTE*)blockBuffOut, (size_t)writeBytes);
             }
         }
 
