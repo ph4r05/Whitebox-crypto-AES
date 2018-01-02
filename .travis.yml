@@ -4,11 +4,6 @@ language: cpp
 # Use container based infrastructure for Travis
 sudo: false
 
-# Test against both compilers
-compiler:
-  - clang
-  - gcc
-
 cache:
   directories:
   - $HOME/ntl
