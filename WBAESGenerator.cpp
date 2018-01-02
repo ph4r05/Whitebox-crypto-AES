@@ -968,6 +968,19 @@ void WBAESGenerator::applyExternalEnc(W128b& state, ExtEncoding * extc, bool inp
 	}
 }
 
+void WBAESGenerator::applyExternalEnc(BYTE * state, ExtEncoding * extc, bool input){
+    if (state == nullptr || extc == nullptr){
+        return;
+    }
+
+    W128b aesState{};
+    BYTE blockbuff[N_BYTES];
+
+    arr_to_W128b((BYTE*)blockbuff, 0, aesState);
+    applyExternalEnc(aesState, extc, input);
+    W128b_to_arr((char*)state, 0, aesState);
+}
+
 int WBAESGenerator::testComputedVectors(bool coutOutput, WBAES * genAES, ExtEncoding * extc){
 	int i, err=0;
 

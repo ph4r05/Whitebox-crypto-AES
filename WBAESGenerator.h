@@ -528,6 +528,7 @@ public:
 	//
 	// Applies external encoding - after this, state can be passed to WB AES using this external encoding
 	void applyExternalEnc(W128b& state, ExtEncoding * extc, bool input);
+	void applyExternalEnc(BYTE* state, ExtEncoding * extc, bool input);
 
 	//
 	// Raw method for generating random bijections
