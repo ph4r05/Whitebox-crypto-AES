@@ -9,6 +9,7 @@
 #include <fstream>
 #include <iosfwd>
 #include <ios>
+#include "InputObject.h"
 #include <boost/circular_buffer.hpp>
 
 template<typename T>
@@ -52,7 +53,7 @@ public:
      * @return number of bytes written to the buffer
      */
     ssize_t read(T * buffer, size_t maxLength);
-    ssize_t read(std::ostream * buffer, ssize_t maxLength);
+    ssize_t read(InputObject<T> * buffer, ssize_t maxLength);
 
     /**
      * Write data to the circular buffer from the provided buffer
@@ -62,7 +63,7 @@ public:
      * @return number of bytes read from the buffer
      */
     ssize_t write(T const *buffer, size_t maxLength);
-    ssize_t write(std::istream *buffer, size_t maxLength);
+    ssize_t write(InputObject<T> *buffer, size_t maxLength);
 
     /**
     * If ring buffer is empty, resets writing target to the beginning of the buffer
@@ -194,7 +195,7 @@ ssize_t RingBuffer<T>::read(T *buffer, size_t maxLength) {
 }
 
 template<typename T>
-ssize_t RingBuffer<T>::read(std::ostream * buffer, ssize_t maxLength) {
+ssize_t RingBuffer<T>::read(InputObject<T> * buffer, ssize_t maxLength) {
     if (_count == 0){
         return 0;
     }
@@ -205,16 +206,16 @@ ssize_t RingBuffer<T>::read(std::ostream * buffer, ssize_t maxLength) {
     // Number of bytes that can be read in this call.
     ssize_t bytesToRead = maxLength < 0 ? _count : std::min(_count, static_cast<size_t>(maxLength));
 
-    if (ars.first.second > 0 && bytesToRead > 0 && buffer->good()){
+    if (ars.first.second > 0 && bytesToRead > 0 && buffer->isGood()){
         ssize_t toRead = std::min(bytesToRead, (ssize_t)ars.first.second);
-        buffer->write((char*)ars.first.first, (std::streamsize)toRead);
+        buffer->write((const T*)ars.first.first, (size_t)toRead);
         read += toRead;
         bytesToRead -= toRead;
     }
 
-    if (ars.second.second > 0 && bytesToRead > 0 && buffer->good()){
+    if (ars.second.second > 0 && bytesToRead > 0 && buffer->isGood()){
         ssize_t toRead = std::min(bytesToRead, (ssize_t)ars.first.second);
-        buffer->write((char*)ars.second.first, (std::streamsize)toRead);
+        buffer->write((const T*)ars.second.first, (size_t)toRead);
         read += toRead;
     }
     setBytesRead(read);
@@ -253,7 +254,7 @@ ssize_t RingBuffer<T>::write(T const *buffer, size_t maxLength) {
 }
 
 template<typename T>
-ssize_t RingBuffer<T>::write(std::istream *buffer, size_t maxLength) {
+ssize_t RingBuffer<T>::write(InputObject<T> *buffer, size_t maxLength) {
     if (isFull()){
         return 0;
     }
@@ -264,16 +265,16 @@ ssize_t RingBuffer<T>::write(std::istream *buffer, size_t maxLength) {
     // Number of bytes that will be written in this call.
     ssize_t bytesToWrite = maxLength < 0 ? getSpaceAvailable() : std::min(getSpaceAvailable(), maxLength);
 
-    if (ars.first.second > 0 && bytesToWrite > 0 && buffer->good()){
+    if (ars.first.second > 0 && bytesToWrite > 0 && buffer->isGood()){
         ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.first.second);
-        buffer->read((char*)ars.first.first, (std::streamsize)toWrite);
+        buffer->read((T*)ars.first.first, (size_t)toWrite);
         written += toWrite;
         bytesToWrite -= toWrite;
     }
 
-    if (ars.second.second > 0 && bytesToWrite > 0 && buffer->good()){
+    if (ars.second.second > 0 && bytesToWrite > 0 && buffer->isGood()){
         ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.second.second);
-        buffer->read((char*)ars.second.first, (std::streamsize)toWrite);
+        buffer->read((T*)ars.second.first, (size_t)toWrite);
         written += toWrite;
         bytesToWrite -= toWrite;
     }

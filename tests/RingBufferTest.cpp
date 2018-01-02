@@ -5,6 +5,8 @@
 #include <gtest/gtest.h>
 #include <sstream>
 #include "../RingBuffer.h"
+#include "../InputObject.h"
+#include "../InputObjectBuffer.h"
 #include "Commons.h"
 
 using namespace std;
@@ -69,15 +71,15 @@ TEST_F(RingBufferTest, BasicReadWrite)
 
 TEST_F(RingBufferTest, BasicStreamReadWrite)
 {
-    std::stringstream ss;
-    ss.write(reinterpret_cast<const char *>(bbuf1), 16);
-    ss.write(reinterpret_cast<const char *>(bbuf1), 16);
+    InputObjectBuffer<BYTE> iob(1024);
+    iob.write(reinterpret_cast<const BYTE *>(bbuf1), 16);
+    iob.write(reinterpret_cast<const BYTE *>(bbuf1), 16);
 
-    EXPECT_EQ(buffer->write(&ss, 10), 10);
-    EXPECT_EQ(buffer->write(&ss, 10), size - 10);
+    EXPECT_EQ(buffer->write(&iob, 10), 10);
+    EXPECT_EQ(buffer->write(&iob, 10), size - 10);
     EXPECT_TRUE(buffer->isFull());
     EXPECT_FALSE(buffer->isEmpty());
 
-    EXPECT_EQ(buffer->read(&ss, 1), 1);
-    EXPECT_EQ(buffer->read(&ss, 99), size - 1);
+    EXPECT_EQ(buffer->read(&iob, 1), 1);
+    EXPECT_EQ(buffer->read(&iob, 99), size - 1);
 }

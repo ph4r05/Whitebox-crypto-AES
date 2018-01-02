@@ -29,6 +29,16 @@ set(SOURCE_FILES
     RingBuffer.cpp
     EncTools.cpp
     EncTools.h
+    InputObject.cpp
+    InputObject.h
+    InputObjectBuffer.cpp
+    InputObjectBuffer.h
+    InputObjectIstream.cpp
+    InputObjectIstream.h
+    InputObjectOstream.cpp
+    InputObjectOstream.h
+    InputObjectIOstream.cpp
+    InputObjectIOstream.h
 )
 
 set(TEST_SOURCE_FILES
