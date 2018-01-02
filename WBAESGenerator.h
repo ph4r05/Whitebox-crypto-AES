@@ -537,7 +537,7 @@ public:
 	int generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject, bool identity=false);
  	
 	// test whitebox implementation with test vectors
-	int testWithVectors(bool coutOutput, WBAES * genAES);
+	int testWithVectors(bool coutOutput, WBAES * genAES, int extCodingFlags = 0);
 	int testComputedVectors(bool coutOutput, WBAES * genAES, ExtEncoding * extc);
 
 	inline void BYTEArr_to_vec_GF2E(const BYTE * arr, size_t len, NTL::vec_GF2E& dst){

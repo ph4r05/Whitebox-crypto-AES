@@ -890,13 +890,13 @@ int WBAESGenerator::generate8X8Bijection(BIJECT8X8 *biject, BIJECT8X8 *invBiject
 	}
 }
 
-int WBAESGenerator::testWithVectors(bool coutOutput, WBAES * genAES){
+int WBAESGenerator::testWithVectors(bool coutOutput, WBAES * genAES, int extCodingFlags){
 	// generate table implementation for given key
 	ExtEncoding extc;
 
 	//
 	// Demonstrate also use of external encodings in practice
-	generateExtEncoding(&extc,0); //WBAESGEN_EXTGEN_fCID | WBAESGEN_EXTGEN_lCID |  WBAESGEN_EXTGEN_IDMID|   WBAESGEN_EXTGEN_lCID  WBAESGEN_EXTGEN_ODMID
+	generateExtEncoding(&extc, extCodingFlags);
 	if (coutOutput){
 		cout << "Generating table implementation for testvector key: " << endl;
 		dumpVectorT(GenericAES::testVect128_key, 16);
