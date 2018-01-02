@@ -312,6 +312,7 @@ void WBAESGenerator::generateExtEncoding(ExtEncoding * extc, int flags){
 			ident(extc->IODM[k].inv, 128);
 		}
 	}
+	extc->flags = flags;
 }
 
 void WBAESGenerator::generateT1Tables(WBAES * genAES, ExtEncoding * extc, bool encrypt){
