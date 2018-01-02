@@ -46,6 +46,7 @@ set(TEST_SOURCE_FILES
         tests/Commons.cpp
         tests/Commons.h
         tests/RingBufferTest.cpp
+        tests/EncToolsTest.cpp
 )
 
 add_executable(main ${SOURCE_FILES} main.cpp)

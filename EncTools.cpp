@@ -9,7 +9,8 @@
 #include "RingBuffer.h"
 
 void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generator,
-                           istream * inf, ostream * out, ExtEncoding * coding, bool padding,
+                           InputObject<BYTE> * inf, InputObject<BYTE> * out,
+                           ExtEncoding * coding, bool padding, bool cbc, BYTE * iv,
                            time_t *cacc, clock_t * pacc)
 {
     // read the file
@@ -19,6 +20,7 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
 
     unsigned long long blockCount = 0;
     char blockbuff[N_BYTES];
+    char prevBlock[N_BYTES];
     bool paddingOk = true;
 
     // time measurement of just the cipher operation
@@ -39,7 +41,7 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
         streamsize bRead = buffer->write(inf, buffSize);
         streamsize bufferSize = buffer->getBytesAvailable();
         eof = inf->eof();
-        if (inf->bad()) {
+        if (!eof && !inf->isGood()) {
             break;
         }
 
@@ -56,15 +58,16 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
 
         // Add PKCS5 padding bytes to the buffer so we are block aligned
         if (eof && padding && !decrypt){
-            auto missingBytes = blocks_rounded * N_BYTES - bufferSize;
+            auto missingBytes = bufferSize == 0 ? N_BYTES : (blocks_rounded * N_BYTES - bufferSize);
             assert(missingBytes > 0 && missingBytes <= 16 && "Padding size is invalid");
             memset(blockbuff, (char)missingBytes, (size_t)missingBytes);
-            buffer->read((BYTE*)blockbuff, (size_t)missingBytes);
+            buffer->write((BYTE*)blockbuff, (size_t)missingBytes);
+            iter2comp += bufferSize == 0 ? 1 : 0;
         }
 
         for(int k = 0; k < iter2comp; k++, blockCount++){
             buffer->read((BYTE*)blockbuff, 16);
-            arr_to_W128b(blockbuff, k * 16UL, state);
+            arr_to_W128b(blockbuff, 0, state);
 
             if (cacc) {
                 time(&cstart);
@@ -105,7 +108,7 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
                 ssize_t writeBytes = N_BYTES;
 
                 // If is the last decryption block with the padding - remove the padding.
-                if (decrypt && padding && eof && k + 1 < iter2comp){
+                if (decrypt && padding && eof && k + 1 >= iter2comp){
                     char paddingVal = blockbuff[N_BYTES - 1];
                     if (paddingVal <= 0 || paddingVal > N_BYTES){
                         paddingOk = false;
@@ -121,16 +124,12 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
                 }
 
                 if (writeBytes > 0) {
-                    out->write(blockbuff, (size_t)writeBytes);
+                    out->write((BYTE*)blockbuff, (size_t)writeBytes);
                 }
             }
         }
 
     } while(!eof);
-
-    if (out){
-        out->flush();
-    }
 
     if (!paddingOk){
         throw std::invalid_argument("Padding is not OK");

@@ -7,6 +7,7 @@
 
 
 #include "WBAESGenerator.h"
+#include "InputObject.h"
 
 class EncTools {
 public:
@@ -20,8 +21,8 @@ public:
      * @param pacc [in,out, optional] clock_t time accumulator
      */
     static void processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generator,
-                            istream * inf, ostream * out,
-                            ExtEncoding * coding = nullptr, bool padding = false,
+                            InputObject<BYTE> * inf, InputObject<BYTE> * out,
+                            ExtEncoding * coding = nullptr, bool padding = false, bool cbc = false, BYTE * iv = nullptr,
                             time_t *cacc = nullptr, clock_t * pacc = nullptr);
 };
 
