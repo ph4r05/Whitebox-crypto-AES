@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(Whitebox_crypto_AES)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 option(NTL_NO_DEFAULT_PATH "Using just given paths when searching for NTL" OFF)
 
 set(SOURCE_FILES
