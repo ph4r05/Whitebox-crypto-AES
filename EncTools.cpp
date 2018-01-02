@@ -23,6 +23,7 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
     char blockBuffOut[N_BYTES];
     char prevBlock[N_BYTES] = {0};
     bool paddingOk = true;
+    unsigned int paddingByte=0;
 
     // IV cbc decryption init
     if (cbc){
@@ -62,26 +63,43 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
             throw std::invalid_argument("Error: Padding not enabled, input data not block aligned");
         }
 
-        // Add PKCS5 padding bytes to the buffer so we are block aligned
-        if (eof && padding && !decrypt){
+        if (eof && coding && coding->flags != WBAESGEN_EXTGEN_ID && (long int)blocks != blocks_rounded){
+            throw std::invalid_argument("Error: External IO encodings used, input has to be block aligned (processed by external IO encoding)");
+        }
+
+        // PKCS5 padding bytes computation so the input is block aligned
+        if (eof && padding && !decrypt && coding->flags == WBAESGEN_EXTGEN_ID){
             auto missingBytes = (blocks_rounded * N_BYTES - bufferSize);
-            auto paddingByte = missingBytes == 0 ? 16 : missingBytes;
-            assert(paddingByte > 0 && paddingByte <= 16 && "Padding size is invalid");
-            memset(blockbuff, (char)paddingByte, (size_t)paddingByte);
-            buffer->write((BYTE*)blockbuff, (size_t)paddingByte);
+            paddingByte = static_cast<unsigned int>(missingBytes == 0 ? N_BYTES : missingBytes);
+            assert(paddingByte > 0 && paddingByte <= N_BYTES && "Padding size is invalid");
             iter2comp += missingBytes == 0 ? 1 : 0;
         }
 
         for(int k = 0; k < iter2comp; k++, blockCount++){
-            buffer->read((BYTE*)blockbuff, 16);
+            // Read 1 AES block from the ring buffer.
+            ssize_t bytesRead = buffer->read((BYTE*)blockbuff, N_BYTES);
+
+            // Pad to 16 bytes before IO encodings - may happen for the last block
+            if (bytesRead >= 0 && bytesRead != N_BYTES){
+                memset(blockbuff + bytesRead, 0, static_cast<size_t>(N_BYTES - bytesRead));
+            }
+
+            // strip IO encodings before processing further.
+            if (coding && generator && coding->flags != WBAESGEN_EXTGEN_ID) {
+                generator->applyExternalEnc((BYTE*)blockbuff, coding, true);
+            }
+
+            // Encryption padding
+            if (eof && padding && !decrypt && k + 1 >= iter2comp) {
+                memset(blockbuff + 16 - paddingByte, (char) paddingByte, (size_t) paddingByte);
+            }
 
             // CBC xor for encryption
             if (cbc && !decrypt){
                 EncTools::xorIv((BYTE*)blockbuff, (BYTE*)prevBlock);
             }
 
-            arr_to_W128b(blockbuff, 0, state);
-
+            // Timing - core cipher
             if (cacc) {
                 time(&cstart);
             }
@@ -90,21 +108,16 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
                 pstart = clock();
             }
 
-            // encryption
-            if (coding && generator) {
-                generator->applyExternalEnc(state, coding, true);
-            }
-
+            // Cipher main operation
+            arr_to_W128b(blockbuff, 0, state);
             if (decrypt){
                 wbaes->decrypt(state);
             } else {
                 wbaes->encrypt(state);
             }
+            W128b_to_arr(blockBuffOut, 0, state);
 
-            if (coding && generator) {
-                generator->applyExternalEnc(state, coding, false);
-            }
-
+            // Timing - core cipher
             if (pacc) {
                 pend = clock();
                 *pacc += (pend - pstart);
@@ -116,7 +129,6 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
             }
 
             // result of the cipher operation
-            W128b_to_arr(blockBuffOut, 0, state);
             ssize_t writeBytes = N_BYTES;
 
             // Decrypt CBC
@@ -129,7 +141,8 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
             }
 
             // If is the last decryption block with the padding - remove the padding.
-            if (decrypt && padding && eof && k + 1 >= iter2comp){
+            // If IO encodings are used padding cannot be stripped
+            if (decrypt && padding && eof && k + 1 >= iter2comp && coding->flags == WBAESGEN_EXTGEN_ID){
                 char paddingVal = blockBuffOut[N_BYTES - 1];
                 if (paddingVal <= 0 || paddingVal > N_BYTES){
                     paddingOk = false;
@@ -142,6 +155,11 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
                 if (paddingOk){
                     writeBytes -= paddingVal;
                 }
+            }
+
+            // add IO encodings before output.
+            if (coding && generator && coding->flags != WBAESGEN_EXTGEN_ID) {
+                generator->applyExternalEnc((BYTE*)blockBuffOut, coding, false);
             }
 
             if (out && writeBytes > 0) {
