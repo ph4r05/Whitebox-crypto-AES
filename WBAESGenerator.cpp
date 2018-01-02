@@ -974,9 +974,8 @@ void WBAESGenerator::applyExternalEnc(BYTE * state, ExtEncoding * extc, bool inp
     }
 
     W128b aesState{};
-    BYTE blockbuff[N_BYTES];
 
-    arr_to_W128b((BYTE*)blockbuff, 0, aesState);
+    arr_to_W128b(state, 0, aesState);
     applyExternalEnc(aesState, extc, input);
     W128b_to_arr((char*)state, 0, aesState);
 }
