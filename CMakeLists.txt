@@ -125,5 +125,5 @@ include_directories(
 # Linking
 target_link_libraries(main ${NTL_LIB} ${Boost_LIBRARIES})
 target_link_libraries(testing ${NTL_LIB} ${Boost_LIBRARIES})
-target_link_libraries(gtesting ${NTL_LIB} ${Boost_LIBRARIES} libgtest libgmock)
+target_link_libraries(gtesting ${NTL_LIB} ${Boost_LIBRARIES} libgtest libgmock ${CMAKE_THREAD_LIBS_INIT})
 
