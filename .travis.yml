@@ -27,10 +27,10 @@ addons:
     - autoconf
     - cmake
     - cmake-data
-    - libboost-program-options1.66-dev
-    - libboost-serialization1.66-dev
-    - libboost-iostreams1.66-dev
-    - libboost-random1.66-dev
+    - libboost-program-options1.55-dev
+    - libboost-serialization1.55-dev
+    - libboost-iostreams1.55-dev
+    - libboost-random1.55-dev
   coverity_scan:
       project:
         name: "ph4r05/Whitebox-crypto-AES"
@@ -89,10 +89,10 @@ matrix:
             - autoconf
             - cmake
             - cmake-data
-            - libboost-program-options1.66-dev
-            - libboost-serialization1.66-dev
-            - libboost-iostreams1.66-dev
-            - libboost-random1.66-dev
+            - libboost-program-options1.55-dev
+            - libboost-serialization1.55-dev
+            - libboost-iostreams1.55-dev
+            - libboost-random1.55-dev
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
