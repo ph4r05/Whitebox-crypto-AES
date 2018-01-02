@@ -58,11 +58,12 @@ void EncTools::processData(bool decrypt, WBAES * wbaes, WBAESGenerator * generat
 
         // Add PKCS5 padding bytes to the buffer so we are block aligned
         if (eof && padding && !decrypt){
-            auto missingBytes = bufferSize == 0 ? N_BYTES : (blocks_rounded * N_BYTES - bufferSize);
-            assert(missingBytes > 0 && missingBytes <= 16 && "Padding size is invalid");
-            memset(blockbuff, (char)missingBytes, (size_t)missingBytes);
-            buffer->write((BYTE*)blockbuff, (size_t)missingBytes);
-            iter2comp += bufferSize == 0 ? 1 : 0;
+            auto missingBytes = (blocks_rounded * N_BYTES - bufferSize);
+            auto paddingByte = missingBytes == 0 ? 16 : missingBytes;
+            assert(paddingByte > 0 && paddingByte <= 16 && "Padding size is invalid");
+            memset(blockbuff, (char)paddingByte, (size_t)paddingByte);
+            buffer->write((BYTE*)blockbuff, (size_t)paddingByte);
+            iter2comp += missingBytes == 0 ? 1 : 0;
         }
 
         for(int k = 0; k < iter2comp; k++, blockCount++){
