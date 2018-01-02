@@ -9,7 +9,6 @@ set(SOURCE_FILES
     base.cpp
     BGEAttack.cpp
     BGEAttack.h
-    BGEAttack_test.cpp
     GenericAES.cpp
     GenericAES.h
     LinearAffineEq.cpp
