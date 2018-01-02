@@ -140,3 +140,4 @@ script:
   - ls -las $HOME/ntl
   - bash build.sh
   - ls -las
+  - ls -las tests
