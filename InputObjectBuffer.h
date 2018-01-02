@@ -26,6 +26,11 @@ public:
         return this->pos;
     }
 
+    void clear(){
+        start = 0;
+        pos = 0;
+    }
+
 protected:
     size_t size;
     size_t start=0;
@@ -66,7 +71,7 @@ ssize_t InputObjectBuffer<T>::read(T *buffer, size_t maxSize) {
 
 template<typename T>
 bool InputObjectBuffer<T>::eof() {
-    return pos == 0;
+    return start >= pos;
 }
 
 template<typename T>
