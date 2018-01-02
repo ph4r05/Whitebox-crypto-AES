@@ -140,4 +140,8 @@ script:
   - ls -las $HOME/ntl
   - bash build.sh
   - ls -las
-  - ls -las tests
+  - ./gtesting
+  - ./main --create-table /tmp/aes-table --extEnc=0
+  - ./main --load-tables /tmp/aes-table --extEnc=0 --input-files /tmp/aes-table --pkcs5=1 --cbc=1 -o /tmp/aes-table.enc
+  - ./main --load-tables /tmp/aes-table --extEnc=0 --input-files /tmp/aes-table.enc --pkcs5=1 -o /tmp/aes-table.dec --decrypt=1
+  - diff /tmp/aes-table /tmp/aes-table.dec
