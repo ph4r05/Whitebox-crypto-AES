@@ -205,14 +205,14 @@ ssize_t RingBuffer<T>::read(std::ostream * buffer, ssize_t maxLength) {
     // Number of bytes that can be read in this call.
     ssize_t bytesToRead = maxLength < 0 ? _count : std::min(_count, static_cast<size_t>(maxLength));
 
-    if (ars.first.second > 0 && bytesToRead > 0){
+    if (ars.first.second > 0 && bytesToRead > 0 && buffer->good()){
         ssize_t toRead = std::min(bytesToRead, (ssize_t)ars.first.second);
         buffer->write((char*)ars.first.first, (std::streamsize)toRead);
         read += toRead;
         bytesToRead -= toRead;
     }
 
-    if (ars.second.second > 0 && bytesToRead > 0){
+    if (ars.second.second > 0 && bytesToRead > 0 && buffer->good()){
         ssize_t toRead = std::min(bytesToRead, (ssize_t)ars.first.second);
         buffer->write((char*)ars.second.first, (std::streamsize)toRead);
         read += toRead;
@@ -264,14 +264,14 @@ ssize_t RingBuffer<T>::write(std::istream *buffer, size_t maxLength) {
     // Number of bytes that will be written in this call.
     ssize_t bytesToWrite = maxLength < 0 ? getSpaceAvailable() : std::min(getSpaceAvailable(), maxLength);
 
-    if (ars.first.second > 0 && bytesToWrite > 0){
+    if (ars.first.second > 0 && bytesToWrite > 0 && buffer->good()){
         ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.first.second);
         buffer->read((char*)ars.first.first, (std::streamsize)toWrite);
         written += toWrite;
         bytesToWrite -= toWrite;
     }
 
-    if (ars.second.second > 0 && bytesToWrite > 0){
+    if (ars.second.second > 0 && bytesToWrite > 0 && buffer->good()){
         ssize_t toWrite = std::min(bytesToWrite, (ssize_t)ars.second.second);
         buffer->read((char*)ars.second.first, (std::streamsize)toWrite);
         written += toWrite;
