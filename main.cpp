@@ -35,6 +35,9 @@
 #include "WBAES.h"
 #include "WBAESGenerator.h"
 #include "BGEAttack.h"
+#include "InputObjectIstream.h"
+#include "InputObjectOstream.h"
+#include "EncTools.h"
 NTL_CLIENT
 
 #include <boost/program_options/options_description.hpp>
@@ -67,6 +70,7 @@ int tryMain(int argc, const char * argv[]) {
 	int benchbge=0;
 	bool randomKey=false;
 	bool decrypt=false;
+	bool pkcs5Padding=false;
 	std::string outFile;
 	std::string outTables;
 	std::string inTables;
@@ -90,7 +94,8 @@ int tryMain(int argc, const char * argv[]) {
 		("create-random",  po::value<bool>()->default_value(false)->implicit_value(false), "Create tables with random key")
 		("use-key",        po::value<std::string>(),                                       "Create encryption/decryption with given hex-coded key")
 		("load-tables",    po::value<std::string>(),                                       "Loads encryption/decryption tables from given file")
-		("decrypt",        po::value<bool>()->default_value(false)->implicit_value(false), "Should perfom encryption or decryption")
+		("decrypt",        po::value<bool>()->default_value(false)->implicit_value(false), "Should perform encryption or decryption")
+		("pkcs5",          po::value<bool>()->default_value(false)->implicit_value(false), "Enables PKCS5 padding")
 		("version,v",                                                                      "Display the version number");
 
 
@@ -154,6 +159,7 @@ int tryMain(int argc, const char * argv[]) {
     // use external coding ?
     useExternal = vm["extEnc"].as<bool>();
     decrypt = vm["decrypt"].as<bool>();
+    pkcs5Padding = vm["pkcs5"].as<bool>();
 
     //
     // AES generator benchmark
@@ -347,80 +353,21 @@ int tryMain(int argc, const char * argv[]) {
 			exit(3);
 		}
 
-		// read the file
-		const int buffSize       = 4096;
-		const long int iters     = buffSize / N_BYTES;
-		unsigned long long blockCount = 0;
-		auto * memblock          = new char[buffSize];
-		char blockbuff[N_BYTES];
+        InputObjectIstream<BYTE> iois(&inf);
+        InputObjectOstream<BYTE> ioos(&out);
 
-		// time measurement of just the cipher operation
-		time_t cstart, cend;
-		time_t cacc=0;
+        time_t cacc=0;
+        clock_t pacc = 0;
+        EncTools::processData(decrypt, genAES, &generator, &iois, writeOut ? &ioos : nullptr, &coding, pkcs5Padding,
+                              false, nullptr, &cacc, &pacc);
 
-		clock_t pstart, pend;
-		clock_t pacc = 0;
-
-		// measure the time here
-		time(&start);
-		do {
-			streamsize bRead;
-
-			// read data from the file to the buffer
-			inf.read(memblock, buffSize);
-			bRead = inf.gcount();
-			if (inf.bad()) {
-				std::cout << "badBit. Bytes read:" << bRead << " could be read";
-				break;
-			}
-
-			// here we have data in the buffer - lets encrypt them
-			W128b state{};
-			long int iter2comp = min(iters, (long int) ceil((float)bRead / N_BYTES));
-
-			for(int k = 0; k < iter2comp; k++, blockCount++){
-				arr_to_W128b(memblock, k * 16UL, state);
-
-				// encryption
-				if (useExternal) generator.applyExternalEnc(state, &coding, true);
-
-				time(&cstart);
-				pstart = clock();
-				if (decrypt){
-					genAES->decrypt(state);
-				} else {
-					genAES->encrypt(state);
-				}
-
-				pend = clock();
-				time(&cend);
-
-				cacc += (cend - cstart);
-				pacc += (pend - pstart);
-
-				if (useExternal) generator.applyExternalEnc(state, &coding, false);
-
-				// if wanted, store to file
-				if (writeOut){
-					W128b_to_arr(blockbuff, 0, state);
-					out.write(blockbuff, N_BYTES);
-				}
-			}
-
-			if (inf.eof()){
-				cout << "Finished reading the file " << endl;
-				break;
-			}
-		} while(true);
 		time(&end);
-
 		time_t total = end-start;
 		cout << "Encryption ended in ["<<total<<"]s; Pure encryption took ["<<((float) pacc / CLOCKS_PER_SEC)
-					<<"] s (clock call); time: ["<<cacc<<"] s; encrypted ["<<blockCount<<"] blocks" << endl;
+					<<"] s (clock call); time: ["<<cacc<<"] s; " << endl;
 
 		// free allocated memory
 		delete genAES;
-		delete[] memblock;
 		// close reading file
 		inf.close();
 		// close output writing file
