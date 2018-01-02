@@ -52,7 +52,7 @@ public:
      * @return number of bytes written to the buffer
      */
     ssize_t read(T * buffer, size_t maxLength);
-    ssize_t read(std::ofstream * buffer, ssize_t maxLength);
+    ssize_t read(std::ostream * buffer, ssize_t maxLength);
 
     /**
      * Write data to the circular buffer from the provided buffer
@@ -62,7 +62,7 @@ public:
      * @return number of bytes read from the buffer
      */
     ssize_t write(T const *buffer, size_t maxLength);
-    ssize_t write(std::ifstream *buffer, size_t maxLength);
+    ssize_t write(std::istream *buffer, size_t maxLength);
 
     /**
     * If ring buffer is empty, resets writing target to the beginning of the buffer
@@ -194,7 +194,7 @@ ssize_t RingBuffer<T>::read(T *buffer, size_t maxLength) {
 }
 
 template<typename T>
-ssize_t RingBuffer<T>::read(std::ofstream * buffer, ssize_t maxLength) {
+ssize_t RingBuffer<T>::read(std::ostream * buffer, ssize_t maxLength) {
     if (_count == 0){
         return 0;
     }
@@ -253,7 +253,7 @@ ssize_t RingBuffer<T>::write(T const *buffer, size_t maxLength) {
 }
 
 template<typename T>
-ssize_t RingBuffer<T>::write(std::ifstream *buffer, size_t maxLength) {
+ssize_t RingBuffer<T>::write(std::istream *buffer, size_t maxLength) {
     if (isFull()){
         return 0;
     }
