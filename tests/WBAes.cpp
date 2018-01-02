@@ -90,7 +90,11 @@ TEST(WBAES, TestVectors)
 
     // Test WB AES with test vectors.
     // This test also demonstrates usage of external encodings by wrapping AES
-    const int errors = generator.testWithVectors(false, wbaes.get());
+    int errors = generator.testWithVectors(false, wbaes.get());
+    EXPECT_EQ(errors, 0);
+
+    // Test WB AES with test vectors - no external encoding.
+    errors = generator.testWithVectors(false, wbaes.get(), WBAESGEN_EXTGEN_ID);
     EXPECT_EQ(errors, 0);
 }
 
