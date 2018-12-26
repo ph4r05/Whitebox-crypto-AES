@@ -105,7 +105,7 @@ add_dependencies(libgtest gtest)
 
 # Set libgtest properties
 set_target_properties(libgtest PROPERTIES
-        "IMPORTED_LOCATION" "${binary_dir}/googlemock/gtest/libgtest.a"
+        "IMPORTED_LOCATION" "${binary_dir}/lib/libgtest.a"
         "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
         )
 
@@ -115,7 +115,7 @@ add_dependencies(libgmock gtest)
 
 # Set libgmock properties
 set_target_properties(libgmock PROPERTIES
-        "IMPORTED_LOCATION" "${binary_dir}/googlemock/libgmock.a"
+        "IMPORTED_LOCATION" "${binary_dir}/lib/libgmock.a"
         "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
         )
 
@@ -129,7 +129,7 @@ if(NOT MSVC)
     set(PThreadLib -pthread)
 endif()
 
-target_link_libraries(main ${NTL_LIB} ${Boost_LIBRARIES})
-target_link_libraries(testing ${NTL_LIB} ${Boost_LIBRARIES})
+target_link_libraries(main ${NTL_LIB} ${Boost_LIBRARIES} ${PThreadLib})
+target_link_libraries(testing ${NTL_LIB} ${Boost_LIBRARIES} ${PThreadLib})
 target_link_libraries(gtesting ${NTL_LIB} ${Boost_LIBRARIES} libgtest libgmock ${CMAKE_THREAD_LIBS_INIT} ${PThreadLib})
 
