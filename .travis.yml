@@ -3,6 +3,7 @@ language: cpp
 
 # Use container based infrastructure for Travis
 sudo: false
+dist: xenial
 
 cache:
   directories:
@@ -21,16 +22,15 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     - boost-latest
-    - george-edison55-precise-backports
     packages:
     - build-essential
     - autoconf
     - cmake
     - cmake-data
-    - libboost-program-options1.55-dev
-    - libboost-serialization1.55-dev
-    - libboost-iostreams1.55-dev
-    - libboost-random1.55-dev
+    - libboost-program-options1.58-dev
+    - libboost-serialization1.58-dev
+    - libboost-iostreams1.58-dev
+    - libboost-random1.58-dev
   coverity_scan:
       project:
         name: "ph4r05/Whitebox-crypto-AES"
@@ -44,86 +44,86 @@ matrix:
   include:
     # works on Precise and Trusty
     - os: linux
+      dist: xenial
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
             - boost-latest
-            - george-edison55-precise-backports
           packages:
             - g++-4.9
             - build-essential
             - autoconf
             - cmake
             - cmake-data
-            - libboost-program-options1.55-dev
-            - libboost-serialization1.55-dev
-            - libboost-iostreams1.55-dev
-            - libboost-random1.55-dev
+            - libboost-program-options1.58-dev
+            - libboost-serialization1.58-dev
+            - libboost-iostreams1.58-dev
+            - libboost-random1.58-dev
       env:
          - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
 
     # works on Precise and Trusty
     - os: linux
+      dist: xenial
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
             - boost-latest
-            - george-edison55-precise-backports
           packages:
             - g++-7
             - build-essential
             - autoconf
             - cmake
             - cmake-data
-            - libboost-program-options1.55-dev
-            - libboost-serialization1.55-dev
-            - libboost-iostreams1.55-dev
-            - libboost-random1.55-dev
+            - libboost-program-options1.58-dev
+            - libboost-serialization1.58-dev
+            - libboost-iostreams1.58-dev
+            - libboost-random1.58-dev
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
     # works on Precise and Trusty
     - os: linux
+      dist: xenial
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
             - llvm-toolchain-precise-3.6
             - boost-latest
-            - george-edison55-precise-backports
           packages:
             - clang-3.6
             - build-essential
             - autoconf
             - cmake
             - cmake-data
-            - libboost-program-options1.55-dev
-            - libboost-serialization1.55-dev
-            - libboost-iostreams1.55-dev
-            - libboost-random1.55-dev
+            - libboost-program-options1.58-dev
+            - libboost-serialization1.58-dev
+            - libboost-iostreams1.58-dev
+            - libboost-random1.58-dev
       env:
         - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
 
     # works on Trusty
     - os: linux
+      dist: xenial
       addons:
         apt:
           sources:
-            - llvm-toolchain-trusty-5.0
+            - llvm-toolchain-xenial-6.0
             - boost-latest
-            - george-edison55-precise-backports
           packages:
-            - clang-5.0
+            - clang-6.0
             - build-essential
             - autoconf
             - cmake
             - cmake-data
-            - libboost-program-options1.55-dev
-            - libboost-serialization1.55-dev
-            - libboost-iostreams1.55-dev
-            - libboost-random1.55-dev
+            - libboost-program-options1.58-dev
+            - libboost-serialization1.58-dev
+            - libboost-iostreams1.58-dev
+            - libboost-random1.58-dev
       env:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
 
