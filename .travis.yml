@@ -3,7 +3,7 @@ language: cpp
 
 # Use container based infrastructure for Travis
 sudo: false
-dist: xenial
+dist: bionic
 
 cache:
   directories:
