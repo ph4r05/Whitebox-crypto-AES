@@ -84,45 +84,31 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package( Threads )
 #find_package(Threads REQUIRED)
 
-# Enable ExternalProject CMake module
-include(ExternalProject)
-
-# Download and install GoogleTest
-ExternalProject_Add(
-        gtest
-        URL https://github.com/google/googletest/archive/master.zip
-        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/gtest
-        # Disable install step
-        INSTALL_COMMAND ""
+# CMakeLists-gtest.txt.in
+# Download and unpack googletest at configure time
+configure_file(CMakeLists-gtest.txt.in googletest-download/CMakeLists.txt)
+execute_process(COMMAND "${CMAKE_COMMAND}" -G "${CMAKE_GENERATOR}" .
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download"
+)
+execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/googletest-download"
 )
 
-# Get GTest source and binary directories from CMake project
-ExternalProject_Get_Property(gtest source_dir binary_dir)
+# Prevent GoogleTest from overriding our compiler/linker options
+# when building with Visual Studio
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
-# Create a libgtest target to be used as a dependency by test programs
-add_library(libgtest IMPORTED STATIC GLOBAL)
-add_dependencies(libgtest gtest)
+# Add googletest directly to our build. This adds the following targets:
+# gtest, gtest_main, gmock and gmock_main
+add_subdirectory("${CMAKE_BINARY_DIR}/googletest-src"
+                 "${CMAKE_BINARY_DIR}/googletest-build"
+)
 
-# Set libgtest properties
-set_target_properties(libgtest PROPERTIES
-        "IMPORTED_LOCATION" "${binary_dir}/lib/libgtest.a"
-        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-        )
-
-# Create a libgmock target to be used as a dependency by test programs
-add_library(libgmock IMPORTED STATIC GLOBAL tests/tester.cpp)
-add_dependencies(libgmock gtest)
-
-# Set libgmock properties
-set_target_properties(libgmock PROPERTIES
-        "IMPORTED_LOCATION" "${binary_dir}/lib/libgmock.a"
-        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-        )
-
-# I couldn't make it work with INTERFACE_INCLUDE_DIRECTORIES
-include_directories(
-        "${source_dir}/googletest/include"
-        "${source_dir}/googlemock/include")
+if(CMAKE_VERSION VERSION_LESS 2.8.11)
+    include_directories("${gtest_SOURCE_DIR}/include"
+                        "${gmock_SOURCE_DIR}/include"
+    )
+endif()
 
 # Linking
 if(NOT MSVC)
@@ -131,5 +117,6 @@ endif()
 
 target_link_libraries(main ${NTL_LIB} ${Boost_LIBRARIES} ${PThreadLib})
 target_link_libraries(testing ${NTL_LIB} ${Boost_LIBRARIES} ${PThreadLib})
-target_link_libraries(gtesting ${NTL_LIB} ${Boost_LIBRARIES} libgtest libgmock ${CMAKE_THREAD_LIBS_INIT} ${PThreadLib})
+target_link_libraries(gtesting ${NTL_LIB} ${Boost_LIBRARIES} gtest_main ${CMAKE_THREAD_LIBS_INIT} ${PThreadLib})
+add_test(NAME WBTests COMMAND gtesting)
 
