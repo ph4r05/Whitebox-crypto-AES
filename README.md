@@ -144,7 +144,9 @@ Bitcoin:
 ![1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E](https://deadcode.me/btc-whitebox.png)<br />1DBr1tfuqv6xphg5rzNTPxqiUbqbRHrM2E
 
 Monero:
-47BEukN83whUdvuXbaWmDDQLYNUpLsvFR2jioQtpP5vD8b3o74b9oFgQ3KFa3ibjbwBsaJEehogjiUCfGtugUGAuJAfbh1Z
+```
+8BDHew2uRt5N1qgBGe88ZcSwM4wmQfWuAVDWQwJebNg9VYHxbRBgARPd39Ftx61Ss3WmkDCu8FDvR9wJ27aoqBVT1PF5kmE
+```
 
 Contributing
 =======
