@@ -23,6 +23,7 @@ addons:
     - ubuntu-toolchain-r-test
     - boost-latest
     packages:
+    - libgmp-dev
     - build-essential
     - autoconf
     - cmake
