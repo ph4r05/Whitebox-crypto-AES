@@ -1,7 +1,6 @@
 Whitebox-crypto-AES
 ===================
-[![Build Status](https://travis-ci.org/ph4r05/Whitebox-crypto-AES.svg?branch=master)](https://travis-ci.org/ph4r05/Whitebox-crypto-AES)
-[![Coverity Status](https://scan.coverity.com/projects/7179/badge.svg)](https://scan.coverity.com/projects/ph4r05-whitebox-crypto-aes)
+![Build Status](https://github.com/ph4r05/Whitebox-crypto-AES/actions/workflows/build.yml/badge.svg)
 
 Whitebox cryptography AES implementation.
 
@@ -28,15 +27,15 @@ In my [diploma] thesis I suggest modifications and improvements for a new whiteb
 Dependencies
 =======
 * C++11 and higher
-* CMake 2.8+
-* [NTL] 6.0.0+
+* CMake 3.2+
+* [NTL] 11.4+
 * boost_iostreams 1.55+
 * boost_serialization 1.55+
 * boost_program_options 1.55+
 * boost_random 1.55+
 
 Description:
-* [NTL] math library is used for computation in finite fields & algebra. ~~NTL is licensed under GPL thus this implementation also has to be GPL.~~
+* [NTL] math library is used for computation in finite fields & algebra. 
 * Boost library for serialization of the scheme instance & program input parameters parsing. Version 1.55
 
 
