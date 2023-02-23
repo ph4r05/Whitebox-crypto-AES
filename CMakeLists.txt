@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.5)
+message(STATUS "CMake version ${CMAKE_VERSION}")
+
 project(Whitebox_crypto_AES)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -56,16 +58,24 @@ add_executable(main ${SOURCE_FILES} main.cpp)
 add_executable(testing ${SOURCE_FILES} testing.cpp testing.h)
 add_executable(gtesting ${SOURCE_FILES} ${TEST_SOURCE_FILES})
 
+# GMP
+find_library(GMP_LIB NAMES libgmp.a libgmp.so libgmp.dylib gmp PATHS ${CMAKE_CURRENT_SOURCE_DIR} $ENV{HOME}/ntl $ENV{HOME}/ntl/lib /usr/local /opt/local /opt/homebrew /usr ${NTL_MODIF})
+if(NOT GMP_LIB)
+    message(FATAL_ERROR "GMP library not found.  Rerun cmake with -DCMAKE_PREFIX_PATH=\"<path to lib1>;<path to lib2>\"")
+endif()
+message("GMP_LIB: ${GMP_LIB}")
+
 # NTL
 if (NTL_NO_DEFAULT_PATH)
     set(NTL_MODIF NO_DEFAULT_PATH)
     message("Not using default paths for NTL search, ${NTL_MODIF}")
 endif (NTL_NO_DEFAULT_PATH)
+
 message("HOME: $ENV{HOME}")
-find_path(NTL_INCLUDE_PATH NAMES NTL/mat_GF2.h PATHS $ENV{HOME}/ntl $ENV{HOME}/ntl/include /usr/local /opt/local /usr ${NTL_MODIF})
+find_path(NTL_INCLUDE_PATH NAMES NTL/mat_GF2.h PATHS $ENV{HOME}/ntl $ENV{HOME}/ntl/include /usr/local /opt/local /opt/homebrew /usr ${NTL_MODIF})
 message("NTL_INCLUDE_PATH: ${NTL_INCLUDE_PATH}")
 
-find_library(NTL_LIB ntl PATHS ${CMAKE_CURRENT_SOURCE_DIR} $ENV{HOME}/ntl $ENV{HOME}/ntl/lib /usr/local /opt/local /usr ${NTL_MODIF})
+find_library(NTL_LIB ntl PATHS ${CMAKE_CURRENT_SOURCE_DIR} $ENV{HOME}/ntl $ENV{HOME}/ntl/lib /usr/local /opt/local /opt/homebrew /usr ${NTL_MODIF})
 if(NOT NTL_LIB)
     message(FATAL_ERROR "ntl library not found.  Rerun cmake with -DCMAKE_PREFIX_PATH=\"<path to lib1>;<path to lib2>\"")
 endif()
@@ -115,8 +125,8 @@ if(NOT MSVC)
     set(PThreadLib -pthread)
 endif()
 
-target_link_libraries(main ${NTL_LIB} ${Boost_LIBRARIES} ${PThreadLib})
-target_link_libraries(testing ${NTL_LIB} ${Boost_LIBRARIES} ${PThreadLib})
-target_link_libraries(gtesting ${NTL_LIB} ${Boost_LIBRARIES} gtest_main ${CMAKE_THREAD_LIBS_INIT} ${PThreadLib})
+target_link_libraries(main ${NTL_LIB} ${GMP_LIB} ${Boost_LIBRARIES} ${PThreadLib})
+target_link_libraries(testing ${NTL_LIB} ${GMP_LIB} ${Boost_LIBRARIES} ${PThreadLib})
+target_link_libraries(gtesting ${NTL_LIB} ${GMP_LIB} ${Boost_LIBRARIES} gtest_main ${CMAKE_THREAD_LIBS_INIT} ${PThreadLib})
 add_test(NAME WBTests COMMAND gtesting)
 

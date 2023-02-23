@@ -16,6 +16,13 @@ ntl-**
 CMakeFiles
 Makefile
 CMakeCache.txt
+cmake_install.cmake
+cmake-build-*/
+.cmake
 build
 build-*/
-cmake-build-*/
+gtesting
+main
+testing
+googletest-build
+googletest-download
