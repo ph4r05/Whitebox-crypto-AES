@@ -1,0 +1,38 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - master
+      - main
+      - ci
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+        compiler: [gcc-10, clang-11]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - uses: ConorMacBride/install-package@v1
+        with:
+          apt: autoconf cmake libboost-program-options-dev libboost-serialization-dev libboost-iostreams-dev libboost-random-dev libgmp-dev libntl-dev
+
+#      - name: Install NTL
+#        uses: actions/cache@v3
+#        run: bash install-ntl-cached.sh
+#        with:
+#          key: ${{ runner.os }}-build-ntl-11.5.1
+#          path: |
+#            ~/ntl
+
+      - name: Build
+        run: bash build.sh
+
+      - name: Test
+        run: ./gtesting
